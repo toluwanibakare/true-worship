@@ -27,10 +27,11 @@ import type { ScheduleItem, Song } from '../shared/lib/types'
 /**
  * App shell, laid out the way EasyWorship lays its main window out,
  * from the EasyWorship 7 screenshots: a menu bar and toolbar on top,
- * the schedule down the left, the preview in the centre with Go Live
- * beside it, the live output up the right, and the resources (songs,
- * Bible, media, themes, and the rest) tabbed under it. Light, dark
- * and system themes, the same choice EasyWorship itself offers.
+ * then three full-height columns — the schedule down the left, the
+ * preview in the centre, the live output down the right — and the
+ * resources (songs, Bible, media, themes, and the rest) as a strip
+ * across the bottom. Light, dark and system themes, the same choice
+ * EasyWorship itself offers.
  */
 
 type Tab = 'songs' | 'bible' | 'media' | 'themes' | 'backgrounds' | 'layouts' | 'songbook' | 'import' | 'alerts' | 'display' | 'ndi'
@@ -72,6 +73,9 @@ export function App() {
   const [alert, setAlert] = useState<MarqueeAlert | null>(null)
   const [slideIndex, setSlideIndex] = useState(0)
   const [live, setLive] = useState<{ title: string; lines: string[] } | null>(null)
+  const [liveSlides, setLiveSlides] = useState<string[][] | null>(null)
+  const [liveSlideLabels, setLiveSlideLabels] = useState<string[]>([])
+  const [liveSlideIndex, setLiveSlideIndex] = useState(0)
   const [black, setBlack] = useState(false)
   const [logo, setLogo] = useState(false)
   const [customPreview, setCustomPreview] = useState<Preview | null>(null)
@@ -147,6 +151,9 @@ export function App() {
 
   const handleGoLive = () => {
     setLive({ title: preview.title, lines: slide })
+    setLiveSlides(preview.slides)
+    setLiveSlideLabels(slideLabels)
+    setLiveSlideIndex(slideIndex)
     setBlack(false)
     setLogo(false)
     window.electronAPI?.openLiveWindow(loadDisplaySettings())
@@ -165,9 +172,24 @@ export function App() {
 
   const handleClear = () => {
     setLive(null)
+    setLiveSlides(null)
+    setLiveSlideLabels([])
     setBlack(false)
     setLogo(false)
     sendLive('', [])
+  }
+
+  // Stepping through the live item's slides from the live column
+  // sends that slide out, clearing any Black or Logo in the way:
+  // clicking a slide is the operator saying "show this now".
+  const handleLiveSlideSelect = (index: number) => {
+    if (!live || !liveSlides) return
+    const lines = liveSlides[index] ?? []
+    setLiveSlideIndex(index)
+    setLive({ title: live.title, lines })
+    setBlack(false)
+    setLogo(false)
+    sendLive(live.title, lines)
   }
 
   const addItem = () =>
@@ -351,157 +373,162 @@ export function App() {
         />
       </header>
 
-      <main className="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)_360px] gap-3 p-3">
-        <SchedulePanel
-          items={schedule}
-          selectedId={selectedId}
-          onSelect={(id) => {
-            setSelectedId(id)
-            setCustomPreview(null)
-            setSlideIndex(0)
-          }}
-          onAdd={addItem}
-          onMoveUp={() => moveSelected(-1)}
-          onMoveDown={() => moveSelected(1)}
-          onRemove={removeSelected}
-        />
+      <main className="flex min-h-0 flex-1 flex-col">
+        <div className="grid min-h-0 flex-1 grid-cols-[260px_minmax(0,1fr)_430px] gap-3 p-3 pb-0">
+          <SchedulePanel
+            items={schedule}
+            selectedId={selectedId}
+            onSelect={(id) => {
+              setSelectedId(id)
+              setCustomPreview(null)
+              setSlideIndex(0)
+            }}
+            onAdd={addItem}
+            onMoveUp={() => moveSelected(-1)}
+            onMoveDown={() => moveSelected(1)}
+            onRemove={removeSelected}
+          />
 
-        <div className="flex min-h-0 flex-col gap-3">
-          <Panel title={`Preview — ${preview.title}`} className="flex-1">
-            <div
-              className="relative h-full overflow-hidden rounded-md"
-              style={{ background: background?.css ?? theme.background, color: theme.textColor }}
-            >
-              {background?.video && (
-                <video
-                  src={background.video}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-              )}
-              {alert && (
-                <div className="absolute inset-x-0 top-0 z-20">
-                  <Marquee alert={alert} />
-                </div>
-              )}
-              <div className={`relative z-10 ${layoutById(layoutId).wrapper}`}>
-                {layoutById(layoutId).band ? (
-                  <div className={layoutById(layoutId).band}>
-                    {slide.map((line) => (
+          <div className="flex min-h-0 flex-col gap-3">
+            <Panel title={`Preview — ${preview.title}`} className="flex-1">
+              <div
+                className="relative h-full overflow-hidden rounded-md"
+                style={{ background: background?.css ?? theme.background, color: theme.textColor }}
+              >
+                {background?.video && (
+                  <video
+                    src={background.video}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                )}
+                {alert && (
+                  <div className="absolute inset-x-0 top-0 z-20">
+                    <Marquee alert={alert} />
+                  </div>
+                )}
+                <div className={`relative z-10 ${layoutById(layoutId).wrapper}`}>
+                  {layoutById(layoutId).band ? (
+                    <div className={layoutById(layoutId).band}>
+                      {slide.map((line) => (
+                        <p key={line} className="leading-snug" style={{ fontSize: theme.fontSize * 0.6 }}>
+                          {line}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    slide.map((line) => (
                       <p key={line} className="leading-snug" style={{ fontSize: theme.fontSize * 0.6 }}>
                         {line}
                       </p>
-                    ))}
-                  </div>
-                ) : (
-                  slide.map((line) => (
-                    <p key={line} className="leading-snug" style={{ fontSize: theme.fontSize * 0.6 }}>
-                      {line}
-                    </p>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-          </Panel>
+            </Panel>
 
-          {preview.slides.length > 1 && (
-            <div className="flex flex-wrap gap-1">
-              {slideLabels.map((label, index) => (
-                <Button
-                  key={`${label}-${index}`}
-                  active={index === slideIndex}
-                  onClick={() => setSlideIndex(index)}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-          )}
+            {preview.slides.length > 1 && (
+              <div className="flex flex-wrap gap-1">
+                {slideLabels.map((label, index) => (
+                  <Button
+                    key={`${label}-${index}`}
+                    active={index === slideIndex}
+                    onClick={() => setSlideIndex(index)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            )}
 
-          <div>
-            <Button primary onClick={handleGoLive}>
-              GO LIVE &gt;&gt;&gt;
-            </Button>
+            <div>
+              <Button primary onClick={handleGoLive}>
+                GO LIVE &gt;&gt;&gt;
+              </Button>
+            </div>
           </div>
-        </div>
 
-        <div className="flex min-h-0 flex-col gap-3">
           <LivePanel
             title={liveTitle}
             lines={liveLines}
             theme={theme}
             live={live !== null && !black && !logo}
+            slides={liveSlides ?? []}
+            slideLabels={liveSlideLabels}
+            liveSlideIndex={liveSlideIndex}
+            onSelectLiveSlide={handleLiveSlideSelect}
+            onGoLive={handleGoLive}
             onBlack={handleBlack}
             onLogo={handleLogo}
             onClear={handleClear}
           />
+        </div>
 
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="mb-2 flex flex-wrap gap-1">
-              {tabs.map((entry) => (
-                <Button key={entry.id} active={tab === entry.id} onClick={() => setTab(entry.id)}>
-                  {entry.label}
-                </Button>
-              ))}
-            </div>
-            <div className="min-h-0 flex-1">
-              {tab === 'songs' && <SongLibrary songs={songs} onOpen={openSong} />}
-              {tab === 'bible' && (
-                <BibleLookup
-                  passages={demoPassage}
-                  onOpen={(reference, text) =>
-                    showPreview({ title: reference, slides: [[text]] })
+        <div className="mt-3 flex h-[300px] shrink-0 flex-col border-t border-slate-300 px-3 py-2 dark:border-slate-800">
+          <div className="mb-2 flex flex-wrap gap-1">
+            {tabs.map((entry) => (
+              <Button key={entry.id} active={tab === entry.id} onClick={() => setTab(entry.id)}>
+                {entry.label}
+              </Button>
+            ))}
+          </div>
+          <div className="min-h-0 flex-1">
+            {tab === 'songs' && <SongLibrary songs={songs} onOpen={openSong} />}
+            {tab === 'bible' && (
+              <BibleLookup
+                passages={demoPassage}
+                onOpen={(reference, text) =>
+                  showPreview({ title: reference, slides: [[text]] })
+                }
+              />
+            )}
+            {tab === 'media' && <MediaLibrary />}
+            {tab === 'themes' && (
+              <ThemePicker themes={demoThemes} activeId={themeId} onPick={setThemeId} />
+            )}
+            {tab === 'backgrounds' && (
+              <BackgroundPicker activeId={background?.id ?? null} onPick={setBackground} />
+            )}
+            {tab === 'layouts' && (
+              <LayoutPicker activeId={layoutId} onPick={setLayoutId} />
+            )}
+            {tab === 'songbook' && <SongbookPanel songs={songs} />}
+            {tab === 'import' && (
+              <ImporterPanel
+                songs={songs}
+                schedule={schedule}
+                onSongsImported={mergeSongs}
+                onScheduleImported={mergeSchedule}
+              />
+            )}
+            {tab === 'alerts' && (
+              <AlertBar
+                alert={alert}
+                onShow={(next) => {
+                  setAlert(next)
+                  if (live && !black && !logo) {
+                    sendLive(live.title, live.lines, undefined, next)
                   }
-                />
-              )}
-              {tab === 'media' && <MediaLibrary />}
-              {tab === 'themes' && (
-                <ThemePicker themes={demoThemes} activeId={themeId} onPick={setThemeId} />
-              )}
-              {tab === 'backgrounds' && (
-                <BackgroundPicker activeId={background?.id ?? null} onPick={setBackground} />
-              )}
-              {tab === 'layouts' && (
-                <LayoutPicker activeId={layoutId} onPick={setLayoutId} />
-              )}
-              {tab === 'songbook' && <SongbookPanel songs={songs} />}
-              {tab === 'import' && (
-                <ImporterPanel
-                  songs={songs}
-                  schedule={schedule}
-                  onSongsImported={mergeSongs}
-                  onScheduleImported={mergeSchedule}
-                />
-              )}
-              {tab === 'alerts' && (
-                <AlertBar
-                  alert={alert}
-                  onShow={(next) => {
-                    setAlert(next)
-                    if (live && !black && !logo) {
-                      sendLive(live.title, live.lines, undefined, next)
-                    }
-                  }}
-                  onHide={() => {
-                    setAlert(null)
-                    if (live && !black && !logo) {
-                      sendLive(live.title, live.lines, undefined, null)
-                    }
-                  }}
-                />
-              )}
-              {tab === 'display' && <DisplayPanel />}
-              {tab === 'ndi' && <NdiPanel />}
-            </div>
+                }}
+                onHide={() => {
+                  setAlert(null)
+                  if (live && !black && !logo) {
+                    sendLive(live.title, live.lines, undefined, null)
+                  }
+                }}
+              />
+            )}
+            {tab === 'display' && <DisplayPanel />}
+            {tab === 'ndi' && <NdiPanel />}
           </div>
         </div>
       </main>
 
       <footer className="flex items-center justify-between border-t border-slate-300 px-4 py-1.5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-        <span>True Worship 0.3.0 · GPL-3.0 · {schedule.length} items in schedule</span>
+        <span>True Worship 0.3.1 · GPL-3.0 · {schedule.length} items in schedule</span>
         <span>
           Theme: {themeMode} · {live ? 'LIVE' : 'Not live'}
         </span>

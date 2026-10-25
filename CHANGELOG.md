@@ -3,6 +3,22 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
+## [0.3.1] - 2026-10-25
+
+### Fixed
+
+- Main window arrangement now matches EasyWorship's for real:
+  schedule, preview and live output are three full-height columns,
+  and the resources live as a strip across the bottom, the way the
+  EasyWorship 7 overview shows them. The previous 0.3.0 layout put
+  the resources in the right column and squeezed live into a small
+  box above them; live is no longer smaller than it should be.
+- Live column is a full workstation now: a 16:9 output monitor at
+  the column's full width, GO LIVE and Logo, Black, Clear under it,
+  and the live item's slides below, so the operator can step
+  through the service from the live column itself. Clicking a live
+  slide sends it out at once.
+
 ## [0.3.0] - 2026-10-25
 
 ### Changed
