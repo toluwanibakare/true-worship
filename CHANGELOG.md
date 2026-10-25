@@ -3,7 +3,7 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
-## [Unreleased]
+## [0.19.0] - 2026-10-25
 
 ### Added
 
@@ -12,23 +12,66 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
   over from other tools, the Community Songbook, content licensing,
   and run instructions. Screenshots are embedded in `index.html`.
 
+### Added (continued)
+
+- Song editor rebuilt in the familiar arrangement: title, author and
+  copyright across the top, a block list on the left (Words, Slides and
+  Masters tabs, a "+" to add Verse, Chorus, Bridge and other parts) and a
+  large preview on the right with a zoom slider. Pasting several
+  paragraphs splits them into blocks. OK saves, Cancel or Esc closes.
+- The song library is saved on this computer (IndexedDB) and stays until
+  a song is deleted, across restarts and refreshes.
+- Picking a song or scripture in the schedule highlights it in the Songs
+  or Scriptures tab below (switching to the tab, and to the verse's
+  version), so Up and Down can carry on from that verse.
+- Six more downloadable public domain Bibles (Open English Bible
+  Christian Writings, Clementine Vulgate, Russian Synodal, Chinese Union,
+  Czech Bible kralicka, Cherokee), eighteen in all.
+- The splash screen shows the real version and the line "And the truth
+  shall set you free".
+
 ### Changed
 
-- `web/` redesigned: a dark, premium look in the app's blue, with a
-  serif for the headings, rounded-full buttons and no box shadows. An
-  animated hero with a tilting app window, a glass navigation bar that
-  lights the section you are in, a scrolling ticker, cards with a
-  spotlight that follows the cursor and Solar icons that turn from
-  outline to bold on hover, a screenshot gallery with tabs and a
-  crossfade, a copyable code block, an animated FAQ, a closing call to
-  action with a turning border, and a mobile menu. Everything rises into
-  place as it scrolls into view, and motion is skipped for visitors who
-  ask for reduced motion. The page works without JavaScript.
-- The screenshots are now WebP files in `web/assets/shots/` (390 KB
-  against 1.1 MB embedded) and show the current app, with the new
-  Scriptures box. Content updated for downloadable Bibles, the web
-  browser, transitions and subtitle layouts. Solar icons are credited in
-  the footer (CC BY 4.0).
+- Esc closes the "Search online lyrics" panel.
+- `web/` redesigned: a light, editorial look in two colours (deep blue
+  and cyan) with a serif for the headings, rounded-full buttons and no
+  box shadows. A real-app walkthrough video in the hero, full-width
+  screenshots of the app (including the new song editor), a wall of
+  motion and photo backgrounds that play when scrolled into view, a
+  feature index, a copyable code block, an FAQ, and a closing band with a
+  looping background. Content updated to eighteen Bibles. Motion is
+  skipped for visitors who ask for reduced motion, and the page works
+  without JavaScript.
+
+## [0.18.0] - 2026-10-25
+
+### Added
+
+- Drag a song or a verse from the library onto the schedule to add it.
+  A blue line shows where it will land, and it can be dropped on an empty
+  schedule or after the last item. Songs and Scriptures table rows are
+  draggable; the "+" button still works too.
+
+### Changed
+
+- Schedule rows show a real preview of the item's first slide, drawn with
+  the current theme and background, instead of a flat colour block. An
+  item with several slides expands into a thumbnail for each slide, each
+  with its label in a blue bar, and clicking one selects that slide.
+- Scripture text is sized to its length: a short verse is shown larger
+  than the theme's size ("Jesus wept." at 86 px against the theme's 64)
+  and a long one steps down so it fits the screen, down to 40% of the
+  theme's size. The longest verse in the Bible, Esther 8:9 (about 90
+  words), now fits with the reference below it. Songs and notices keep
+  the theme's size so it does not jump between verses; they only shrink
+  if they would run off the slide. Left Panel and Centre Card size to
+  their own, narrower, space.
+- The Songs sidebar has a single small Settings (gear) button at the
+  side, with the New Song, Edit Song and Delete menu. The "+" is gone from
+  it; New Song is in that menu and in the toolbar's New menu.
+- The demo "Welcome and Notices" item is now an actual "Welcome to True
+  Worship" slide and a notices slide, not its own title. Schedule items of any kind can
+  carry their own slides.
 
 ## [0.17.0] - 2026-10-25
 

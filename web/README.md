@@ -2,9 +2,9 @@
 
 A static site that presents True Worship: what it does, screenshots of the
 real app, how a service runs, how churches move over, the Community Songbook,
-content licensing, and how to run it. It is dark and premium, in the app's own
-blue, with scroll reveals, a screenshot gallery, spotlight cards, an animated
-hero and an animated FAQ. It needs no build step.
+content licensing, and how to run it. It is light and editorial, in two colours (deep
+blue and cyan), with a real-app walkthrough video, full-width screenshots,
+motion backgrounds that play on scroll and an animated FAQ. It needs no build step.
 
 ## View it
 
@@ -21,18 +21,20 @@ then visit http://localhost:8000/.
 - `index.html`: the page. It includes an inline SVG sprite of the Solar icons it
   uses (outline at rest, bold on hover), so there is no icon request.
 - `style.css`: the design. Rounded-full buttons, no box shadows (depth comes from
-  borders, glass and soft gradient glows), and a serif for marketing headings.
-- `site.js`: small, dependency-free enhancements: glass nav, scroll reveals,
-  spotlight on cards, tilt on the hero window, the screenshot gallery, copy
-  buttons and the mobile menu. The page reads and works without it, and motion is
-  skipped for visitors who ask for reduced motion.
-- `assets/shots/`: WebP screenshots captured from the real app (version 0.17.0).
+  hairlines and flat tints), blue and cyan only, and a serif for marketing headings.
+- `site.js`: small, dependency-free enhancements: scroll reveals, videos that play
+  only while on screen, a pausable walkthrough, copy buttons, the FAQ and the mobile
+  menu. The page reads and works without it, and motion is skipped for visitors who
+  ask for reduced motion.
+- `assets/shots/`: WebP screenshots captured from the real app (version 0.18.0).
   Recapture them when the interface changes.
+- `assets/media/`: the real-app walkthrough (`demo.webm`), its poster, and the
+  motion loops and photo stills copied from `public/backgrounds/`.
 - `assets/logo.svg`: the repo's SVG master.
 
 ## Notes
 
-- The heading font is Ciscela when it is installed (`@font-face` uses `local()`),
+- The heading font is Ciscela when it is installed (it leads the font stack),
   and falls back to a system serif. The font is not bundled; to ship it, add the
   licensed files under `assets/fonts/` and point the `@font-face` at them.
 - Icons are Solar by 480 Design, CC BY 4.0, credited in the footer.

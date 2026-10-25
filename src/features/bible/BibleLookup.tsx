@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ResourceView } from '../../shared/components/ResourceView'
 import { ResourceTable, type Column } from '../../shared/components/ResourceTable'
 import { Modal } from '../../shared/components/Modal'
+import { encodeResource } from '../../shared/lib/resourceDrag'
 import { FALLBACK_VERSIONS, fetchPassage, fetchVersions, type BibleVersion } from './api'
 import {
   BOOK_ORDER,
@@ -144,7 +145,15 @@ export function BibleLookup({
   onGoLive,
   registerStepper,
   registerSelection,
+  focus,
 }: {
+  /**
+   * Asks the table to show a verse: the app sends this when a scripture is
+   * picked in the schedule, so the verse is highlighted here and the arrow
+   * keys and Up/Down carry on from it. A new `nonce` is a new request;
+   * `live` marks the verse as the one on the screen.
+   */
+  focus?: { reference: string; version?: string; nonce: number; live: boolean } | null
   passages: Record<string, string>
   /**
    * Hands the app a function that puts the previous (-1) or next (1) verse
@@ -353,6 +362,45 @@ export function BibleLookup({
     return () => registerSelection(null)
   })
 
+  // Show the verse the schedule picked: switch to its version, wait for its
+  // verses if they are still loading, then highlight and scroll to it.
+  const pendingFocus = useRef<NonNullable<typeof focus> | null>(null)
+  useEffect(() => {
+    if (!focus) return
+    pendingFocus.current = focus
+    const wanted = installed.find(
+      (version) => version.id.toLowerCase() === focus.version?.toLowerCase() || abbrOf(version.id).toLowerCase() === focus.version?.toLowerCase(),
+    )
+    if (wanted && wanted.id !== selectedId) setSelectedId(wanted.id)
+    setField(BCV)
+    setFields(focus.reference)
+    // Only a new request, not every change to the installed list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.nonce])
+  useEffect(() => {
+    const request = pendingFocus.current
+    if (!request) return
+    const parts = /^(.*)\s+(\d+):(\d+)/.exec(request.reference.trim())
+    if (!parts) return
+    const wanted = bookKey(parts[1])
+    const row = allRows.find(
+      (entry) =>
+        entry.chapter === Number(parts[2]) &&
+        entry.verse === Number(parts[3]) &&
+        matchesBook(entry.book, wanted) &&
+        (!request.version || abbrOf(entry.translationId).toLowerCase() === request.version.toLowerCase() || entry.translationId.toLowerCase() === request.version.toLowerCase()),
+    )
+    if (!row) return
+    pendingFocus.current = null
+    setPickedKey(row.key)
+    setScrollKey(row.key)
+    remember(row.reference)
+    enterPreview.current = null
+    if (request.live) liveKey.current = row.key
+    // remember only reads its argument.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allRows, focus?.nonce])
+
   // Book, chapter, verse: the table shows the whole Bible and the box takes it
   // to what was typed, highlighting the first verse there. It opens on the last
   // verse used (Genesis 1:1 the first time).
@@ -535,7 +583,10 @@ export function BibleLookup({
     { key: 'text', label: 'Scripture', width: '1fr', value: (row) => row.text },
   ]
   const sources = [...installed.map((version) => version.name), MORE_AVAILABLE]
-  const onlineOnly = (catalogue ?? []).filter((version) => !PACKS.some((pack) => pack.id === version.id))
+  // Versions that can be downloaded whole are offered above; the rest stay online lookups.
+  const onlineOnly = (catalogue ?? []).filter(
+    (version) => !PACKS.some((pack) => pack.id === version.id || pack.onlineId === version.id),
+  )
 
   return (
     <>
@@ -634,6 +685,14 @@ export function BibleLookup({
               selectedKey={pickedKey}
               onSelect={select}
               onActivate={goLiveRow}
+              dragData={(row) =>
+                encodeResource({
+                  kind: 'scripture',
+                  reference: row.reference,
+                  slides: [[row.text]],
+                  version: abbrOf(row.translationId),
+                })
+              }
               scrollToKey={scrollKey}
               empty={
                 isPacked
@@ -709,8 +768,8 @@ export function BibleLookup({
         <Modal title="More Available" onClose={() => setShowMore(false)}>
           <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
             Add a Bible to put it in the side panel. A full Bible is downloaded to this
-            computer once, so every verse is listed and searchable offline. Only the ones
-            you add are downloaded, and these are all public domain.
+            computer once and saved here, so every verse is listed and searchable offline.
+            Only the ones you add are downloaded, and these are all public domain.
           </p>
           <ul className="divide-y divide-slate-200 dark:divide-slate-800">
             {PACKS.map((pack) => {
@@ -743,7 +802,9 @@ export function BibleLookup({
             Online lookup only
           </h3>
           <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
-            These are not downloaded. Passages are fetched from bible-api.com when you look them up.
+            No downloadable copy is available for these, and bible-api.com asks apps not to
+            download whole Bibles from it. Passages are fetched one at a time when you look
+            them up, and need the internet.
           </p>
           {!catalogue ? (
             <p className="text-sm text-slate-500">Loading the list…</p>

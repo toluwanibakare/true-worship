@@ -33,7 +33,19 @@ export const demoSongs: Song[] = [
 export const demoSchedule: ScheduleItem[] = [
   { id: 's1', type: 'song', title: 'Amazing Grace', ref: 'amazing-grace' },
   { id: 's2', type: 'scripture', title: 'John 3:16', ref: 'John 3:16' },
-  { id: 's3', type: 'custom', title: 'Welcome and Notices', ref: '' },
+  // Demo content, like the rest of this file: a "Welcome to True Worship"
+  // slide and a notices slide, to show what a custom item with its own
+  // slides looks like.
+  {
+    id: 's3',
+    type: 'custom',
+    title: 'Welcome and Notices',
+    ref: '',
+    slides: [
+      ['Welcome to True Worship', 'We are glad you are here'],
+      ['Notices', 'Sunday service at 9:00 AM', 'Midweek prayer on Wednesday at 6:00 PM', 'Youth meeting on Friday at 5:00 PM'],
+    ],
+  },
 ]
 
 export const demoThemes: Theme[] = [

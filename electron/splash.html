@@ -33,10 +33,26 @@
         width: 380px;
         height: auto;
       }
+      .slogan {
+        margin: 2px 0 0;
+        font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+        font-style: italic;
+        font-size: 24px;
+        letter-spacing: 0.01em;
+        color: #1e40af;
+        animation: rise 1.1s ease-out both;
+      }
       .tagline {
         margin: 0;
-        font-size: 15px;
+        font-size: 14px;
         color: #374151;
+        animation: rise 1.1s 0.25s ease-out both;
+      }
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
       }
       .meta {
         margin: 0;
@@ -72,6 +88,7 @@
   </head>
   <body>
     <img class="logo" src="../assets/logo/logo.png" alt="True Worship" />
+    <p class="slogan">And the truth shall set you free</p>
     <p class="tagline">Free, open worship presentation software for churches</p>
     <p class="meta">
       <span id="version">Version</span><br />

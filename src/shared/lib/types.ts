@@ -29,7 +29,8 @@ export type ScheduleItem = {
   title: string
   /** Id of the song, passage reference, or media file behind this item. */
   ref: string
-  /** A scripture added from the Scriptures table carries its own verses (one slide each)... */
+  /** An item can carry its own slides, one entry of lines each: a scripture added from the
+   * Scriptures table (its verses), or a custom item such as the welcome and notices... */
   slides?: string[][]
   /** ...and the version they were read from, e.g. KJV. */
   version?: string

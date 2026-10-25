@@ -24,6 +24,11 @@ export type LayoutPreset = {
   subtitle?: 'bottom' | 'top'
   /** Share of the theme's font size used by this layout (default 1). */
   fontScale?: number
+  /**
+   * The room the words have, in the 1280 x 720 slide: the width and height of
+   * the area they must fit inside. Long text is sized down until it fits.
+   */
+  box?: { width: number; height: number }
 }
 
 export const LAYOUTS: LayoutPreset[] = [
@@ -33,6 +38,7 @@ export const LAYOUTS: LayoutPreset[] = [
     hint: 'Big centred words over the whole background.',
     wrapper: 'flex h-full flex-col items-center justify-center px-8 py-6 text-center',
     band: '',
+    box: { width: 1160, height: 620 },
   },
   {
     id: 'lower-third',
@@ -58,6 +64,7 @@ export const LAYOUTS: LayoutPreset[] = [
     hint: 'Words in a panel down the left side.',
     wrapper: 'flex h-full items-stretch justify-start',
     band: 'flex w-[45%] flex-col justify-center bg-black/60 px-8 text-left',
+    box: { width: 490, height: 600 },
   },
   {
     id: 'center-card',
@@ -65,6 +72,7 @@ export const LAYOUTS: LayoutPreset[] = [
     hint: 'Words on a floating card in the middle.',
     wrapper: 'flex h-full items-center justify-center p-10',
     band: 'max-w-2xl rounded-2xl bg-black/60 px-10 py-8 text-center',
+    box: { width: 570, height: 500 },
   },
 ]
 

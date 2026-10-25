@@ -49,6 +49,41 @@ function captionFontSize(lines: string[], start: number, maxLines: number) {
   return Math.max(size, floor)
 }
 
+const LINE_HEIGHT = 1.25
+
+/**
+ * The size words are shown at in a full-slide layout. A scripture grows past
+ * the theme's size when it is short and shrinks when it is long, so a one-line
+ * verse fills the screen and the longest verse in the Bible (Esther 8:9, about
+ * 90 words) still fits; it stops shrinking at 40% of the theme's size. Other
+ * text (songs, notices) keeps the theme's size, and only shrinks if it would
+ * run off the slide, so the size does not jump from one verse of a song to
+ * the next. Estimated from character counts, so it errs a little small.
+ */
+function fitFontSize(
+  lines: string[],
+  base: number,
+  box: { width: number; height: number },
+  grows: boolean,
+  hasReference: boolean,
+) {
+  const start = grows ? base * 1.35 : base
+  const floor = base * 0.4
+  let size = start
+  while (size > floor) {
+    let rows = 0
+    for (const line of lines) {
+      // Words break at spaces, so a line needs a little more room than its characters alone.
+      rows += Math.max(1, Math.ceil((line.length * CHAR_WIDTH * 1.07 * size) / box.width))
+    }
+    let total = rows * size * LINE_HEIGHT
+    if (hasReference) total += size * 0.62 * LINE_HEIGHT + 12
+    if (total <= box.height) break
+    size -= 2
+  }
+  return Math.max(size, floor)
+}
+
 /** True when a hex colour is closer to white than to black. */
 function isLight(colour: string) {
   const hex = colour.replace('#', '')
@@ -115,7 +150,14 @@ export function SlideView({
         theme.fontSize * (layout.fontScale ?? 1),
         lines.filter((line) => line.trim() !== '').length > 1 ? 2 : 3,
       )
-    : theme.fontSize * (layout.fontScale ?? 1)
+    : fitFontSize(
+        lines,
+        theme.fontSize * (layout.fontScale ?? 1),
+        layout.box ?? { width: 1160, height: 620 },
+        // A scripture (it has a reference) grows when it is short.
+        Boolean(reference),
+        Boolean(reference),
+      )
   const words = lines.map((line, index) => (
     <p
       key={index}

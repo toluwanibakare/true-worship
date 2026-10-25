@@ -199,6 +199,15 @@ const SPLASH_MIN_MS = 2500
 /** If the operator window never reports ready, show it anyway after this. */
 const SPLASH_MAX_MS = 15000
 
+/** The version in package.json: the one place the version lives, read when the app starts. */
+function appVersion() {
+  try {
+    return require('../package.json').version
+  } catch {
+    return app.getVersion()
+  }
+}
+
 function createSplashWindow() {
   const splash = new BrowserWindow({
     width: 640,
@@ -215,7 +224,7 @@ function createSplashWindow() {
     webPreferences: { contextIsolation: true },
   })
   splash.loadFile(path.join(__dirname, 'splash.html'), {
-    query: { version: app.getVersion() },
+    query: { version: appVersion() },
   })
   splash.once('ready-to-show', () => splash.show())
   return splash

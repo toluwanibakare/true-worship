@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { SchedulePanel } from '../features/schedule/SchedulePanel'
 import { SongLibrary } from '../features/songs/SongLibrary'
+import { loadSongs, saveSongs } from '../shared/lib/songStore'
 import { SongEditor } from '../features/songs/SongEditor'
 import { BibleLookup } from '../features/bible/BibleLookup'
 import { MediaLibrary } from '../features/media/MediaLibrary'
@@ -34,6 +35,7 @@ import { Modal } from '../shared/components/Modal'
 import { SlideView } from '../shared/components/SlideView'
 import { layoutById } from '../shared/lib/layouts'
 import { splitIntoSubtitles } from '../shared/lib/subtitles'
+import type { ResourceDrag } from '../shared/lib/resourceDrag'
 import { Splitter } from '../shared/components/Splitter'
 import { usePaneSize } from '../shared/lib/usePaneSize'
 import {
@@ -300,12 +302,33 @@ function previewForSchedule(item: ScheduleItem | undefined, songs: Song[]): Prev
       reference: text ? `${item.ref} (${SCRIPTURE_VERSION})` : undefined,
     }
   }
+  // A custom item with its own slides (the welcome and notices): each slide is
+  // named by its first line.
+  if (item.slides && item.slides.length > 0) {
+    return {
+      title: item.title,
+      slides: item.slides,
+      labels: item.slides.map((lines, index) => lines[0] ?? `Slide ${index + 1}`),
+    }
+  }
   return { title: item.title, slides: [[item.title]] }
 }
 
 export function App() {
   const [schedule, setSchedule] = useState<ScheduleItem[]>(demoSchedule)
   const [songs, setSongs] = useState<Song[]>(demoSongs)
+  // The library is saved on this computer; nothing is written back until
+  // the saved copy has been read, so a refresh never replaces it with the demo.
+  const [songsLoaded, setSongsLoaded] = useState(false)
+  // A song or verse picked in the schedule is shown highlighted in its tab below.
+  const [songFocus, setSongFocus] = useState<{ id: string; nonce: number } | null>(null)
+  const [scriptureFocus, setScriptureFocus] = useState<{
+    reference: string
+    version?: string
+    nonce: number
+    live: boolean
+  } | null>(null)
+  const focusNonce = useRef(0)
   const [selectedId, setSelectedId] = useState<string | null>(demoSchedule[0]?.id ?? null)
   const [tab, setTab] = useState<Tab>('songs')
   const [themeId, setThemeId] = useState(demoThemes[0].id)
@@ -370,6 +393,19 @@ export function App() {
 
   // Light / dark / system theme. System follows the operating system
   // and keeps following it when the OS setting changes.
+  useEffect(() => {
+    loadSongs()
+      .then((saved) => {
+        if (saved) setSongs(saved)
+      })
+      .catch(() => {})
+      .finally(() => setSongsLoaded(true))
+  }, [])
+
+  useEffect(() => {
+    if (songsLoaded) saveSongs(songs).catch(() => {})
+  }, [songs, songsLoaded])
+
   useEffect(() => {
     localStorage.setItem('tw-theme', themeMode)
     const apply = () => {
@@ -520,35 +556,55 @@ export function App() {
     liveFromScriptures.current = true
   }
 
+  const newItemId = () => `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
+
+  /** Put an item in the schedule: at the given place, or after the selected item, or at the end. */
+  const insertScheduleItem = (item: ScheduleItem, at?: number) => {
+    setSchedule((current) => {
+      const selectedAt = current.findIndex((entry) => entry.id === selectedId)
+      const place = at ?? (selectedAt < 0 ? current.length : selectedAt + 1)
+      return [...current.slice(0, place), item, ...current.slice(place)]
+    })
+    setSelectedId(item.id)
+    setCustomPreview(null)
+    setSlideIndex(0)
+  }
+
+  /** A song or a verse dragged from the library, dropped on the schedule. */
+  const dropResource = (resource: ResourceDrag, at?: number) => {
+    if (resource.kind === 'song') {
+      const song = songs.find((entry) => entry.id === resource.id)
+      if (song) insertScheduleItem({ id: newItemId(), type: 'song', title: song.title, ref: song.id }, at)
+      return
+    }
+    insertScheduleItem(
+      {
+        id: newItemId(),
+        type: 'scripture',
+        title: resource.reference,
+        ref: resource.reference,
+        slides: resource.slides,
+        version: resource.version,
+      },
+      at,
+    )
+  }
+
   /** "+" in the resource strip: put the picked song or verse into the schedule. */
   const addPickedToSchedule = () => {
-    let item: ScheduleItem | null = null
-    const id = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
     if (tab === 'songs' && pickedSong.current && songs.some((song) => song.id === pickedSong.current?.id)) {
-      item = { id, type: 'song', title: pickedSong.current.title, ref: pickedSong.current.id }
+      dropResource({ kind: 'song', id: pickedSong.current.id })
     } else if (tab === 'bible') {
       const verse = scriptureSelection.current?.()
       if (verse) {
-        item = {
-          id,
-          type: 'scripture',
-          title: verse.reference,
-          ref: verse.reference,
+        dropResource({
+          kind: 'scripture',
+          reference: verse.reference,
           slides: verse.slides,
           version: verse.version,
-        }
+        })
       }
     }
-    if (!item) return
-    const added = item
-    // It goes in after the selected item, or at the end.
-    setSchedule((current) => {
-      const at = current.findIndex((entry) => entry.id === selectedId)
-      return at < 0 ? [...current, added] : [...current.slice(0, at + 1), added, ...current.slice(at + 1)]
-    })
-    setSelectedId(added.id)
-    setCustomPreview(null)
-    setSlideIndex(0)
   }
 
   /** The play button in the resource strip: the picked song or verse goes live. */
@@ -761,11 +817,42 @@ export function App() {
       const song = songs.find((entry) => entry.id === item.ref)
       return song ? song.verses.map((verse) => verse.label) : []
     }
-    return item.slides ? item.slides.map((_, index) => `Slide ${index + 1}`) : ['Slide 1']
+    if (item.slides) {
+      return item.type === 'custom'
+        ? item.slides.map((lines, index) => lines[0] ?? `Slide ${index + 1}`)
+        : item.slides.map((_, index) => `Slide ${index + 1}`)
+    }
+    return ['Slide 1']
   }
 
   // Double-clicking a schedule row sends that item live from its
   // first slide, the fastest path from plan to screen.
+  /** Shows the schedule item in the Songs or Scriptures tab, highlighted, ready to step on from. */
+  const focusInResources = (id: string, index: number, live: boolean) => {
+    const item = schedule.find((entry) => entry.id === id)
+    if (!item) return
+    focusNonce.current += 1
+    if (item.type === 'song') {
+      const song = songs.find((entry) => entry.id === item.ref)
+      if (!song) return
+      pickedSong.current = song
+      setTab('songs')
+      setSongFocus({ id: song.id, nonce: focusNonce.current })
+    } else if (item.type === 'scripture') {
+      // A passage of several verses has one slide per verse: land on the one picked.
+      const parts = /^(.*\s\d+:)(\d+)/.exec(item.title)
+      if (!parts) return
+      const offset = (item.slides?.length ?? 0) > 1 ? index : 0
+      setTab('bible')
+      setScriptureFocus({
+        reference: `${parts[1]}${Number(parts[2]) + offset}`,
+        version: item.version,
+        nonce: focusNonce.current,
+        live,
+      })
+    }
+  }
+
   const selectAndGoLive = (id: string) => {
     const item = schedule.find((entry) => entry.id === id)
     if (!item) return
@@ -784,6 +871,7 @@ export function App() {
     setBlack(false)
     setLogo(false)
     clearedLiveRef.current = null
+    focusInResources(id, 0, true)
     window.electronAPI?.openLiveWindow(loadDisplaySettings())
     sendLive(itemPreview.title, first)
   }
@@ -847,8 +935,8 @@ export function App() {
     showAlerts: () => setDialog('alerts'),
     setShowShortcuts,
     showShortcuts,
-    dialogOpen: dialog !== null,
-    closeDialog: () => setDialog(null),
+    dialogOpen: dialog !== null || songEditor !== null,
+    closeDialog: () => (songEditor ? setSongEditor(null) : setDialog(null)),
     labels: slideLabels,
     slideCount: preview.slides.length,
   })
@@ -872,8 +960,8 @@ export function App() {
     showAlerts: () => setDialog('alerts'),
     setShowShortcuts,
     showShortcuts,
-    dialogOpen: dialog !== null,
-    closeDialog: () => setDialog(null),
+    dialogOpen: dialog !== null || songEditor !== null,
+    closeDialog: () => (songEditor ? setSongEditor(null) : setDialog(null)),
     labels: slideLabels,
     slideCount: preview.slides.length,
   }
@@ -1183,10 +1271,16 @@ export function App() {
               items={schedule}
               selectedId={selectedId}
               slideIndex={slideIndex}
+              theme={theme}
+              backgroundCss={background?.css}
+              layoutId={layoutId}
+              onDropResource={dropResource}
+              previewFor={(item) => previewForSchedule(item, songs)}
               onSelect={(id) => {
                 setSelectedId(id)
                 setCustomPreview(null)
                 setSlideIndex(0)
+                focusInResources(id, 0, false)
               }}
               onSelectSlide={(id, index) => {
                 const item = schedule.find((entry) => entry.id === id)
@@ -1199,6 +1293,7 @@ export function App() {
                 setSelectedId(id)
                 setCustomPreview(null)
                 setSlideIndex(start)
+                focusInResources(id, index, false)
               }}
               onGoLiveItem={selectAndGoLive}
               onAdd={addItem}
@@ -1394,6 +1489,7 @@ export function App() {
             {tab === 'songs' && (
               <SongLibrary
                 songs={songs}
+                focus={songFocus}
                 onOpen={openSong}
                 onGoLive={goLiveSong}
                 onNew={() => setSongEditor({ song: null })}
@@ -1413,6 +1509,7 @@ export function App() {
             <div className={tab === 'bible' ? 'h-full' : 'hidden'}>
               <BibleLookup
                 passages={demoPassage}
+                focus={scriptureFocus}
                 registerStepper={(step) => {
                   scriptureStepper.current = step
                 }}
@@ -1536,6 +1633,9 @@ export function App() {
         <SongEditor
           key={songEditor.song?.id ?? 'new'}
           song={songEditor.song}
+          theme={theme}
+          backgroundCss={background?.css}
+          layoutId={layoutId}
           onSave={saveSongDraft}
           onClose={() => setSongEditor(null)}
         />

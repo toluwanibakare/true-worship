@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { RESOURCE_MIME } from '../lib/resourceDrag'
 
 /**
  * The table every resource list uses (Songs, Scriptures): compact
@@ -6,6 +7,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
  * sorted column), and a blue selected row. Only the rows on screen are
  * drawn, so a whole Bible of 31,000 verses scrolls as smoothly as a short
  * song list. Songs and Scriptures both use it, so it lives in shared.
+ * Rows can be dragged out (dragData) to be dropped on the schedule.
  */
 export type Column<T> = {
   key: string
@@ -30,6 +32,7 @@ export function ResourceTable<T>({
   onContextMenu,
   scrollToKey,
   empty,
+  dragData,
 }: {
   columns: Column<T>[]
   rows: T[]
@@ -42,6 +45,8 @@ export function ResourceTable<T>({
   /** Scrolls this row into view when it changes (and the rows are known). */
   scrollToKey?: string | null
   empty?: string
+  /** Makes rows draggable: the text to carry (see resourceDrag.ts), for dropping onto the schedule. */
+  dragData?: (row: T) => string
 }) {
   const [sort, setSort] = useState<{ key: string; direction: 1 | -1 } | null>(null)
   const [scrollTop, setScrollTop] = useState(0)
@@ -160,6 +165,16 @@ export function ResourceTable<T>({
               onClick={() => onSelect(row)}
               onDoubleClick={() => onActivate?.(row)}
               onContextMenu={onContextMenu ? (event) => onContextMenu(row, event) : undefined}
+              draggable={dragData !== undefined}
+              onDragStart={
+                dragData
+                  ? (event) => {
+                      event.dataTransfer.effectAllowed = 'copy'
+                      event.dataTransfer.setData(RESOURCE_MIME, dragData(row))
+                      event.dataTransfer.setData('text/plain', rowKey(row))
+                    }
+                  : undefined
+              }
               title={onActivate ? 'Double-click to go live' : undefined}
               className={`absolute inset-x-0 grid cursor-default items-center ${
                 selected

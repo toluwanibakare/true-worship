@@ -26,6 +26,8 @@ export type PackInfo = {
   id: string
   name: string
   language: string
+  /** The id bible-api.com uses for the same text, when it differs, so it is not offered twice. */
+  onlineId?: string
   /** Short name shown with a verse, e.g. KJV. */
   abbr: string
   /** File name on the source, without .json. */
@@ -37,14 +39,20 @@ export const PACKS: PackInfo[] = [
   { id: 'akjv', abbr: 'AKJV', name: 'American King James Version', language: 'English', file: 'AKJV' },
   { id: 'asv', abbr: 'ASV', name: 'American Standard Version (1901)', language: 'English', file: 'ASV' },
   { id: 'bsb', abbr: 'BSB', name: 'Berean Standard Bible', language: 'English', file: 'BSB' },
-  { id: 'oeb', abbr: 'OEB', name: 'Open English Bible', language: 'English', file: 'OEB' },
+  { id: 'oeb', onlineId: 'oeb-us', abbr: 'OEB', name: 'Open English Bible', language: 'English', file: 'OEB' },
+  { id: 'oeb-cw', abbr: 'OEB-CW', name: 'Open English Bible, Commonwealth Edition', language: 'English (UK)', file: 'OEBcth' },
   { id: 'webster', abbr: 'Webster', name: "Webster's Bible", language: 'English', file: 'Webster' },
   { id: 'darby', abbr: 'Darby', name: 'Darby Bible (1889)', language: 'English', file: 'Darby' },
   { id: 'ylt', abbr: 'YLT', name: "Young's Literal Translation (1898)", language: 'English', file: 'YLT' },
   { id: 'geneva1599', abbr: 'Geneva', name: 'Geneva Bible (1599)', language: 'English', file: 'Geneva1599' },
   { id: 'tyndale', abbr: 'Tyndale', name: 'Tyndale Bible (1525/1530)', language: 'English', file: 'Tyndale' },
   { id: 'wycliffe', abbr: 'Wycliffe', name: 'Wycliffe Bible (c. 1395)', language: 'English', file: 'Wycliffe' },
-  { id: 'drc', abbr: 'DRC', name: 'Douay-Rheims (Challoner)', language: 'English', file: 'DRC' },
+  { id: 'drc', onlineId: 'dra', abbr: 'DRC', name: 'Douay-Rheims (Challoner)', language: 'English', file: 'DRC' },
+  { id: 'clementine', abbr: 'Clementine', name: 'Clementine Latin Vulgate', language: 'Latin', file: 'VulgClementine' },
+  { id: 'synodal', abbr: 'Synodal', name: 'Russian Synodal Translation', language: 'Russian', file: 'RusSynodal' },
+  { id: 'cuv', abbr: 'CUV', name: 'Chinese Union Version (Traditional)', language: 'Chinese', file: 'ChiUn' },
+  { id: 'bkr', abbr: 'BKR', name: 'Bible kralická', language: 'Czech', file: 'CzeBKR' },
+  { id: 'cherokee', abbr: 'Cherokee', name: 'Cherokee New Testament (1860)', language: 'Cherokee', file: 'Che1860' },
 ]
 
 /** What is kept for one downloaded Bible: book names, and a row per verse. */

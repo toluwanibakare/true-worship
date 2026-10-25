@@ -87,8 +87,12 @@ to it:
 King James Version, American King James Version, American Standard
 Version (1901), Berean Standard Bible, Open English Bible, Webster's
 Bible, Darby Bible (1889), Young's Literal Translation (1898), Geneva
-Bible (1599), Tyndale Bible, Wycliffe Bible and Douay-Rheims
-(Challoner). Each file was checked for the full verse count and for
+Bible (1599), Tyndale Bible, Wycliffe Bible, Douay-Rheims
+(Challoner), Open English Bible (Christian Writings), Clementine Vulgate,
+Russian Synodal, Chinese Union Version, Czech Bible kralicka and the
+Cherokee New Testament (1860). The Bible in Basic English is
+deliberately left out (its public domain status is disputed) and stays
+online-only. Each file was checked for the full verse count and for
 clean text.
 
 Rules the code follows:

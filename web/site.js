@@ -1,15 +1,15 @@
 /* True Worship website: small, dependency-free enhancements.
-   Everything here is progressive: the page reads and works without it, and
-   motion is skipped for visitors who ask for reduced motion. */
+   The page reads and works without any of this; motion is skipped for
+   visitors who ask for reduced motion. */
 (() => {
   const root = document.documentElement
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const $ = (selector, scope = document) => scope.querySelector(selector)
   const $$ = (selector, scope = document) => [...scope.querySelectorAll(selector)]
 
-  /* The bar turns to glass once the page moves. */
+  /* A hairline under the bar once the page moves. */
   const bar = $('.bar')
-  const onScroll = () => bar && bar.classList.toggle('scrolled', window.scrollY > 12)
+  const onScroll = () => bar && bar.classList.toggle('scrolled', window.scrollY > 8)
   onScroll()
   window.addEventListener('scroll', onScroll, { passive: true })
 
@@ -25,7 +25,7 @@
     window.addEventListener('keydown', (event) => event.key === 'Escape' && setOpen(false))
   }
 
-  /* The link for the section on screen is lit. */
+  /* The link for the section on screen is underlined. */
   const links = $$('.links a[href^="#"]')
   const targets = links.map((link) => $(link.getAttribute('href'))).filter(Boolean)
   if ('IntersectionObserver' in window && targets.length) {
@@ -41,142 +41,73 @@
     targets.forEach((target) => lit.observe(target))
   }
 
-  /* Things rise into place as they arrive; siblings arrive one after another. */
+  /* Reveal on scroll. */
   const reveals = $$('.reveal')
-  reveals.forEach((element) => {
-    const siblings = [...element.parentElement.children].filter((child) => child.classList.contains('reveal'))
-    element.style.setProperty('--i', String(Math.min(siblings.indexOf(element), 8)))
-  })
-  if ('IntersectionObserver' in window && !reduce) {
-    const arrive = new IntersectionObserver(
+  if (reduce || !('IntersectionObserver' in window)) {
+    reveals.forEach((el) => el.classList.add('in'))
+  } else {
+    const seen = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return
           entry.target.classList.add('in')
-          arrive.unobserve(entry.target)
+          seen.unobserve(entry.target)
         })
       },
-      { rootMargin: '0px 0px -8% 0px', threshold: 0.08 },
+      { threshold: 0.12, rootMargin: '0px 0px -6% 0px' },
     )
-    reveals.forEach((element) => arrive.observe(element))
+    reveals.forEach((el) => seen.observe(el))
+  }
+
+  /* Videos play only while on screen, and not at all for reduced motion. */
+  const videos = $$('video[data-lazy]')
+  if (reduce) {
+    videos.forEach((video) => video.removeAttribute('autoplay'))
+  } else if ('IntersectionObserver' in window) {
+    const watcher = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const video = entry.target
+        if (entry.isIntersecting) {
+          if (!video.src && video.dataset.src) video.src = video.dataset.src
+          video.play().catch(() => {})
+        } else {
+          video.pause()
+        }
+      })
+    }, { threshold: 0.25 })
+    videos.forEach((video) => watcher.observe(video))
   } else {
-    reveals.forEach((element) => element.classList.add('in'))
-  }
-
-  /* A soft light follows the cursor across a card. */
-  $$('.card').forEach((card) => {
-    card.addEventListener('pointermove', (event) => {
-      const box = card.getBoundingClientRect()
-      card.style.setProperty('--mx', `${event.clientX - box.left}px`)
-      card.style.setProperty('--my', `${event.clientY - box.top}px`)
-    })
-  })
-
-  /* The hero window leans toward the pointer. */
-  const tilt = $('.tilt')
-  const stage = $('.hero')
-  if (tilt && stage && !reduce && window.matchMedia('(hover: hover)').matches) {
-    let frame = 0
-    stage.addEventListener('pointermove', (event) => {
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        const box = tilt.getBoundingClientRect()
-        const x = (event.clientX - (box.left + box.width / 2)) / window.innerWidth
-        const y = (event.clientY - (box.top + box.height / 2)) / window.innerHeight
-        tilt.classList.add('moving')
-        tilt.style.setProperty('--ry', `${(x * 9).toFixed(2)}deg`)
-        tilt.style.setProperty('--rx', `${(-y * 7).toFixed(2)}deg`)
-      })
-    })
-    stage.addEventListener('pointerleave', () => {
-      tilt.classList.remove('moving')
-      tilt.style.setProperty('--rx', '0deg')
-      tilt.style.setProperty('--ry', '0deg')
+    videos.forEach((video) => {
+      if (video.dataset.src) video.src = video.dataset.src
+      video.play().catch(() => {})
     })
   }
+  /* The walkthrough pauses on click. */
+  $$('video[data-toggle]').forEach((video) =>
+    video.addEventListener('click', () => (video.paused ? video.play() : video.pause())),
+  )
 
-  /* The ticker repeats itself so it loops without a gap. */
-  const track = $('.ticker-track')
-  if (track && track.firstElementChild) {
-    const copy = track.firstElementChild.cloneNode(true)
-    copy.setAttribute('aria-hidden', 'true')
-    track.append(copy)
-  }
-
-  /* Screenshot gallery: tabs built from the captions, a crossfade between
-     frames, and a slow auto-advance that stops once someone takes over. */
-  $$('[data-gallery]').forEach((gallery) => {
-    const frames = $$('.frame', gallery)
-    const tabs = $('.tabs', gallery)
-    if (frames.length < 2 || !tabs) return
-    const dwell = 7000
-    gallery.style.setProperty('--dwell', `${dwell}ms`)
-    let current = 0
-    let timer = 0
-
-    const buttons = frames.map((frame, index) => {
-      const button = document.createElement('button')
-      button.type = 'button'
-      button.className = 'tab'
-      button.setAttribute('role', 'tab')
-      button.textContent = frame.dataset.title || `Screen ${index + 1}`
-      button.addEventListener('click', () => {
-        stop()
-        show(index)
-      })
-      tabs.append(button)
-      return button
-    })
-
-    function show(index) {
-      current = (index + frames.length) % frames.length
-      frames.forEach((frame, i) => frame.classList.toggle('is-active', i === current))
-      buttons.forEach((button, i) => button.setAttribute('aria-selected', String(i === current)))
-    }
-    function schedule() {
-      clearTimeout(timer)
-      timer = window.setTimeout(() => {
-        show(current + 1)
-        schedule()
-      }, dwell)
-    }
-    function stop() {
-      clearTimeout(timer)
-      gallery.classList.add('paused')
-    }
-
-    show(0)
-    if (!reduce && 'IntersectionObserver' in window) {
-      // Only advance while the gallery is on screen.
-      new IntersectionObserver(
-        ([entry]) => {
-          if (gallery.classList.contains('paused')) return
-          entry.isIntersecting ? schedule() : clearTimeout(timer)
-        },
-        { threshold: 0.35 },
-      ).observe(gallery)
-    } else {
-      gallery.classList.add('paused')
-    }
-  })
-
-  /* Copy buttons on the code block. */
+  /* Copy the commands. */
   $$('[data-copy]').forEach((button) => {
     button.addEventListener('click', async () => {
       const source = $(button.dataset.copy)
       if (!source) return
+      const text = source.innerText.replace(/^\$ /gm, '')
       try {
-        await navigator.clipboard.writeText(source.innerText.replace(/^\$ /gm, ''))
-        const label = button.textContent
+        await navigator.clipboard.writeText(text)
         button.textContent = 'Copied'
-        button.classList.add('done')
-        setTimeout(() => {
-          button.textContent = label
-          button.classList.remove('done')
-        }, 1800)
       } catch {
-        // Clipboard blocked: the text is still there to select.
+        button.textContent = 'Press Ctrl+C'
       }
+      setTimeout(() => (button.textContent = 'Copy'), 1800)
     })
   })
+
+  /* Open FAQ answers one at a time. */
+  const faqs = $$('details')
+  faqs.forEach((item) =>
+    item.addEventListener('toggle', () => {
+      if (item.open) faqs.forEach((other) => other !== item && (other.open = false))
+    }),
+  )
 })()
