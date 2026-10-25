@@ -19,6 +19,7 @@ export function ResourceView({
   activeSource,
   onSelectSource,
   footer,
+  sideFooter,
   children,
 }: {
   query: string
@@ -31,6 +32,8 @@ export function ResourceView({
   /** Makes the sources clickable. */
   onSelectSource?: (source: string) => void
   footer: string
+  /** Optional action row at the bottom of the side panel. */
+  sideFooter?: ReactNode
   /** The table. */
   children: ReactNode
 }) {
@@ -74,6 +77,11 @@ export function ResourceView({
             )
           })}
         </div>
+        {sideFooter && (
+          <div className="flex shrink-0 justify-end border-t border-slate-300 px-2 py-1.5 dark:border-slate-700">
+            {sideFooter}
+          </div>
+        )}
       </div>
       <div className="flex min-h-0 flex-col">
         <div className="min-h-0 flex-1 overflow-auto">{children}</div>

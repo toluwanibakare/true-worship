@@ -3,6 +3,20 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
+## [0.12.0] - 2026-10-25
+
+### Added
+
+- Content API: Bible versions and passages from bible-api.com
+  (public-domain translations, one slide per verse), and online
+  lyrics search from LRCLIB, with results marked as community
+  contributions, not rights-cleared lyrics. See
+  `docs/content-api.md`.
+- Scriptures tab: a + button at the bottom of the side panel adds a
+  scripture by hand (translation, reference, text), and search now
+  matches by words, so every typed word must appear in the reference
+  or the text.
+
 ## [0.11.0] - 2026-10-25
 
 ### Added

@@ -424,16 +424,6 @@ export function App() {
     goLiveWith({ ...next, slides: split.slides }, split.labels, 0)
   }
 
-  const goLiveScripture = (reference: string, text: string) => {
-    const next = {
-      title: reference,
-      slides: [[text]],
-      reference: `${reference} · ${SCRIPTURE_VERSION}`,
-    }
-    showPreview(next)
-    goLiveWith(next, ['Slide 1'], 0)
-  }
-
   const handleGoLive = () => goLiveSlide(slideIndex)
 
   // Black and Logo are toggles, not one-way buttons:
@@ -1110,19 +1100,34 @@ export function App() {
           </div>
           <div className="min-h-0 flex-1 rounded-b-md rounded-tr-md border border-slate-300 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
             {tab === 'songs' && (
-              <SongLibrary songs={songs} onOpen={openSong} onGoLive={goLiveSong} />
+              <SongLibrary
+                songs={songs}
+                onOpen={openSong}
+                onGoLive={goLiveSong}
+                onAdd={(song) =>
+                  setSongs((current) =>
+                    current.some((entry) => entry.id === song.id)
+                      ? current
+                      : [...current, song],
+                  )
+                }
+              />
             )}
             {tab === 'bible' && (
               <BibleLookup
                 passages={demoPassage}
-                onOpen={(reference, text) =>
-                  showPreview({
-                    title: reference,
-                    slides: [[text]],
-                    reference: `${reference} · ${SCRIPTURE_VERSION}`,
-                  })
+                onOpen={(reference, slides) =>
+                  showPreview({ title: reference, slides })
                 }
-                onGoLive={goLiveScripture}
+                onGoLive={(reference, slides) => {
+                  const next = { title: reference, slides }
+                  showPreview(next)
+                  goLiveWith(
+                    next,
+                    slides.map((_, index) => `Slide ${index + 1}`),
+                    0,
+                  )
+                }}
               />
             )}
             {tab === 'media' && <MediaLibrary onPreview={previewMedia} onGoLive={goLiveMedia} />}

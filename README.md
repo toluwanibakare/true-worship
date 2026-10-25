@@ -14,8 +14,12 @@ Licensed under GPL-3.0 (see `LICENSE`). Contributions are welcome, see
 - **Schedule** — the ordered service list:
   thumbnail, title and notes line per item, songs expand to show
   their slides, double-click a row to send it live.
-- **Songs** — searchable song library with verse structure.
-- **Bible** — scripture lookup by reference.
+- **Songs** — searchable song library with verse structure, plus
+  online lyrics search (community results, clearly marked).
+- **Bible** — scripture lookup by reference and by words, with live
+  versions and passages from bible-api.com (public-domain
+  translations), one slide per verse, and a + button to add a
+  scripture by hand.
 - **Media** — your own images, videos and audio, filtered by kind;
   preview, go live, or play. See `docs/media.md`.
 - **Themes** — backgrounds, text colour and size for the output.
@@ -87,7 +91,7 @@ later milestone and is not wired up yet.
 
 ## Status
 
-Version 0.11.0. The UI flow works with demo content (public domain:
+Version 0.12.0. The UI flow works with demo content (public domain:
 Amazing Grace, John 3:16 KJV). The main window uses
 the conventional worship-software layout: one title bar with the menus, a toolbar under it, the schedule down the
 left, the preview's slide list and the live slide grid side by side, the
