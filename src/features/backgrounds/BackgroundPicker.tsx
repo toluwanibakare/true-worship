@@ -17,7 +17,7 @@ export function BackgroundPicker({
 }) {
   return (
     <Panel title="Backgrounds" className="h-full">
-      <p className="text-sm text-slate-400">
+      <p className="text-sm text-slate-500 dark:text-slate-400">
         Stills are built into the app. Motion backgrounds loop quietly
         behind the words.
       </p>
@@ -28,7 +28,7 @@ export function BackgroundPicker({
             type="button"
             onClick={() => onPick(preset)}
             className={`relative aspect-video overflow-hidden rounded-md border text-left ${
-              activeId === preset.id ? 'border-cyan-400' : 'border-slate-700'
+              activeId === preset.id ? 'border-cyan-400' : 'border-slate-300 dark:border-slate-700'
             }`}
             style={{ background: preset.css }}
           >

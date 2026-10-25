@@ -12,7 +12,7 @@ import { Panel } from '../../shared/components/ui'
 export function SongbookPanel({ songs }: { songs: Song[] }) {
   return (
     <Panel title="Community Songbook" className="h-full">
-      <p className="text-sm text-slate-400">
+      <p className="text-sm text-slate-500 dark:text-slate-400">
         Shared songs, kept correct by the churches that sing them. Edit a
         lyric and the fix syncs to everyone, with full version history so
         any bad edit rolls back in one click.
@@ -21,10 +21,10 @@ export function SongbookPanel({ songs }: { songs: Song[] }) {
         {songs.map((song) => (
           <li
             key={song.id}
-            className="rounded-md px-2 py-2 text-sm text-slate-200 hover:bg-slate-800"
+            className="rounded-md px-2 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-800"
           >
             <span className="block font-medium">{song.title}</span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               {song.author} · shared · {song.source}
             </span>
           </li>

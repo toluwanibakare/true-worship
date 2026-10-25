@@ -32,7 +32,7 @@ export function AlertBar({
         <select
           value={speed}
           onChange={(event) => setSpeed(event.target.value as MarqueeSpeed)}
-          className="rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-slate-100"
+          className="rounded-md border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100"
           aria-label="Marquee speed"
         >
           <option value="slow">Slow</option>

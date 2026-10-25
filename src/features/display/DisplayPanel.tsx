@@ -43,10 +43,10 @@ export function DisplayPanel() {
           and will apply when you run True Worship on a real machine.
         </p>
       )}
-      <label className="block text-sm text-slate-300">
+      <label className="block text-sm text-slate-700 dark:text-slate-300">
         Output display
         <select
-          className="mt-1 block w-full rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm"
+          className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 px-2 py-1.5 text-sm"
           value={String(settings.displayId)}
           onChange={(event) =>
             update({
@@ -70,7 +70,7 @@ export function DisplayPanel() {
       {displays.length === 0 && isElectron && (
         <p className="mt-2 text-xs text-slate-500">No displays reported.</p>
       )}
-      <label className="mt-3 flex items-center gap-2 text-sm text-slate-300">
+      <label className="mt-3 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
         <input
           type="checkbox"
           checked={settings.fullscreen}
@@ -80,7 +80,7 @@ export function DisplayPanel() {
         />
         Fullscreen on the output display
       </label>
-      <label className="mt-2 flex items-center gap-2 text-sm text-slate-300">
+      <label className="mt-2 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
         <input
           type="checkbox"
           checked={settings.alwaysOnTop}
@@ -95,7 +95,7 @@ export function DisplayPanel() {
           Apply to live window
         </Button>
         {applied && (
-          <span className="ml-2 text-xs text-slate-400">
+          <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">
             Applied (takes effect on the open live window, or the next one).
           </span>
         )}

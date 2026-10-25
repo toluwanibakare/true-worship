@@ -16,7 +16,11 @@ Licensed under GPL-3.0 (see `LICENSE`). Contributions are welcome, see
 - **Bible** — scripture lookup by reference.
 - **Media** — images, videos, audio.
 - **Themes** — backgrounds, text colour and size for the output.
-- **Live** — preview, Go Live, Logo, Black, Clear.
+- **Live** — preview, Go Live, Logo, Black, Clear, arranged the way
+  EasyWorship arranges its main window: schedule down the left,
+  preview in the centre, live output up the right, resources tabbed
+  under it, with a menu bar and toolbar on top. Light, dark and
+  system themes.
 - **Alerts** — short messages over the live output.
 - **Community Songbook** — shared lyrics churches improve together,
   with version history, review and sync (sync service arrives in Phase 3).
@@ -72,9 +76,13 @@ later milestone and is not wired up yet.
 
 ## Status
 
-Version 0.2.0. The UI flow works with demo content (public domain:
-Amazing Grace, John 3:16 KJV). Import, backgrounds, layouts and the
-marquee are in; what still needs a real file to finish is full-fidelity
+Version 0.3.0. The UI flow works with demo content (public domain:
+Amazing Grace, John 3:16 KJV). The main window now follows
+EasyWorship's layout, studied from the EasyWorship 7 screenshots:
+menu bar and toolbar on top, schedule down the left, preview in the
+centre with a slide selector and a big GO LIVE button, live output up
+the right, resources tabbed under it. Light, dark and system themes
+are in. What still needs a real file to finish is full-fidelity
 .ews schedule parsing and non-SQLite Songs.db reading (see
 `docs/file-formats.md`). Next milestones: SQLite storage, then the
 songbook sync service.

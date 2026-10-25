@@ -33,7 +33,7 @@ export function BibleLookup({
         </Button>
       </div>
       {text ? (
-        <p className="mt-3 text-sm leading-relaxed text-slate-200">{text}</p>
+        <p className="mt-3 text-sm leading-relaxed text-slate-800 dark:text-slate-200">{text}</p>
       ) : (
         <p className="mt-3 text-sm text-slate-500">
           Not in the demo library yet. Bundled translations arrive with the

@@ -26,8 +26,8 @@ export function ThemePicker({
             onClick={() => onPick(theme.id)}
             className={`rounded-md border p-3 text-left text-sm ${
               theme.id === activeId
-                ? 'border-blue-500 bg-slate-800'
-                : 'border-slate-700 hover:bg-slate-800'
+                ? 'border-blue-500 bg-slate-200 dark:bg-slate-800'
+                : 'border-slate-300 dark:border-slate-700 hover:bg-slate-300 dark:hover:bg-slate-800'
             }`}
             style={{ background: theme.background, color: theme.textColor }}
           >

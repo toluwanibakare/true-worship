@@ -9,7 +9,7 @@ import { Panel } from '../../shared/components/ui'
 export function MediaLibrary() {
   return (
     <Panel title="Media" className="h-full">
-      <p className="text-sm text-slate-400">
+      <p className="text-sm text-slate-500 dark:text-slate-400">
         Backgrounds, videos and audio live here. Drag files in once the
         desktop shell is connected, and they become available as song
         backgrounds and standalone schedule items.

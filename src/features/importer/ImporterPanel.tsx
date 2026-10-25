@@ -44,25 +44,25 @@ export function ImporterPanel({
 
   return (
     <Panel title="Import" className="h-full">
-      <p className="text-sm text-slate-400">
+      <p className="text-sm text-slate-500 dark:text-slate-400">
         Bring a whole Sunday over from EasyWorship, OpenSong, OpenLP or
         another True Worship install. Pick files and they land in the
         library and schedule.
       </p>
-      <label className="mt-3 block text-sm text-slate-300">
+      <label className="mt-3 block text-sm text-slate-700 dark:text-slate-300">
         Import files (.tworship, .ews, .ewsx, .xml, .txt, .db, .sqlite, .zip)
         <input
           type="file"
           multiple
           accept=".tworship,.ews,.ewsx,.xml,.txt,.db,.sqlite,.sqlite3,.zip"
-          className="mt-1 block w-full text-sm text-slate-400"
+          className="mt-1 block w-full text-sm text-slate-500 dark:text-slate-400"
           onChange={(event) => void handleFiles(event.target.files)}
         />
       </label>
-      {busy && <p className="mt-2 text-sm text-slate-400">Reading files…</p>}
+      {busy && <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Reading files…</p>}
       {results.map((result) => (
-        <div key={result.source} className="mt-3 rounded border border-slate-800 p-2">
-          <p className="text-sm text-slate-200">
+        <div key={result.source} className="mt-3 rounded border border-slate-300 dark:border-slate-800 p-2">
+          <p className="text-sm text-slate-800 dark:text-slate-200">
             {result.source}: {result.songs.length} song(s), {result.schedule.length}{' '}
             schedule item(s)
           </p>
@@ -74,20 +74,20 @@ export function ImporterPanel({
         </div>
       ))}
 
-      <div className="mt-4 border-t border-slate-800 pt-3">
-        <p className="text-sm font-semibold text-slate-200">Export as .tworship</p>
-        <p className="mt-1 text-xs text-slate-400">
+      <div className="mt-4 border-t border-slate-300 dark:border-slate-800 pt-3">
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Export as .tworship</p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
           True Worship's own format: a zip with a manifest and your songs
           and schedule as JSON. Send it to another computer and import it
           there.
         </p>
-        <label className="mt-2 block text-sm text-slate-300">
+        <label className="mt-2 block text-sm text-slate-700 dark:text-slate-300">
           Title
           <input
             type="text"
             value={exportTitle}
             onChange={(event) => setExportTitle(event.target.value)}
-            className="mt-1 block w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-100"
+            className="mt-1 block w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-sm text-slate-900 dark:text-slate-100"
           />
         </label>
         <div className="mt-2 flex flex-wrap gap-2">

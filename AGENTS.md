@@ -65,6 +65,13 @@ src/
    three jobs wants to be split.
 5. **Types live with their feature first.** Only types used by two or more
    features move to `shared/lib/types.ts`.
+7. **The shell follows EasyWorship's arrangement.** Menu bar and
+   toolbar on top, schedule left, preview centre, live output right,
+   resources tabbed under it, status bar at the bottom (studied from
+   the EasyWorship 7 screenshots; own code and styling, never copied
+   artwork). Light, dark and system themes: Tailwind v4 class-based
+   dark mode (`@custom-variant` in `index.css`), `.dark` toggled on
+   `<html>`, panels use light classes with `dark:` variants.
 6. **Demo data is clearly marked.** Anything in `shared/lib/demo.ts` is
    placeholder content (public domain only: KJV text, Amazing Grace).
    Demo data never ships as if it were a real library.

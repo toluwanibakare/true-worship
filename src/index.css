@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Class-based dark mode: the app toggles .dark on <html> itself, so
+   Light / Dark / System is a real setting, not just the OS default. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 html,
 body,
 #root {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { SchedulePanel } from '../features/schedule/SchedulePanel'
 import { SongLibrary } from '../features/songs/SongLibrary'
 import { BibleLookup } from '../features/bible/BibleLookup'
@@ -9,6 +9,8 @@ import { LiveWindow } from '../features/live/LiveWindow'
 import { AlertBar } from '../features/alerts/AlertBar'
 import { SongbookPanel } from '../features/songbook/SongbookPanel'
 import { ImporterPanel } from '../features/importer/ImporterPanel'
+import { downloadTworship, importFile } from '../features/importer'
+import wasmUrl from '../features/importer/sqlWasmUrl'
 import { DisplayPanel } from '../features/display/DisplayPanel'
 import { loadDisplaySettings } from '../features/display/displaySettings'
 import { NdiPanel } from '../features/ndi/NdiPanel'
@@ -17,9 +19,19 @@ import type { BackgroundPreset } from '../features/backgrounds/backgrounds'
 import { LayoutPicker } from '../features/layouts/LayoutPicker'
 import { layoutById } from '../shared/lib/layouts'
 import { Marquee, type MarqueeAlert } from '../shared/components/Marquee'
+import { MenuBar, type ThemeMode } from './MenuBar'
 import { Button, Panel } from '../shared/components/ui'
 import { demoPassage, demoSchedule, demoSongs, demoThemes } from '../shared/lib/demo'
 import type { ScheduleItem, Song } from '../shared/lib/types'
+
+/**
+ * App shell, laid out the way EasyWorship lays its main window out,
+ * from the EasyWorship 7 screenshots: a menu bar and toolbar on top,
+ * the schedule down the left, the preview in the centre with Go Live
+ * beside it, the live output up the right, and the resources (songs,
+ * Bible, media, themes, and the rest) tabbed under it. Light, dark
+ * and system themes, the same choice EasyWorship itself offers.
+ */
 
 type Tab = 'songs' | 'bible' | 'media' | 'themes' | 'backgrounds' | 'layouts' | 'songbook' | 'import' | 'alerts' | 'display' | 'ndi'
 
@@ -52,6 +64,9 @@ export function App() {
   const [selectedId, setSelectedId] = useState<string | null>(demoSchedule[0]?.id ?? null)
   const [tab, setTab] = useState<Tab>('songs')
   const [themeId, setThemeId] = useState(demoThemes[0].id)
+  const [themeMode, setThemeMode] = useState<ThemeMode>(
+    () => (localStorage.getItem('tw-theme') as ThemeMode) || 'system',
+  )
   const [background, setBackground] = useState<BackgroundPreset | null>(null)
   const [layoutId, setLayoutId] = useState('fullscreen')
   const [alert, setAlert] = useState<MarqueeAlert | null>(null)
@@ -60,6 +75,26 @@ export function App() {
   const [black, setBlack] = useState(false)
   const [logo, setLogo] = useState(false)
   const [customPreview, setCustomPreview] = useState<Preview | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Light / dark / system theme. System follows the operating system
+  // and keeps following it when the OS setting changes.
+  useEffect(() => {
+    localStorage.setItem('tw-theme', themeMode)
+    const apply = () => {
+      const dark =
+        themeMode === 'dark' ||
+        (themeMode === 'system' &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches)
+      document.documentElement.classList.toggle('dark', dark)
+    }
+    apply()
+    if (themeMode === 'system') {
+      const query = window.matchMedia('(prefers-color-scheme: dark)')
+      query.addEventListener('change', apply)
+      return () => query.removeEventListener('change', apply)
+    }
+  }, [themeMode])
 
   const selected = schedule.find((item) => item.id === selectedId)
   const preview = useMemo(
@@ -68,6 +103,14 @@ export function App() {
   )
   const slide = preview.slides[Math.min(slideIndex, preview.slides.length - 1)] ?? []
   const theme = demoThemes.find((entry) => entry.id === themeId) ?? demoThemes[0]
+
+  // Slide labels: song verses keep their names (Verse 1, Chorus),
+  // everything else is numbered.
+  const selectedSong =
+    selected?.type === 'song' ? songs.find((entry) => entry.id === selected.ref) : undefined
+  const slideLabels = selectedSong
+    ? selectedSong.verses.map((verse) => verse.label)
+    : preview.slides.map((_, index) => `Slide ${index + 1}`)
 
   // The Electron main process loads the projector window with ?live=1.
   // That window only renders what the operator window sends it.
@@ -102,10 +145,96 @@ export function App() {
     showPreview({ title: song.title, slides: song.verses.map((verse) => verse.lines) })
   }
 
+  const handleGoLive = () => {
+    setLive({ title: preview.title, lines: slide })
+    setBlack(false)
+    setLogo(false)
+    window.electronAPI?.openLiveWindow(loadDisplaySettings())
+    sendLive(preview.title, slide)
+  }
+
+  const handleBlack = () => {
+    setBlack(true)
+    sendLive('Black', [], '#000000')
+  }
+
+  const handleLogo = () => {
+    setLogo(true)
+    sendLive('True Worship', ['True Worship'])
+  }
+
+  const handleClear = () => {
+    setLive(null)
+    setBlack(false)
+    setLogo(false)
+    sendLive('', [])
+  }
+
+  const addItem = () =>
+    setSchedule((current) => [
+      ...current,
+      { id: `s${current.length + 1}`, type: 'custom', title: 'New item', ref: '' },
+    ])
+
+  const moveSelected = (direction: -1 | 1) => {
+    if (!selectedId) return
+    setSchedule((current) => {
+      const index = current.findIndex((item) => item.id === selectedId)
+      const target = index + direction
+      if (index < 0 || target < 0 || target >= current.length) return current
+      const next = [...current]
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
+  }
+
+  const removeSelected = () => {
+    if (!selectedId) return
+    setSchedule((current) => {
+      const index = current.findIndex((item) => item.id === selectedId)
+      const next = current.filter((item) => item.id !== selectedId)
+      setSelectedId(next[Math.min(index, next.length - 1)]?.id ?? null)
+      setCustomPreview(null)
+      return next
+    })
+  }
+
+  const mergeSongs = (incoming: Song[]) =>
+    setSongs((current) => {
+      const titles = new Set(current.map((song) => song.title.toLowerCase()))
+      const fresh = incoming.filter((song) => {
+        if (titles.has(song.title.toLowerCase())) return false
+        titles.add(song.title.toLowerCase())
+        return true
+      })
+      return [...current, ...fresh]
+    })
+
+  const mergeSchedule = (incoming: ScheduleItem[]) =>
+    setSchedule((current) => {
+      const ids = new Set(current.map((item) => item.id))
+      const fresh = incoming.map((item) =>
+        ids.has(item.id)
+          ? { ...item, id: `imp-${Math.random().toString(36).slice(2, 7)}` }
+          : item,
+      )
+      return [...current, ...fresh]
+    })
+
+  const handleOpenFiles = async (files: FileList | null) => {
+    if (!files) return
+    for (const file of Array.from(files)) {
+      const result = await importFile(file, { wasmUrl })
+      mergeSongs(result.songs)
+      mergeSchedule(result.schedule)
+    }
+  }
+
   const liveLines = black ? [] : logo ? ['True Worship'] : (live?.lines ?? [])
   const liveTitle = black ? 'Black' : logo ? 'True Worship' : (live?.title ?? 'Nothing live')
 
-  const tabs: { id: Tab; label: string }[] = [    { id: 'songs', label: 'Songs' },
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'songs', label: 'Songs' },
     { id: 'bible', label: 'Bible' },
     { id: 'media', label: 'Media' },
     { id: 'themes', label: 'Themes' },
@@ -127,15 +256,102 @@ export function App() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-slate-950 text-slate-100">
-      <header className="flex items-center justify-between border-b border-slate-800 px-4 py-2">
-        <h1 className="text-lg font-bold">True Worship</h1>
-        <span className="text-xs text-slate-400">
-          {live ? '● LIVE' : '○ Not live'} · Free worship presentation
-        </span>
+    <div className="flex h-full flex-col bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <header className="border-b border-slate-300 dark:border-slate-800">
+        <div className="flex items-center justify-between px-4 py-1">
+          <MenuBar
+            theme={themeMode}
+            onThemeChange={setThemeMode}
+            onNewSchedule={() => {
+              setSchedule([])
+              setSelectedId(null)
+              setCustomPreview(null)
+            }}
+            onOpenService={() => fileInputRef.current?.click()}
+            onSaveService={() =>
+              downloadTworship({ title: 'Sunday Service', kind: 'schedule', songs, schedule })
+            }
+            onExportLibrary={() =>
+              downloadTworship({ title: 'True Worship Library', kind: 'library', songs, schedule: [] })
+            }
+            onAddItem={addItem}
+            onMoveUp={() => moveSelected(-1)}
+            onMoveDown={() => moveSelected(1)}
+            onRemoveSelected={removeSelected}
+            onGoLive={handleGoLive}
+            onLogo={handleLogo}
+            onBlack={handleBlack}
+            onClear={handleClear}
+            onShowLayouts={() => setTab('layouts')}
+            onShowBackgrounds={() => setTab('backgrounds')}
+          />
+          <div className="flex items-center gap-3">
+            <div className="flex gap-1" role="group" aria-label="Theme">
+              {(['light', 'dark', 'system'] as ThemeMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setThemeMode(mode)}
+                  className={`rounded px-2 py-0.5 text-xs capitalize ${
+                    themeMode === mode
+                      ? 'bg-blue-600 text-white'
+                      : 'hover:bg-slate-200 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {live ? '● LIVE' : '○ Not live'} · Free worship presentation
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1 px-4 pb-2">
+          <Button
+            onClick={() => {
+              setSchedule([])
+              setSelectedId(null)
+              setCustomPreview(null)
+            }}
+          >
+            New
+          </Button>
+          <Button onClick={() => fileInputRef.current?.click()}>Open</Button>
+          <Button
+            onClick={() =>
+              downloadTworship({ title: 'Sunday Service', kind: 'schedule', songs, schedule })
+            }
+          >
+            Save
+          </Button>
+          <span className="mx-1 h-5 border-l border-slate-300 dark:border-slate-700" />
+          <Button onClick={addItem}>Add Item</Button>
+          <span className="mx-1 h-5 border-l border-slate-300 dark:border-slate-700" />
+          <Button primary onClick={handleGoLive}>
+            Go Live
+          </Button>
+          <Button onClick={() => setTab('alerts')}>Alerts</Button>
+          <Button onClick={handleLogo}>Logo</Button>
+          <Button onClick={handleBlack}>Black</Button>
+          <Button onClick={handleClear}>Clear</Button>
+        </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".tworship,.ews,.ewsx,.xml,.txt,.db,.sqlite,.sqlite3,.zip"
+          multiple
+          className="hidden"
+          onChange={(event) => {
+            void handleOpenFiles(event.target.files)
+            event.target.value = ''
+          }}
+        />
       </header>
 
-      <main className="grid min-h-0 flex-1 grid-cols-[240px_1fr_320px] gap-3 p-3">
+      <main className="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)_360px] gap-3 p-3">
         <SchedulePanel
           items={schedule}
           selectedId={selectedId}
@@ -144,12 +360,10 @@ export function App() {
             setCustomPreview(null)
             setSlideIndex(0)
           }}
-          onAdd={() =>
-            setSchedule((current) => [
-              ...current,
-              { id: `s${current.length + 1}`, type: 'custom', title: 'New item', ref: '' },
-            ])
-          }
+          onAdd={addItem}
+          onMoveUp={() => moveSelected(-1)}
+          onMoveDown={() => moveSelected(1)}
+          onRemove={removeSelected}
         />
 
         <div className="flex min-h-0 flex-col gap-3">
@@ -191,129 +405,107 @@ export function App() {
                 )}
               </div>
             </div>
-            {preview.slides.length > 1 && (
-              <div className="mt-3 flex gap-2">
-                {preview.slides.map((_, index) => (
-                  <Button
-                    key={index}
-                    active={index === slideIndex}
-                    onClick={() => setSlideIndex(index)}
-                  >
-                    Slide {index + 1}
-                  </Button>
-                ))}
-              </div>
-            )}
           </Panel>
 
+          {preview.slides.length > 1 && (
+            <div className="flex flex-wrap gap-1">
+              {slideLabels.map((label, index) => (
+                <Button
+                  key={`${label}-${index}`}
+                  active={index === slideIndex}
+                  onClick={() => setSlideIndex(index)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          )}
+
+          <div>
+            <Button primary onClick={handleGoLive}>
+              GO LIVE &gt;&gt;&gt;
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex min-h-0 flex-col gap-3">
           <LivePanel
             title={liveTitle}
             lines={liveLines}
             theme={theme}
             live={live !== null && !black && !logo}
-            onGoLive={() => {
-              setLive({ title: preview.title, lines: slide })
-              setBlack(false)
-              setLogo(false)
-              window.electronAPI?.openLiveWindow(loadDisplaySettings())
-              sendLive(preview.title, slide)
-            }}
-            onBlack={() => {
-              setBlack(true)
-              sendLive('Black', [], '#000000')
-            }}
-            onLogo={() => {
-              setLogo(true)
-              sendLive('True Worship', ['True Worship'])
-            }}
-            onClear={() => {
-              setLive(null)
-              setBlack(false)
-              setLogo(false)
-              sendLive('', [])
-            }}
+            onBlack={handleBlack}
+            onLogo={handleLogo}
+            onClear={handleClear}
           />
-        </div>
 
-        <div className="flex min-h-0 flex-col gap-3">
-          <div className="flex flex-wrap gap-1">
-            {tabs.map((entry) => (
-              <Button key={entry.id} active={tab === entry.id} onClick={() => setTab(entry.id)}>
-                {entry.label}
-              </Button>
-            ))}
-          </div>
-          <div className="min-h-0 flex-1">
-            {tab === 'songs' && <SongLibrary songs={songs} onOpen={openSong} />}
-            {tab === 'bible' && (
-              <BibleLookup
-                passages={demoPassage}
-                onOpen={(reference, text) =>
-                  showPreview({ title: reference, slides: [[text]] })
-                }
-              />
-            )}
-            {tab === 'media' && <MediaLibrary />}
-            {tab === 'themes' && (
-              <ThemePicker themes={demoThemes} activeId={themeId} onPick={setThemeId} />
-            )}
-            {tab === 'backgrounds' && (
-              <BackgroundPicker activeId={background?.id ?? null} onPick={setBackground} />
-            )}
-            {tab === 'layouts' && (
-              <LayoutPicker activeId={layoutId} onPick={setLayoutId} />
-            )}
-            {tab === 'songbook' && <SongbookPanel songs={songs} />}
-            {tab === 'import' && (
-              <ImporterPanel
-                songs={songs}
-                schedule={schedule}
-                onSongsImported={(incoming) =>
-                  setSongs((current) => {
-                    const titles = new Set(current.map((song) => song.title.toLowerCase()))
-                    const fresh = incoming.filter((song) => {
-                      if (titles.has(song.title.toLowerCase())) return false
-                      titles.add(song.title.toLowerCase())
-                      return true
-                    })
-                    return [...current, ...fresh]
-                  })
-                }
-                onScheduleImported={(incoming) =>
-                  setSchedule((current) => {
-                    const ids = new Set(current.map((item) => item.id))
-                    const fresh = incoming.map((item) =>
-                      ids.has(item.id)
-                        ? { ...item, id: `imp-${Math.random().toString(36).slice(2, 7)}` }
-                        : item,
-                    )
-                    return [...current, ...fresh]
-                  })
-                }
-              />
-            )}
-            {tab === 'alerts' && (
-              <AlertBar
-                alert={alert}
-                onShow={(next) => {
-                  setAlert(next)
-                  if (live && !black && !logo) {
-                    sendLive(live.title, live.lines, undefined, next)
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="mb-2 flex flex-wrap gap-1">
+              {tabs.map((entry) => (
+                <Button key={entry.id} active={tab === entry.id} onClick={() => setTab(entry.id)}>
+                  {entry.label}
+                </Button>
+              ))}
+            </div>
+            <div className="min-h-0 flex-1">
+              {tab === 'songs' && <SongLibrary songs={songs} onOpen={openSong} />}
+              {tab === 'bible' && (
+                <BibleLookup
+                  passages={demoPassage}
+                  onOpen={(reference, text) =>
+                    showPreview({ title: reference, slides: [[text]] })
                   }
-                }}
-                onHide={() => {
-                  setAlert(null)
-                  if (live && !black && !logo) {
-                    sendLive(live.title, live.lines, undefined, null)
-                  }
-                }}
-              />
-            )}
-            {tab === 'display' && <DisplayPanel />}
-            {tab === 'ndi' && <NdiPanel />}
+                />
+              )}
+              {tab === 'media' && <MediaLibrary />}
+              {tab === 'themes' && (
+                <ThemePicker themes={demoThemes} activeId={themeId} onPick={setThemeId} />
+              )}
+              {tab === 'backgrounds' && (
+                <BackgroundPicker activeId={background?.id ?? null} onPick={setBackground} />
+              )}
+              {tab === 'layouts' && (
+                <LayoutPicker activeId={layoutId} onPick={setLayoutId} />
+              )}
+              {tab === 'songbook' && <SongbookPanel songs={songs} />}
+              {tab === 'import' && (
+                <ImporterPanel
+                  songs={songs}
+                  schedule={schedule}
+                  onSongsImported={mergeSongs}
+                  onScheduleImported={mergeSchedule}
+                />
+              )}
+              {tab === 'alerts' && (
+                <AlertBar
+                  alert={alert}
+                  onShow={(next) => {
+                    setAlert(next)
+                    if (live && !black && !logo) {
+                      sendLive(live.title, live.lines, undefined, next)
+                    }
+                  }}
+                  onHide={() => {
+                    setAlert(null)
+                    if (live && !black && !logo) {
+                      sendLive(live.title, live.lines, undefined, null)
+                    }
+                  }}
+                />
+              )}
+              {tab === 'display' && <DisplayPanel />}
+              {tab === 'ndi' && <NdiPanel />}
+            </div>
           </div>
         </div>
       </main>
+
+      <footer className="flex items-center justify-between border-t border-slate-300 px-4 py-1.5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+        <span>True Worship 0.3.0 · GPL-3.0 · {schedule.length} items in schedule</span>
+        <span>
+          Theme: {themeMode} · {live ? 'LIVE' : 'Not live'}
+        </span>
+      </footer>
     </div>
   )
 }

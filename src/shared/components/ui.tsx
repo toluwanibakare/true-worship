@@ -10,8 +10,8 @@ export function Panel({
   className?: string
 }) {
   return (
-    <section className={`flex min-h-0 flex-col rounded-lg border border-slate-700 bg-slate-900 ${className}`}>
-      <h2 className="border-b border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200">
+    <section className={`flex min-h-0 flex-col rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 ${className}`}>
+      <h2 className="border-b border-slate-300 dark:border-slate-700 px-3 py-2 text-sm font-semibold text-slate-800 dark:text-slate-200">
         {title}
       </h2>
       <div className="min-h-0 flex-1 overflow-auto p-3">{children}</div>
@@ -35,7 +35,7 @@ export function Button({
     ? 'bg-blue-600 text-white hover:bg-blue-500'
     : active
       ? 'bg-blue-500 text-white'
-      : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+      : 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-700'
   return (
     <button type="button" className={`${base} ${style}`} onClick={onClick}>
       {children}
@@ -58,7 +58,7 @@ export function SearchInput({
       value={value}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-500"
+      className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
     />
   )
 }

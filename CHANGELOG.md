@@ -3,6 +3,30 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
+## [0.3.0] - 2026-10-25
+
+### Changed
+
+- Main window rebuilt on EasyWorship's layout, studied from the
+  EasyWorship 7 screenshots: menu bar (File, Schedule, Live, View)
+  and toolbar (New, Open, Save, Add Item, Go Live, Alerts, Logo,
+  Black, Clear) on top, schedule down the left with type marks and
+  move/remove controls, preview in the centre with a slide selector
+  (song verses keep their names) and a big GO LIVE button, live
+  output up the right with a LIVE badge, resources tabbed under it,
+  and a status bar at the bottom. Own code and styling throughout;
+  the screenshots were reference for the arrangement, not material
+  to copy.
+- File menu and toolbar Open now open a service or library file
+  (.tworship, .ews, .ewsx, .xml, .txt, .db, .zip); Save writes the
+  current service as .tworship; File also exports the song library.
+
+### Added
+
+- Light, dark and system themes, the same choice EasyWorship itself
+  offers. System follows the operating system and keeps following it
+  when the OS setting changes; the choice is remembered between runs.
+
 ## [0.2.0] - 2026-10-25
 
 ### Added

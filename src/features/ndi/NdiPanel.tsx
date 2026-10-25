@@ -44,7 +44,7 @@ export function NdiPanel() {
           only a preview of the settings.
         </p>
       )}
-      <label className="block text-sm text-slate-300">
+      <label className="block text-sm text-slate-700 dark:text-slate-300">
         Source name (as it appears in OBS, vMix, Studio Monitor)
         <span className="mt-1 block">
           <SearchInput
@@ -54,10 +54,10 @@ export function NdiPanel() {
           />
         </span>
       </label>
-      <label className="mt-3 block text-sm text-slate-300">
+      <label className="mt-3 block text-sm text-slate-700 dark:text-slate-300">
         Frame rate
         <select
-          className="mt-1 block w-full rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm"
+          className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 px-2 py-1.5 text-sm"
           value={fps}
           onChange={(event) => setFps(Number(event.target.value))}
         >
@@ -75,12 +75,12 @@ export function NdiPanel() {
       </div>
       {status && (
         <div className="mt-4 space-y-1 text-sm">
-          <p className="text-slate-300">
+          <p className="text-slate-700 dark:text-slate-300">
             Status:{' '}
             {status.sending ? (
               <span className="text-green-400">Sending as “{status.sourceName}”</span>
             ) : status.available ? (
-              <span className="text-slate-400">Ready, not sending</span>
+              <span className="text-slate-500 dark:text-slate-400">Ready, not sending</span>
             ) : (
               <span className="text-red-400">Unavailable: {status.reason}</span>
             )}
