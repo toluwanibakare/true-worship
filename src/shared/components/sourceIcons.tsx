@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 
 /**
- * Small outline icons for the side-panel entries in the resource tabs
- * (Songs, Scriptures, Media, Backgrounds). Drawn here so every tab
- * uses the same set; they take the text colour.
+ * Small outline icons for the side-panel entries in the Media and
+ * Backgrounds tabs (Songs and Scriptures stay plain). Drawn here so
+ * both tabs use the same set; they take the text colour.
  */
 const base = {
   width: 16,
@@ -71,20 +71,6 @@ export const SOURCE_ICONS: Record<string, ReactNode> = {
     <svg {...base}>
       <path d="M12 3l9 5-9 5-9-5z" />
       <path d="M3 13l9 5 9-5" />
-    </svg>
-  ),
-  // Songs and scriptures
-  'All Songs': (
-    <svg {...base}>
-      <path d="M9 18V6l10-2v12" />
-      <circle cx="6.5" cy="18" r="2.5" />
-      <circle cx="16.5" cy="16" r="2.5" />
-    </svg>
-  ),
-  KJV: (
-    <svg {...base}>
-      <path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z" />
-      <path d="M12 8v6M9.5 10.5h5" />
     </svg>
   ),
 }

@@ -3,6 +3,26 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
+## [0.11.0] - 2026-10-25
+
+### Added
+
+- Scriptures show their reference under the words: book, chapter,
+  verse and version, for example "John 3:16 · KJV". It appears on the
+  preview, the live monitor, the slide thumbnails and the projector,
+  and goes away with Black, Logo or Clear.
+- Lower Third and Upper Third are subtitle layouts: centred words with
+  no band, a smaller font, and only a soft fade at the screen edge for
+  contrast. Songs split automatically into two-line slides, each piece
+  keeping its verse name ("Verse 1", "Verse 1 · 2"), so the verse
+  shortcuts still work. Scriptures stay in one piece and the font
+  shrinks only as far as needed to fit three lines.
+
+### Changed
+
+- Switching layout returns the preview to the first slide, and
+  clicking a verse in the schedule lands on its first two-line piece.
+
 ## [0.10.0] - 2026-10-25
 
 ### Added
@@ -11,8 +31,8 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
   and Audio; "Add media…" copies files into the app's data folder.
   Click an image or video to preview it and double-click to put it
   live; click an audio track to play it. See `docs/media.md`.
-- Icons beside every entry in the resource side panels (Songs,
-  Scriptures, Media, Backgrounds).
+- Icons beside every entry in the Media and Backgrounds side panels
+  (Songs and Scriptures stay plain).
 - Backgrounds side panel: All, Photos, Motion, Classic and Added, with
   a search box and a count, the same frame as Songs and Scriptures.
 

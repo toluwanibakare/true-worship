@@ -41,6 +41,9 @@ export const demoThemes: Theme[] = [
   { id: 'light', name: 'Light', background: '#f8fafc', textColor: '#0f172a', fontSize: 64, fontFamily: "'Calibri', 'Carlito', Arial, sans-serif", bold: true },
 ]
 
+/** The translation the demo passages come from. */
+export const SCRIPTURE_VERSION = 'KJV'
+
 export const demoPassage: Record<string, string> = {
   'John 3:16':
     'For God so loved the world, that he gave his only begotten Son, ' +

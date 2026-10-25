@@ -16,6 +16,14 @@ export type LayoutPreset = {
   wrapper: string
   /** Classes for the band behind the text, or '' for bare fullscreen text. */
   band: string
+  /**
+   * Caption style: centred words with no band, two lines at a time, a
+   * smaller font that shrinks further to fit, and only a soft fade at
+   * the screen edge for contrast.
+   */
+  subtitle?: 'bottom' | 'top'
+  /** Share of the theme's font size used by this layout (default 1). */
+  fontScale?: number
 }
 
 export const LAYOUTS: LayoutPreset[] = [
@@ -29,16 +37,20 @@ export const LAYOUTS: LayoutPreset[] = [
   {
     id: 'lower-third',
     name: 'Lower Third',
-    hint: 'Words in a band across the bottom, background stays visible.',
-    wrapper: 'flex h-full flex-col justify-end',
-    band: 'w-full bg-black/60 px-8 py-6 text-left',
+    hint: 'Subtitle-style words, centred along the bottom, two lines at a time.',
+    wrapper: 'flex h-full flex-col justify-end px-24 pb-14 text-center',
+    band: '',
+    subtitle: 'bottom',
+    fontScale: 0.72,
   },
   {
     id: 'upper-third',
     name: 'Upper Third',
-    hint: 'Words in a band across the top.',
-    wrapper: 'flex h-full flex-col justify-start',
-    band: 'w-full bg-black/60 px-8 py-6 text-left',
+    hint: 'Subtitle-style words, centred along the top, two lines at a time.',
+    wrapper: 'flex h-full flex-col justify-start px-24 pt-14 text-center',
+    band: '',
+    subtitle: 'top',
+    fontScale: 0.72,
   },
   {
     id: 'left-panel',

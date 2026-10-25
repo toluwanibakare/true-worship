@@ -21,6 +21,7 @@ export function LivePanel({
   live,
   backgroundCss,
   layoutId,
+  reference,
   onSelectLiveSlide,
 }: {
   title: string
@@ -31,6 +32,7 @@ export function LivePanel({
   live: boolean
   backgroundCss?: string
   layoutId?: string
+  reference?: string
   onSelectLiveSlide: (index: number) => void
 }) {
   return (
@@ -54,6 +56,7 @@ export function LivePanel({
                   theme={theme}
                   backgroundCss={backgroundCss}
                   layoutId={layoutId}
+                  reference={reference}
                 />
                 <span className="block truncate bg-blue-600 px-2 py-0.5 text-xs text-white">
                   {index + 1} · {label}

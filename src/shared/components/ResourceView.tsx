@@ -49,7 +49,7 @@ export function ResourceView({
             const icon = SOURCE_ICONS[source]
             const label = (
               <span className="flex items-center gap-2">
-                <span className="shrink-0 opacity-80">{icon}</span>
+                {icon && <span className="shrink-0 opacity-80">{icon}</span>}
                 {source}
               </span>
             )

@@ -16,6 +16,8 @@ export type LiveUpdatePayload = {
   backgroundVideo?: string
   /** Layout id from features/layouts, default fullscreen. */
   layout?: string
+  /** Book, chapter, verse and version shown under a scripture. */
+  reference?: string
   /** Scrolling alert at the top of the output, or null. */
   alert?: MarqueeAlert | null
   textColor: string

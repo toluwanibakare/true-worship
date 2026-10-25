@@ -87,7 +87,7 @@ later milestone and is not wired up yet.
 
 ## Status
 
-Version 0.10.0. The UI flow works with demo content (public domain:
+Version 0.11.0. The UI flow works with demo content (public domain:
 Amazing Grace, John 3:16 KJV). The main window uses
 the conventional worship-software layout: one title bar with the menus, a toolbar under it, the schedule down the
 left, the preview's slide list and the live slide grid side by side, the

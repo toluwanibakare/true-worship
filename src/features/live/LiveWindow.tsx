@@ -47,6 +47,7 @@ export function LiveWindow() {
         backgroundCss={slide.backgroundCss}
         backgroundVideo={slide.backgroundVideo}
         layoutId={slide.layout}
+        reference={slide.reference}
         alert={slide.alert ?? null}
         className="w-[min(100vw,calc(100vh*16/9))]"
       />

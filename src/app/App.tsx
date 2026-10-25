@@ -30,9 +30,17 @@ import { PreviewPanel } from '../features/preview/PreviewPanel'
 import { OutputPanel } from '../shared/components/OutputPanel'
 import { Modal } from '../shared/components/Modal'
 import { SlideView } from '../shared/components/SlideView'
+import { layoutById } from '../shared/lib/layouts'
+import { splitIntoSubtitles } from '../shared/lib/subtitles'
 import { Splitter } from '../shared/components/Splitter'
 import { usePaneSize } from '../shared/lib/usePaneSize'
-import { demoPassage, demoSchedule, demoSongs, demoThemes } from '../shared/lib/demo'
+import {
+  SCRIPTURE_VERSION,
+  demoPassage,
+  demoSchedule,
+  demoSongs,
+  demoThemes,
+} from '../shared/lib/demo'
 import type { ScheduleItem, Song } from '../shared/lib/types'
 
 /**
@@ -192,6 +200,8 @@ type Preview = {
   slides: string[][]
   /** Names for the slides (Verse 1, Chorus); numbered when absent. */
   labels?: string[]
+  /** Book, chapter, verse and version under a scripture, e.g. "John 3:16 · KJV". */
+  reference?: string
   /** Set when the previewed item is a media file rather than words. */
   media?: MediaLook
 }
@@ -211,7 +221,11 @@ function previewForSchedule(item: ScheduleItem | undefined, songs: Song[]): Prev
   }
   if (item.type === 'scripture') {
     const text = demoPassage[item.ref]
-    return { title: item.ref, slides: text ? [[text]] : [['Passage not in the demo library.']] }
+    return {
+      title: item.ref,
+      slides: text ? [[text]] : [['Passage not in the demo library.']],
+      reference: text ? `${item.ref} · ${SCRIPTURE_VERSION}` : undefined,
+    }
   }
   return { title: item.title, slides: [[item.title]] }
 }
@@ -246,6 +260,13 @@ export function App() {
   // the same tick the state is set, before React has re-rendered.
   const [liveMedia, setLiveMediaState] = useState<MediaLook | null>(null)
   const liveMediaRef = useRef<MediaLook | null>(null)
+  // The scripture reference under the live words, kept the same way.
+  const [liveReference, setLiveReferenceState] = useState<string | null>(null)
+  const liveReferenceRef = useRef<string | null>(null)
+  const setLiveReference = (next: string | null) => {
+    liveReferenceRef.current = next
+    setLiveReferenceState(next)
+  }
   const setLiveMedia = (next: MediaLook | null) => {
     liveMediaRef.current = next
     setLiveMediaState(next)
@@ -281,23 +302,33 @@ export function App() {
   }, [themeMode])
 
   const selected = schedule.find((item) => item.id === selectedId)
-  const preview = useMemo(
+  const basePreview = useMemo(
     () => customPreview ?? previewForSchedule(selected, songs),
     [customPreview, selected, songs],
   )
-  const slide = preview.slides[Math.min(slideIndex, preview.slides.length - 1)] ?? []
-  const theme = themes.find((entry) => entry.id === themeId) ?? themes[0]
-
   // Slide labels: song verses keep their names (Verse 1, Chorus),
   // everything else is numbered. A previewed item that did not come from
   // the schedule (a library song, a passage, a media file) brings its own.
   const selectedSong =
     selected?.type === 'song' ? songs.find((entry) => entry.id === selected.ref) : undefined
-  const slideLabels =
-    preview.labels ??
+  const baseLabels =
+    basePreview.labels ??
     (selectedSong && !customPreview
       ? selectedSong.verses.map((verse) => verse.label)
-      : preview.slides.map((_, index) => `Slide ${index + 1}`))
+      : basePreview.slides.map((_, index) => `Slide ${index + 1}`))
+
+  // Subtitle layouts (Lower and Upper Third) show two lines at a time, so
+  // their slides are split into two-line pieces.
+  const subtitleLayout = layoutById(layoutId).subtitle !== undefined
+  const fitForLayout = (slides: string[][], labels: string[]) =>
+    subtitleLayout
+      ? splitIntoSubtitles(slides, labels)
+      : { slides, labels, starts: slides.map((_, index) => index) }
+  const fitted = fitForLayout(basePreview.slides, baseLabels)
+  const preview: Preview = { ...basePreview, slides: fitted.slides }
+  const slideLabels = fitted.labels
+  const slide = preview.slides[Math.min(slideIndex, preview.slides.length - 1)] ?? []
+  const theme = themes.find((entry) => entry.id === themeId) ?? themes[0]
 
   // The Electron main process loads the projector window with ?live=1.
   // That window only renders what the operator window sends it.
@@ -322,6 +353,8 @@ export function App() {
         : liveMediaRef.current
           ? liveMediaRef.current.video
           : background?.video,
+      // The reference goes only with words: not on Black, Logo or a cleared screen.
+      reference: forcedBackground || lines.length === 0 ? undefined : (liveReferenceRef.current ?? undefined),
       layout: layoutId,
       alert: alertArg !== undefined ? alertArg : alert,
       textColor: theme.textColor,
@@ -351,6 +384,7 @@ export function App() {
     const lines = target.slides[index] ?? []
     setLive({ title: target.title, lines })
     setLiveMedia(target.media ?? null)
+    setLiveReference(target.reference ?? null)
     setLiveSlides(target.slides)
     setLiveSlideLabels(labels)
     setLiveSlideIndex(index)
@@ -386,11 +420,16 @@ export function App() {
       labels: song.verses.map((verse) => verse.label),
     }
     showPreview(next)
-    goLiveWith(next, song.verses.map((verse) => verse.label), 0)
+    const split = fitForLayout(next.slides, next.labels)
+    goLiveWith({ ...next, slides: split.slides }, split.labels, 0)
   }
 
   const goLiveScripture = (reference: string, text: string) => {
-    const next = { title: reference, slides: [[text]] }
+    const next = {
+      title: reference,
+      slides: [[text]],
+      reference: `${reference} · ${SCRIPTURE_VERSION}`,
+    }
     showPreview(next)
     goLiveWith(next, ['Slide 1'], 0)
   }
@@ -425,6 +464,7 @@ export function App() {
   const handleClear = () => {
     setLive(null)
     setLiveMedia(null)
+    setLiveReference(null)
     setLiveSlides(null)
     setLiveSlideLabels([])
     setBlack(false)
@@ -521,14 +561,16 @@ export function App() {
     const item = schedule.find((entry) => entry.id === id)
     if (!item) return
     const itemPreview = previewForSchedule(item, songs)
-    const first = itemPreview.slides[0] ?? []
+    const itemFit = fitForLayout(itemPreview.slides, slideLabelsForItem(item))
+    const first = itemFit.slides[0] ?? []
     setSelectedId(id)
     setCustomPreview(null)
     setSlideIndex(0)
     setLive({ title: itemPreview.title, lines: first })
     setLiveMedia(null)
-    setLiveSlides(itemPreview.slides)
-    setLiveSlideLabels(slideLabelsForItem(item))
+    setLiveReference(itemPreview.reference ?? null)
+    setLiveSlides(itemFit.slides)
+    setLiveSlideLabels(itemFit.labels)
     setLiveSlideIndex(0)
     setBlack(false)
     setLogo(false)
@@ -899,9 +941,16 @@ export function App() {
                 setSlideIndex(0)
               }}
               onSelectSlide={(id, index) => {
+                const item = schedule.find((entry) => entry.id === id)
+                // In subtitle layouts a verse is several pieces; land on its first.
+                const start = item
+                  ? (fitForLayout(previewForSchedule(item, songs).slides, slideLabelsForItem(item)).starts[
+                      index
+                    ] ?? index)
+                  : index
                 setSelectedId(id)
                 setCustomPreview(null)
-                setSlideIndex(index)
+                setSlideIndex(start)
               }}
               onGoLiveItem={selectAndGoLive}
               onAdd={addItem}
@@ -955,6 +1004,7 @@ export function App() {
                     backgroundCss={preview.media?.css ?? background?.css}
                     backgroundVideo={preview.media ? preview.media.video : background?.video}
                     layoutId={layoutId}
+                    reference={preview.reference}
                     alert={alert}
                     className="h-full max-w-full"
                   />
@@ -985,6 +1035,7 @@ export function App() {
                   live={live !== null && !black && !logo}
                   backgroundCss={liveMedia?.css ?? background?.css}
                   layoutId={layoutId}
+                  reference={liveReference ?? undefined}
                   onSelectLiveSlide={handleLiveSlideSelect}
                 />
               </div>
@@ -1019,6 +1070,7 @@ export function App() {
                           : background?.video
                     }
                     layoutId={layoutId}
+                    reference={live !== null && !black && !logo ? (liveReference ?? undefined) : undefined}
                     alert={live !== null && !black && !logo ? alert : null}
                     className="h-full max-w-full"
                   />
@@ -1064,7 +1116,11 @@ export function App() {
               <BibleLookup
                 passages={demoPassage}
                 onOpen={(reference, text) =>
-                  showPreview({ title: reference, slides: [[text]] })
+                  showPreview({
+                    title: reference,
+                    slides: [[text]],
+                    reference: `${reference} · ${SCRIPTURE_VERSION}`,
+                  })
                 }
                 onGoLive={goLiveScripture}
               />
@@ -1097,7 +1153,10 @@ export function App() {
                 activeId={layoutId}
                 theme={theme}
                 backgroundCss={background?.css}
-                onPick={setLayoutId}
+                onPick={(id) => {
+                  setLayoutId(id)
+                  setSlideIndex(0)
+                }}
               />
             )}
             {tab === 'songbook' && <SongbookPanel songs={songs} />}
