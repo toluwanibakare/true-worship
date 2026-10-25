@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2048 2048" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1E40AF"/>
+      <stop offset="1" stop-color="#1E3A8A"/>
+    </linearGradient>
+    <clipPath id="round">
+      <rect x="0" y="0" width="2048" height="2048" rx="460"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#round)">
+    <rect x="0" y="0" width="2048" height="2048" fill="url(#bg)"/>
+    <!-- Light rays fanning upward and sideways from behind the cross -->
+    <g fill="#ffffff" opacity="0.12">
+      <polygon points="1024,1000 250,100 430,60"/>
+      <polygon points="1024,1000 480,30 640,10"/>
+      <polygon points="1024,1000 760,10 920,0"/>
+      <polygon points="1024,1000 1120,0 1280,10"/>
+      <polygon points="1024,1000 1400,30 1560,60"/>
+      <polygon points="1024,1000 1640,120 1790,190"/>
+      <polygon points="1024,1000 300,190 430,120"/>
+    </g>
+    <!-- Soft cyan glow, bottom right -->
+    <circle cx="1740" cy="1800" r="700" fill="#06B6D4" opacity="0.10"/>
+    <!-- Cross: short top arm, long bottom arm, rounded ends -->
+    <g fill="#ffffff">
+      <rect x="914" y="500" width="220" height="1080" rx="60"/>
+      <rect x="600" y="750" width="848" height="220" rx="60"/>
+    </g>
+  </g>
+</svg>

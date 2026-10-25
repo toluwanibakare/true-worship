@@ -1,0 +1,248 @@
+:root {
+  --blue: #1e40af;
+  --dark: #1e3a8a;
+  --cyan: #06b6d4;
+  --ink: #0f172a;
+  --muted: #475569;
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --line: #e2e8f0;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.6;
+}
+
+a { color: var(--blue); }
+
+.wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+header.site {
+  background: linear-gradient(160deg, var(--blue), var(--dark));
+  color: #fff;
+  padding: 18px 0 56px;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  text-decoration: none;
+  font-size: 22px;
+  font-weight: 700;
+  margin-right: auto;
+}
+
+.brand img {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+}
+
+.nav a.link {
+  color: #dbeafe;
+  text-decoration: none;
+  font-size: 15px;
+}
+
+.nav a.link:hover { color: #fff; text-decoration: underline; }
+
+.btn {
+  display: inline-block;
+  background: #fff;
+  color: var(--dark);
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: 999px;
+  text-decoration: none;
+}
+
+.btn.outline {
+  background: transparent;
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+
+.hero { padding: 56px 0 8px; }
+
+.hero h1 {
+  font-size: 44px;
+  line-height: 1.15;
+  margin: 0 0 16px;
+  max-width: 720px;
+}
+
+.hero p.lead {
+  font-size: 19px;
+  color: #dbeafe;
+  max-width: 720px;
+  margin: 0 0 24px;
+}
+
+.hero .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.hero .meta {
+  margin-top: 20px;
+  color: #bfdbfe;
+  font-size: 14px;
+}
+
+section { padding: 48px 0; }
+
+section h2 {
+  font-size: 30px;
+  margin: 0 0 8px;
+}
+
+.kicker {
+  color: var(--cyan);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 13px;
+  margin: 0 0 4px;
+}
+
+section p.intro {
+  color: var(--muted);
+  max-width: 720px;
+  margin: 0 0 28px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.card h3 { margin: 0 0 6px; font-size: 18px; }
+.card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+.shots {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+figure.shot {
+  margin: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+figure.shot img { width: 100%; display: block; }
+
+figure.shot figcaption {
+  padding: 14px 18px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+figure.shot figcaption strong { color: var(--ink); }
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  counter-reset: step;
+}
+
+.step {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.step .num {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.step h3 { margin: 0 0 6px; font-size: 18px; }
+.step p { margin: 0; color: var(--muted); font-size: 15px; }
+
+.band {
+  background: var(--dark);
+  color: #fff;
+}
+
+.band h2 { color: #fff; }
+.band p { color: #dbeafe; }
+.band .card { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.2); }
+.band .card p { color: #dbeafe; }
+.band .card h3 { color: #fff; }
+
+pre.code {
+  background: var(--ink);
+  color: #e2e8f0;
+  border-radius: 12px;
+  padding: 18px 20px;
+  overflow-x: auto;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+details {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+}
+
+details summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+
+details p { color: var(--muted); margin: 8px 0 0; }
+
+footer.site {
+  background: var(--dark);
+  color: #dbeafe;
+  padding: 32px 0;
+  font-size: 15px;
+}
+
+footer.site a { color: #fff; }
+
+@media (max-width: 640px) {
+  .hero h1 { font-size: 32px; }
+  section h2 { font-size: 24px; }
+}

@@ -89,6 +89,13 @@ tested on a machine with a screen; the build and the main process files
 are verified here. Packaging installers (Windows, macOS, Linux) is a
 later milestone and is not wired up yet.
 
+## Website
+
+`web/` holds a static site that presents True Worship: features,
+screenshots of the real app, how a service runs, moving over from
+other tools, the Community Songbook, content licensing, and how to run
+it. Open `web/index.html` in a browser, or serve the folder.
+
 ## Status
 
 Version 0.12.0. The UI flow works with demo content (public domain:
