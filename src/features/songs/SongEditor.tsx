@@ -129,6 +129,23 @@ export function SongEditor({
     if (key === selected) setSelected(next[0].key)
   }
 
+  // Ctrl+Enter splits the block at the cursor: everything after it moves to a new block below.
+  const splitAt = (block: Block, at: number) => {
+    const next = { key: nextKey++, label: '', text: block.text.slice(at).replace(/^\n+/, '') }
+    setBlocks((all) => {
+      const index = all.findIndex((entry) => entry.key === block.key)
+      const out = all.map((entry) => (entry.key === block.key ? { ...entry, text: block.text.slice(0, at).replace(/\s+$/, '') } : entry))
+      out.splice(index + 1, 0, next)
+      return out
+    })
+    setSelected(next.key)
+    setTimeout(() => {
+      const area = listRef.current?.querySelector<HTMLTextAreaElement>(`[data-block="${next.key}"] textarea`)
+      area?.focus()
+      area?.setSelectionRange(0, 0)
+    }, 0)
+  }
+
   // Pasting several paragraphs into one block splits them into blocks.
   const paste = (block: Block, text: string) => {
     if (!/\n\s*\n/.test(text)) return false
@@ -236,10 +253,16 @@ export function SongEditor({
                       rows={Math.max(3, block.text.split('\n').length)}
                       onFocus={() => setSelected(block.key)}
                       onChange={(event) => update(block.key, { text: event.target.value })}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                          event.preventDefault()
+                          splitAt(block, event.currentTarget.selectionStart)
+                        }
+                      }}
                       onPaste={(event) => {
                         if (paste(block, event.clipboardData.getData('text'))) event.preventDefault()
                       }}
-                      placeholder="Type the words, one line per line"
+                      placeholder="Type the words, one line per line. Ctrl+Enter starts a new verse."
                       className="block w-full resize-none bg-transparent px-2 py-1 text-sm leading-snug outline-none"
                     />
                   </div>
