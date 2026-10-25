@@ -9,7 +9,7 @@ import { Button, Panel, SearchInput } from '../../shared/components/ui'
  * Electron main process (see electron/ndi.cjs); this panel only holds
  * the switch, the source name and the status.
  */
-export function NdiPanel() {
+export function NdiPanel({ bare = false }: { bare?: boolean }) {
   const [status, setStatus] = useState<NdiStatus | null>(null)
   const [sourceName, setSourceName] = useState('True Worship')
   const [fps, setFps] = useState(30)
@@ -37,7 +37,7 @@ export function NdiPanel() {
   }
 
   return (
-    <Panel title="NDI Output" className="h-full">
+    <Panel title="NDI Output" className="h-full" bare={bare}>
       {!isElectron && (
         <p className="mb-3 text-sm text-amber-400">
           NDI output needs the desktop app. In the browser this panel is

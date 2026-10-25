@@ -27,6 +27,28 @@ body {
   -webkit-app-region: no-drag;
 }
 
+/* On-air blink for the toolbar's Live button. Reduced-motion users get
+   the red colour without the flashing. */
+@keyframes tw-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.tw-blink {
+  animation: tw-blink 1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tw-blink {
+    animation: none;
+  }
+}
+
 /* Marquee: the track holds the message twice and slides one copy's
    width, so the loop restarts with no visible jump. Duration is set
    inline per speed. */

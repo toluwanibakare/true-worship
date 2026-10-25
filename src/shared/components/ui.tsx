@@ -5,13 +5,17 @@ export function Panel({
   children,
   className = '',
   actions,
+  bare = false,
 }: {
   title: string
   children: ReactNode
   className?: string
   /** Controls on the right of the header bar, such as a gear menu. */
   actions?: ReactNode
+  /** Content only, no border or header: for panels shown inside a dialog. */
+  bare?: boolean
 }) {
+  if (bare) return <div className={className}>{children}</div>
   return (
     <section className={`flex min-h-0 flex-col rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 ${className}`}>
       <div className="flex items-center justify-between border-b border-slate-300 bg-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-800">

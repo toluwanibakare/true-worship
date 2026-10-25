@@ -44,13 +44,11 @@ const THEME_MODES: ThemeMode[] = ['light', 'dark', 'system']
 
 export function TitleBar({
   menu,
-  live,
   theme,
   onThemeChange,
   onShowShortcuts,
 }: {
   menu: ReactNode
-  live: boolean
   theme: ThemeMode
   onThemeChange: (mode: ThemeMode) => void
   onShowShortcuts: () => void
@@ -108,9 +106,6 @@ export function TitleBar({
             </button>
           ))}
         </div>
-        <span className="text-xs text-slate-300 dark:text-slate-600">
-          {live ? '● LIVE' : '○ Not live'}
-        </span>
         <a
           href={REPO_URL}
           target="_blank"

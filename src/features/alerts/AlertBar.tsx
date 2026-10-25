@@ -13,16 +13,18 @@ export function AlertBar({
   alert,
   onShow,
   onHide,
+  bare = false,
 }: {
   alert: MarqueeAlert | null
   onShow: (alert: MarqueeAlert) => void
   onHide: () => void
+  bare?: boolean
 }) {
   const [message, setMessage] = useState('')
   const [speed, setSpeed] = useState<MarqueeSpeed>('normal')
 
   return (
-    <Panel title="Alerts" className="h-full">
+    <Panel title="Alerts" className="h-full" bare={bare}>
       <div className="flex gap-2">
         <SearchInput
           value={message}

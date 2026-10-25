@@ -18,11 +18,13 @@ export function ImporterPanel({
   schedule,
   onSongsImported,
   onScheduleImported,
+  bare = false,
 }: {
   songs: Song[]
   schedule: ScheduleItem[]
   onSongsImported: (songs: Song[]) => void
   onScheduleImported: (items: ScheduleItem[]) => void
+  bare?: boolean
 }) {
   const [results, setResults] = useState<ImportResult[]>([])
   const [busy, setBusy] = useState(false)
@@ -43,7 +45,7 @@ export function ImporterPanel({
   }
 
   return (
-    <Panel title="Import" className="h-full">
+    <Panel title="Import" className="h-full" bare={bare}>
       <p className="text-sm text-slate-500 dark:text-slate-400">
         Bring a whole Sunday over from EasyWorship, OpenSong, OpenLP or
         another True Worship install. Pick files and they land in the

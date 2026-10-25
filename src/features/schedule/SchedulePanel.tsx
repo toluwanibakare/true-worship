@@ -10,7 +10,8 @@ import { Panel } from '../../shared/components/ui'
  * and reference, in EasyWorship's small italic notes style). Songs
  * expand with the arrow to show their slides, and clicking a slide
  * selects it in the preview. Double-clicking a row sends it live.
- * The selected row is blue. The gear menu in the header adds, moves
+ * Drag a row up or down to reorder it; a blue line shows where it
+ * will land. The selected row is blue. The gear menu in the header adds, moves
  * and removes items, the way a schedule is actually built during the
  * week and reordered on Sunday morning.
  */
@@ -33,6 +34,7 @@ export function SchedulePanel({
   onMoveUp,
   onMoveDown,
   onRemove,
+  onReorder,
   slideLabelsFor,
 }: {
   items: ScheduleItem[]
@@ -45,10 +47,20 @@ export function SchedulePanel({
   onMoveUp: () => void
   onMoveDown: () => void
   onRemove: () => void
+  /** Move an item (by id) to sit before the item at insertIndex. */
+  onReorder: (id: string, insertIndex: number) => void
   slideLabelsFor: (item: ScheduleItem) => string[]
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  // Drag and drop: the item being dragged and the gap it would drop into
+  // (0 = before the first item, items.length = after the last).
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [dropIndex, setDropIndex] = useState<number | null>(null)
+  const endDrag = () => {
+    setDragId(null)
+    setDropIndex(null)
+  }
   const run = (action: () => void) => () => {
     setMenuOpen(false)
     action()
@@ -107,7 +119,36 @@ export function SchedulePanel({
             const expanded = expandedId === item.id
             const selected = item.id === selectedId
             return (
-              <li key={item.id}>
+              <li
+                key={item.id}
+                draggable
+                onDragStart={(event) => {
+                  event.dataTransfer.effectAllowed = 'move'
+                  event.dataTransfer.setData('text/plain', item.id)
+                  setDragId(item.id)
+                }}
+                onDragOver={(event) => {
+                  if (!dragId) return
+                  event.preventDefault()
+                  const rect = event.currentTarget.getBoundingClientRect()
+                  const above = event.clientY < rect.top + rect.height / 2
+                  const index = items.findIndex((entry) => entry.id === item.id)
+                  setDropIndex(above ? index : index + 1)
+                }}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  if (dragId && dropIndex !== null) onReorder(dragId, dropIndex)
+                  endDrag()
+                }}
+                onDragEnd={endDrag}
+                className={`rounded-md ${dragId === item.id ? 'opacity-40' : ''} ${
+                  dragId && dropIndex === items.indexOf(item)
+                    ? 'border-t-2 border-blue-500'
+                    : dragId && dropIndex === items.indexOf(item) + 1
+                      ? 'border-b-2 border-blue-500'
+                      : 'border-y-2 border-transparent'
+                }`}
+              >
                 <div className="flex items-center gap-1">
                   {labels.length > 1 ? (
                     <button
@@ -128,7 +169,7 @@ export function SchedulePanel({
                     type="button"
                     onClick={() => onSelect(item.id)}
                     onDoubleClick={() => onGoLiveItem(item.id)}
-                    title="Double-click to go live"
+                    title="Double-click to go live, drag to reorder"
                     className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-2 text-left text-sm ${
                       selected
                         ? 'bg-blue-600 text-white'

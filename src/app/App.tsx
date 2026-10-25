@@ -27,6 +27,7 @@ import { MenuBar, type ThemeMode } from './MenuBar'
 import { TitleBar } from './TitleBar'
 import { PreviewPanel } from '../features/preview/PreviewPanel'
 import { OutputPanel } from '../shared/components/OutputPanel'
+import { Modal } from '../shared/components/Modal'
 import { SlideView } from '../shared/components/SlideView'
 import { Splitter } from '../shared/components/Splitter'
 import { usePaneSize } from '../shared/lib/usePaneSize'
@@ -43,6 +44,7 @@ function ToolButton({
   onClick,
   icon,
   accent,
+  blinking,
   disabled,
   title,
 }: {
@@ -50,6 +52,8 @@ function ToolButton({
   onClick: () => void
   icon: ReactNode
   accent?: boolean
+  /** On air: the icon turns red and blinks. */
+  blinking?: boolean
   disabled?: boolean
   title?: string
 }) {
@@ -61,7 +65,17 @@ function ToolButton({
       title={title}
       className="flex flex-col items-center gap-0.5 rounded-md px-2 py-1 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-slate-800"
     >
-      <span className={accent ? 'text-green-600 dark:text-green-400' : undefined}>{icon}</span>
+      <span
+        className={
+          blinking
+            ? 'tw-blink text-red-500'
+            : accent
+              ? 'text-green-600 dark:text-green-400'
+              : undefined
+        }
+      >
+        {icon}
+      </span>
       <span className="text-[11px] leading-none">{label}</span>
     </button>
   )
@@ -164,7 +178,10 @@ const IconClear = (
  * EasyWorship itself offers.
  */
 
-type Tab = 'songs' | 'bible' | 'media' | 'themes' | 'backgrounds' | 'layouts' | 'songbook' | 'import' | 'alerts' | 'display' | 'ndi'
+type Tab = 'songs' | 'bible' | 'media' | 'themes' | 'backgrounds' | 'layouts' | 'songbook'
+
+/** Dialogs opened from the toolbar and menus rather than from the resource tabs. */
+type Dialog = 'alerts' | 'liveSettings' | 'import'
 
 type Preview = {
   title: string
@@ -214,10 +231,12 @@ export function App() {
   const [logo, setLogo] = useState(false)
   const [customPreview, setCustomPreview] = useState<Preview | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [dialog, setDialog] = useState<Dialog | null>(null)
   // Draggable dividers. Sizes persist between launches.
   const [scheduleWidth, setScheduleWidth] = usePaneSize('tw-pane-schedule', 280)
   const [previewPercent, setPreviewPercent] = usePaneSize('tw-pane-preview', 50)
-  const [outputsHeight, setOutputsHeight] = usePaneSize('tw-pane-outputs', 220)
+  const [previewOutputHeight, setPreviewOutputHeight] = usePaneSize('tw-pane-preview-output', 220)
+  const [liveOutputHeight, setLiveOutputHeight] = usePaneSize('tw-pane-live-output', 220)
   const [stripHeight, setStripHeight] = usePaneSize('tw-pane-strip', 280)
   const centreRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -293,17 +312,23 @@ export function App() {
     showPreview({ title: song.title, slides: song.verses.map((verse) => verse.lines) })
   }
 
-  const handleGoLive = () => {
-    setLive({ title: preview.title, lines: slide })
+  // Send the previewed item live, starting at the given slide. Double-
+  // clicking a slide in the Preview pane uses this to go live on that
+  // slide straight away.
+  const goLiveSlide = (index: number) => {
+    const lines = preview.slides[index] ?? []
+    setLive({ title: preview.title, lines })
     setLiveSlides(preview.slides)
     setLiveSlideLabels(slideLabels)
-    setLiveSlideIndex(slideIndex)
+    setLiveSlideIndex(index)
     setBlack(false)
     setLogo(false)
     clearedLiveRef.current = null
     window.electronAPI?.openLiveWindow(loadDisplaySettings())
-    sendLive(preview.title, slide)
+    sendLive(preview.title, lines)
   }
+
+  const handleGoLive = () => goLiveSlide(slideIndex)
 
   // EasyWorship's Black and Logo are toggles, not one-way buttons:
   // pressing again returns to whatever was live.
@@ -388,6 +413,21 @@ export function App() {
     })
   }
 
+  // Drag and drop: move the item with this id so it lands before the
+  // item currently at insertIndex (the list length means "at the end").
+  const reorderSchedule = (id: string, insertIndex: number) => {
+    setSchedule((current) => {
+      const from = current.findIndex((item) => item.id === id)
+      if (from < 0) return current
+      const to = insertIndex > from ? insertIndex - 1 : insertIndex
+      if (to === from) return current
+      const next = [...current]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return next
+    })
+  }
+
   const removeSelected = () => {
     if (!selectedId) return
     setSchedule((current) => {
@@ -462,9 +502,11 @@ export function App() {
     openService: () => fileInputRef.current?.click(),
     saveService: () =>
       downloadTworship({ title: 'Sunday Service', kind: 'schedule', songs, schedule }),
-    showAlerts: () => setTab('alerts'),
+    showAlerts: () => setDialog('alerts'),
     setShowShortcuts,
     showShortcuts,
+    dialogOpen: dialog !== null,
+    closeDialog: () => setDialog(null),
     labels: slideLabels,
     slideCount: preview.slides.length,
   })
@@ -481,9 +523,11 @@ export function App() {
     openService: () => fileInputRef.current?.click(),
     saveService: () =>
       downloadTworship({ title: 'Sunday Service', kind: 'schedule', songs, schedule }),
-    showAlerts: () => setTab('alerts'),
+    showAlerts: () => setDialog('alerts'),
     setShowShortcuts,
     showShortcuts,
+    dialogOpen: dialog !== null,
+    closeDialog: () => setDialog(null),
     labels: slideLabels,
     slideCount: preview.slides.length,
   }
@@ -502,11 +546,14 @@ export function App() {
         if (a.showShortcuts) {
           event.preventDefault()
           a.setShowShortcuts(false)
+        } else if (a.dialogOpen) {
+          event.preventDefault()
+          a.closeDialog()
         }
         return
       }
-      // While the shortcut list is open, nothing else fires.
-      if (a.showShortcuts) return
+      // While the shortcut list or a dialog is open, nothing else fires.
+      if (a.showShortcuts || a.dialogOpen) return
       // Typing stays typing: no shortcut fires from a field.
       if (isTypingTarget(event.target)) return
       if (event.metaKey) return
@@ -650,6 +697,8 @@ export function App() {
     }
   }
 
+  // On air: something is live, or the output is held on Black or Logo.
+  const onAir = live !== null || black || logo
   const liveLines = black ? [] : logo ? ['True Worship'] : (live?.lines ?? [])
   const liveTitle = black ? 'Black' : logo ? 'True Worship' : (live?.title ?? 'Nothing live')
 
@@ -661,10 +710,6 @@ export function App() {
     { id: 'backgrounds', label: 'Backgrounds' },
     { id: 'layouts', label: 'Layouts' },
     { id: 'songbook', label: 'Songbook' },
-    { id: 'import', label: 'Import' },
-    { id: 'alerts', label: 'Alerts' },
-    { id: 'display', label: 'Display' },
-    { id: 'ndi', label: 'NDI' },
   ]
 
   if (isLiveWindow) {
@@ -679,7 +724,6 @@ export function App() {
     <div className="flex h-full flex-col bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <header className="border-b border-slate-300 bg-gradient-to-b from-white to-slate-200 dark:border-slate-800 dark:from-slate-900 dark:to-slate-800">
         <TitleBar
-          live={live !== null}
           theme={themeMode}
           onThemeChange={setThemeMode}
           onShowShortcuts={() => setShowShortcuts(true)}
@@ -707,6 +751,8 @@ export function App() {
             onLogo={handleLogo}
             onBlack={handleBlack}
             onClear={handleClear}
+            onImport={() => setDialog('import')}
+            onLiveSettings={() => setDialog('liveSettings')}
             onShowLayouts={() => setTab('layouts')}
             onShowBackgrounds={() => setTab('backgrounds')}
             onShowShortcuts={() => setShowShortcuts(true)}
@@ -742,15 +788,16 @@ export function App() {
           <div className="flex items-center gap-1">
             <ToolButton label="Go Live" icon={IconPlay} accent onClick={handleGoLive} />
             <ToolDivider />
-            <ToolButton label="Alerts" icon={IconBell} onClick={() => setTab('alerts')} />
+            <ToolButton label="Alerts" icon={IconBell} onClick={() => setDialog('alerts')} />
             <ToolDivider />
             <ToolButton label="Logo" icon={IconImage} onClick={handleLogo} />
             <ToolButton label="Black" icon={IconBlack} onClick={handleBlack} />
-            <ToolButton label="Clear" icon={IconClear} onClick={handleClear} />
+            <ToolButton label="Clear" icon={IconClear} disabled={!onAir} onClick={handleClear} />
             <ToolDivider />
             <ToolButton
               label="Live"
               icon={IconLiveOutput}
+              blinking={onAir}
               title="Open the live output window"
               onClick={() => window.electronAPI?.openLiveWindow(loadDisplaySettings())}
             />
@@ -792,6 +839,7 @@ export function App() {
               onMoveUp={() => moveSelected(-1)}
               onMoveDown={() => moveSelected(1)}
               onRemove={removeSelected}
+              onReorder={reorderSchedule}
               slideLabelsFor={slideLabelsForItem}
             />
           </div>
@@ -802,52 +850,28 @@ export function App() {
             onReset={() => setScheduleWidth(280)}
           />
 
-          <div ref={centreRef} className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="flex min-h-0 flex-1">
-              <div className="h-full min-w-0" style={{ width: `${previewPercent}%` }}>
+          <div ref={centreRef} className="flex min-h-0 min-w-0 flex-1">
+            <div className="flex h-full min-w-0 flex-col" style={{ width: `${previewPercent}%` }}>
+              <div className="min-h-0 flex-1">
                 <PreviewPanel
                   title={preview.title}
                   slides={preview.slides}
                   labels={slideLabels}
                   selectedIndex={slideIndex}
                   onSelect={setSlideIndex}
+                  onGoLive={(index) => {
+                    setSlideIndex(index)
+                    goLiveSlide(index)
+                  }}
                 />
               </div>
               <Splitter
-                orientation="vertical"
-                label="Resize preview and live"
-                onDrag={(delta) => {
-                  const width = centreRef.current?.clientWidth ?? 0
-                  if (width > 0) {
-                    setPreviewPercent((percent) => clamp(percent + (delta / width) * 100, 25, 75))
-                  }
-                }}
-                onReset={() => setPreviewPercent(50)}
+                orientation="horizontal"
+                label="Resize preview output"
+                onDrag={(delta) => setPreviewOutputHeight((height) => clamp(height - delta, 150, 480))}
+                onReset={() => setPreviewOutputHeight(220)}
               />
-              <div className="h-full min-w-0 flex-1">
-                <LivePanel
-                  title={liveTitle}
-                  theme={theme}
-                  slides={liveSlides ?? []}
-                  slideLabels={liveSlideLabels}
-                  liveSlideIndex={liveSlideIndex}
-                  live={live !== null && !black && !logo}
-                  backgroundCss={background?.css}
-                  layoutId={layoutId}
-                  onSelectLiveSlide={handleLiveSlideSelect}
-                />
-              </div>
-            </div>
-
-            <Splitter
-              orientation="horizontal"
-              label="Resize outputs"
-              onDrag={(delta) => setOutputsHeight((height) => clamp(height - delta, 150, 480))}
-              onReset={() => setOutputsHeight(220)}
-            />
-
-            <div className="flex shrink-0" style={{ height: outputsHeight }}>
-              <div className="h-full min-w-0" style={{ width: `${previewPercent}%` }}>
+              <div className="shrink-0" style={{ height: previewOutputHeight }}>
                 <OutputPanel
                   title="Preview Output"
                   counter={`Slide ${Math.min(slideIndex, preview.slides.length - 1) + 1} of ${preview.slides.length}`}
@@ -867,8 +891,41 @@ export function App() {
                   />
                 </OutputPanel>
               </div>
-              <span className="w-3 shrink-0" aria-hidden="true" />
-              <div className="h-full min-w-0 flex-1">
+            </div>
+
+            <Splitter
+              orientation="vertical"
+              label="Resize preview and live"
+              onDrag={(delta) => {
+                const width = centreRef.current?.clientWidth ?? 0
+                if (width > 0) {
+                  setPreviewPercent((percent) => clamp(percent + (delta / width) * 100, 25, 75))
+                }
+              }}
+              onReset={() => setPreviewPercent(50)}
+            />
+
+            <div className="flex h-full min-w-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1">
+                <LivePanel
+                  title={liveTitle}
+                  theme={theme}
+                  slides={liveSlides ?? []}
+                  slideLabels={liveSlideLabels}
+                  liveSlideIndex={liveSlideIndex}
+                  live={live !== null && !black && !logo}
+                  backgroundCss={background?.css}
+                  layoutId={layoutId}
+                  onSelectLiveSlide={handleLiveSlideSelect}
+                />
+              </div>
+              <Splitter
+                orientation="horizontal"
+                label="Resize live output"
+                onDrag={(delta) => setLiveOutputHeight((height) => clamp(height - delta, 150, 480))}
+                onReset={() => setLiveOutputHeight(220)}
+              />
+              <div className="shrink-0" style={{ height: liveOutputHeight }}>
                 <OutputPanel
                   title="Live Output"
                   counter={
@@ -956,44 +1013,56 @@ export function App() {
               <LayoutPicker activeId={layoutId} onPick={setLayoutId} />
             )}
             {tab === 'songbook' && <SongbookPanel songs={songs} />}
-            {tab === 'import' && (
-              <ImporterPanel
-                songs={songs}
-                schedule={schedule}
-                onSongsImported={mergeSongs}
-                onScheduleImported={mergeSchedule}
-              />
-            )}
-            {tab === 'alerts' && (
-              <AlertBar
-                alert={alert}
-                onShow={(next) => {
-                  setAlert(next)
-                  if (live && !black && !logo) {
-                    sendLive(live.title, live.lines, undefined, next)
-                  }
-                }}
-                onHide={() => {
-                  setAlert(null)
-                  if (live && !black && !logo) {
-                    sendLive(live.title, live.lines, undefined, null)
-                  }
-                }}
-              />
-            )}
-            {tab === 'display' && <DisplayPanel />}
-            {tab === 'ndi' && <NdiPanel />}
           </div>
         </div>
       </main>
 
       <footer className="flex items-center justify-between border-t border-slate-300 px-4 py-1.5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
         <span>True Worship {__APP_VERSION__} · GPL-3.0 · {schedule.length} items in schedule</span>
-        <span>
-          Theme: {themeMode} · {live ? 'LIVE' : 'Not live'}
-        </span>
+        <span>Built by TMB</span>
       </footer>
 
+      {dialog === 'alerts' && (
+        <Modal title="Alerts" onClose={() => setDialog(null)}>
+          <AlertBar
+            bare
+            alert={alert}
+            onShow={(next) => {
+              setAlert(next)
+              if (live && !black && !logo) {
+                sendLive(live.title, live.lines, undefined, next)
+              }
+            }}
+            onHide={() => {
+              setAlert(null)
+              if (live && !black && !logo) {
+                sendLive(live.title, live.lines, undefined, null)
+              }
+            }}
+          />
+        </Modal>
+      )}
+      {dialog === 'liveSettings' && (
+        <Modal title="Live Settings" onClose={() => setDialog(null)}>
+          <h3 className="mb-2 text-sm font-semibold">Display</h3>
+          <DisplayPanel bare />
+          <h3 className="mb-2 mt-6 border-t border-slate-300 pt-4 text-sm font-semibold dark:border-slate-700">
+            NDI Output
+          </h3>
+          <NdiPanel bare />
+        </Modal>
+      )}
+      {dialog === 'import' && (
+        <Modal title="Import" onClose={() => setDialog(null)} widthClass="max-w-3xl">
+          <ImporterPanel
+            bare
+            songs={songs}
+            schedule={schedule}
+            onSongsImported={mergeSongs}
+            onScheduleImported={mergeSchedule}
+          />
+        </Modal>
+      )}
       <ShortcutsDialog open={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </div>
   )

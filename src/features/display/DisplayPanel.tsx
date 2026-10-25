@@ -11,7 +11,7 @@ import { loadDisplaySettings, saveDisplaySettings } from './displaySettings'
  * asks main to apply them. In a browser there is no screen API, so the
  * panel explains that and still lets settings be chosen.
  */
-export function DisplayPanel() {
+export function DisplayPanel({ bare = false }: { bare?: boolean }) {
   const [displays, setDisplays] = useState<DisplayInfo[]>([])
   const [settings, setSettings] = useState<DisplaySettings>(loadDisplaySettings)
   const [applied, setApplied] = useState(false)
@@ -36,7 +36,7 @@ export function DisplayPanel() {
   }
 
   return (
-    <Panel title="Display" className="h-full">
+    <Panel title="Display" className="h-full" bare={bare}>
       {!isElectron && (
         <p className="mb-3 text-sm text-amber-400">
           Monitor control needs the desktop app. These settings are saved

@@ -6,7 +6,7 @@ import { Panel } from '../../shared/components/ui'
  * blocks: a coloured label bar (Chorus in purple, Verse in blue, the
  * way its song editor colours sections) over the words, one block per
  * slide. Click a block to select that slide; the Preview Output below
- * shows it. The list scrolls on its own.
+ * shows it. Double-click a block to send it live. The list scrolls on its own.
  */
 function labelColour(label: string) {
   return /^(chorus|refrain|tag)/i.test(label) ? 'bg-purple-700' : 'bg-blue-600'
@@ -18,12 +18,14 @@ export function PreviewPanel({
   labels,
   selectedIndex,
   onSelect,
+  onGoLive,
 }: {
   title: string
   slides: string[][]
   labels: string[]
   selectedIndex: number
   onSelect: (index: number) => void
+  onGoLive: (index: number) => void
 }) {
   return (
     <Panel title={`Preview — ${title}`} className="h-full">
@@ -36,6 +38,8 @@ export function PreviewPanel({
               key={`${label}-${index}`}
               type="button"
               onClick={() => onSelect(index)}
+              onDoubleClick={() => onGoLive(index)}
+              title="Double-click to go live"
               className={`block w-full overflow-hidden rounded-md border text-left ${
                 selected
                   ? 'border-blue-500 ring-2 ring-blue-500'

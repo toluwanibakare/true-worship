@@ -49,7 +49,7 @@ src/
   shared/
     components/   Only UI used by two or more features
                   (Panel, Button, SearchInput, Marquee, SlideView,
-                  OutputPanel, ResourceView, Splitter).
+                  OutputPanel, ResourceView, Splitter, Modal).
     lib/          Types and helpers used by two or more features.
 ```
 

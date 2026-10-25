@@ -83,7 +83,7 @@ later milestone and is not wired up yet.
 
 ## Status
 
-Version 0.7.0. The UI flow works with demo content (public domain:
+Version 0.8.0. The UI flow works with demo content (public domain:
 Amazing Grace, John 3:16 KJV). The main window follows
 EasyWorship's default view, studied from the EasyWorship 7 screenshots:
 one title bar with the menus, a toolbar under it, the schedule down the

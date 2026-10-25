@@ -78,6 +78,8 @@ export function MenuBar(props: {
   onOpenService: () => void
   onSaveService: () => void
   onExportLibrary: () => void
+  onImport: () => void
+  onLiveSettings: () => void
   onAddItem: () => void
   onMoveUp: () => void
   onMoveDown: () => void
@@ -104,6 +106,7 @@ export function MenuBar(props: {
         <Item label="New Schedule" onClick={run(props.onNewSchedule)} />
         <Item label="Open Service…" shortcut="Ctrl + O" onClick={run(props.onOpenService)} />
         <Item label="Save Service" shortcut="Ctrl + S" onClick={run(props.onSaveService)} />
+        <Item label="Import…" onClick={run(props.onImport)} />
         <Item label="Export Song Library" onClick={run(props.onExportLibrary)} />
       </Menu>
       <Menu label="Edit" open={open === 'edit'} onToggle={() => toggle('edit')} onClose={close}>
@@ -117,6 +120,7 @@ export function MenuBar(props: {
         <Item label="Logo" shortcut="Ctrl + L" onClick={run(props.onLogo)} />
         <Item label="Black" shortcut="Ctrl + B" onClick={run(props.onBlack)} />
         <Item label="Clear" shortcut="Ctrl + C" onClick={run(props.onClear)} />
+        <Item label="Live Settings…" onClick={run(props.onLiveSettings)} />
       </Menu>
       <Menu label="View" open={open === 'view'} onToggle={() => toggle('view')} onClose={close}>
         <Item label="Light Theme" checked={props.theme === 'light'} onClick={run(() => props.onThemeChange('light'))} />

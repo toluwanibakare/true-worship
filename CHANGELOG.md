@@ -3,6 +3,30 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
+## [0.8.0] - 2026-10-25
+
+### Added
+
+- Drag a schedule item up or down to reorder it; a blue line shows
+  where it will land.
+- Double-click a slide in the Preview pane to send it live on that
+  slide.
+- The toolbar's Live button turns red and blinks while something is
+  on air (live, or held on Black or Logo), and Clear is muted when
+  there is nothing to clear.
+- Preview and Live each have their own height divider, so the two
+  output monitors can be sized independently.
+
+### Changed
+
+- Alerts opens as a dialog from the Alerts button (and its
+  shortcut). Display and NDI moved into Live Settings in the Live
+  menu, and Import into the File menu, each in its own dialog. The
+  resource strip now holds only Songs, Scriptures, Media, Themes,
+  Backgrounds, Layouts and Songbook.
+- The title bar no longer shows the live status; the footer shows
+  who built the app instead of the theme and live state.
+
 ## [0.7.0] - 2026-10-25
 
 ### Added
