@@ -73,6 +73,7 @@ function createOperatorWindow() {
     width: 1400,
     height: 900,
     title: 'True Worship',
+    icon: path.join(__dirname, '..', 'assets', 'logo', 'true-worship-icon-512.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,

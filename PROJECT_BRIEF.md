@@ -132,8 +132,12 @@ one afternoon.
 
 ## Open questions
 
-- Licence for the code: GPL (like OpenLP) or MIT.
 - Hosting for the songbook sync service (start cheap, scale later).
 - Domain and GitHub org name for True Worship.
 - First seed content: which hymnals and which Nigerian songs to launch
   with, and which churches to invite as founding contributors.
+
+## Decided
+
+- Licence: GPL-3.0, decided 2026-10-25 (same family as OpenLP, keeps
+  the app and its forks free). Contributions are accepted under GPL-3.0.

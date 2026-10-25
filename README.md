@@ -1,8 +1,13 @@
 # True Worship
 
+![True Worship logo](assets/logo/true-worship-icon-512.png)
+
 Free, open worship presentation software for churches, on Windows, Linux
 and macOS. A clean-room rebuild in the spirit of EasyWorship: same
 workflow, own code, own design.
+
+Licensed under GPL-3.0 (see `LICENSE`). Contributions are welcome, see
+`CONTRIBUTING.md`, and the community rules are in `CODE_OF_CONDUCT.md`.
 
 ## Features (so far, scaffold stage)
 
