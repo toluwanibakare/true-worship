@@ -3,6 +3,18 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
+## [0.6.0] - 2026-10-25
+
+### Added
+
+- Display font picker in the Themes tab. Each theme now carries
+  its own display font, picked from a list led by EasyWorship's
+  own defaults (Calibri, its default song theme font, and Arial,
+  its global font), with a live preview line in the theme's
+  colours. The chosen font flows to the preview, the live monitor
+  and the projector window, the way EasyWorship's theme font
+  decides what the room sees.
+
 ## [0.5.0] - 2026-10-25
 
 ### Changed

@@ -161,6 +161,7 @@ export function App() {
   const [selectedId, setSelectedId] = useState<string | null>(demoSchedule[0]?.id ?? null)
   const [tab, setTab] = useState<Tab>('songs')
   const [themeId, setThemeId] = useState(demoThemes[0].id)
+  const [themes, setThemes] = useState(demoThemes)
   const [themeMode, setThemeMode] = useState<ThemeMode>(
     () => (localStorage.getItem('tw-theme') as ThemeMode) || 'system',
   )
@@ -205,7 +206,7 @@ export function App() {
     [customPreview, selected, songs],
   )
   const slide = preview.slides[Math.min(slideIndex, preview.slides.length - 1)] ?? []
-  const theme = demoThemes.find((entry) => entry.id === themeId) ?? demoThemes[0]
+  const theme = themes.find((entry) => entry.id === themeId) ?? themes[0]
 
   // Slide labels: song verses keep their names (Verse 1, Chorus),
   // everything else is numbered.
@@ -851,7 +852,18 @@ export function App() {
             )}
             {tab === 'media' && <MediaLibrary />}
             {tab === 'themes' && (
-              <ThemePicker themes={demoThemes} activeId={themeId} onPick={setThemeId} />
+              <ThemePicker
+                themes={themes}
+                activeId={themeId}
+                onPick={setThemeId}
+                onFontChange={(id, fontFamily) =>
+                  setThemes((current) =>
+                    current.map((entry) =>
+                      entry.id === id ? { ...entry, fontFamily } : entry,
+                    ),
+                  )
+                }
+              />
             )}
             {tab === 'backgrounds' && (
               <BackgroundPicker activeId={background?.id ?? null} onPick={setBackground} />
@@ -892,7 +904,7 @@ export function App() {
       </main>
 
       <footer className="flex items-center justify-between border-t border-slate-300 px-4 py-1.5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-        <span>True Worship 0.5.0 · GPL-3.0 · {schedule.length} items in schedule</span>
+        <span>True Worship 0.6.0 · GPL-3.0 · {schedule.length} items in schedule</span>
         <span>
           Theme: {themeMode} · {live ? 'LIVE' : 'Not live'}
         </span>

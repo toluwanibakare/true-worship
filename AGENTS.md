@@ -93,6 +93,12 @@ src/
     preview it. The live column header names the live item and its
     current slide, Prev/Next steppers sit under the live controls,
     and live slide rows show label plus first line.
+11. **Display font is per theme, picked in the Themes tab.**
+    EasyWorship's rule is song font, then theme font, then global
+    font; True Worship's display follows the theme font, and the
+    picker leads with EW's own defaults (Calibri, Arial). The
+    font travels in the live payload, so preview, live monitor
+    and projector always match.
 6. **Demo data is clearly marked.** Anything in `shared/lib/demo.ts` is
    placeholder content (public domain only: KJV text, Amazing Grace).
    Demo data never ships as if it were a real library.
