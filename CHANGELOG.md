@@ -3,6 +3,106 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
+## [0.15.0] - 2026-10-25
+
+### Added
+
+- Whole Bibles on the computer. "More Available…" now offers twelve
+  public-domain Bibles (King James, American King James, American
+  Standard, Berean Standard, Open English, Webster, Darby, Young's
+  Literal, Geneva, Tyndale, Wycliffe, Douay-Rheims) to download. Only
+  the ones you add are downloaded, once each, and kept for offline use.
+  A downloaded version lists every verse (31,102 for the standard
+  Bible) and the search box searches all of them; typing a reference
+  such as Psalm 23:1-3 and pressing Enter jumps straight to it. The
+  other versions on the list stay online lookups. See
+  `docs/content-api.md`.
+- Left and Right arrows step through the verses on the screen while
+  something is live (as long as you are not typing in a field or have a
+  dialog open); with nothing live they still move through the
+  schedule.
+- Sortable columns in the Songs and Scriptures tables: click a header
+  to sort, click again to reverse, once more to clear.
+
+### Changed
+
+- The Songs and Scriptures tables are one shared table: compact
+  single-line rows, a blue selected row, and only the visible rows
+  drawn, so a whole Bible scrolls smoothly.
+- The online lyrics search in the Songs tab starts folded away under
+  the table.
+
+### Fixed
+
+- The Bible download and the list of downloaded versions leaked database
+  connections; they are now closed after each use.
+- Web browser address bar: a page finishing loading while you type no
+  longer overwrites what you typed, a search entered before the page is
+  ready is kept and run as soon as it is, and a page that fails to load
+  now says so (for example no internet) instead of staying silent.
+
+## [0.14.0] - 2026-10-25
+
+### Added
+
+- Transitions on the live output. A new background, layout or font
+  (including Black and Logo) fades in over the old one; when only the
+  words change, the old words fade out and the new ones fade in on the
+  same background, so a moving background carries on without restarting;
+  Clear fades the words away. Live Settings has a Transition choice:
+  Off (cut), Fast (150 ms), Normal (300 ms, the default) or Slow
+  (600 ms).
+
+### Changed
+
+- A scripture's reference now sits under the verse on the right, with
+  the version in brackets: "John 3:16 (KJV)". It uses the version the
+  verse was read from, so a World English Bible verse says (WEB).
+
+### Fixed
+
+- The reference and version were missing from the display for verses
+  from the Scriptures table.
+- The first slide sent after the live window opened could be lost, so
+  the projector sat on "Waiting for the operator to go live" until the
+  next click. The main process now remembers the last slide and the
+  live window collects it as it starts.
+- Every Go Live re-applied the live window's size, fullscreen and
+  always-on-top settings even when nothing had changed, which is slow
+  on some systems and delayed switching. They are now applied only
+  when the settings change.
+
+## [0.13.0] - 2026-10-25
+
+### Added
+
+- Web browser: the Web button opens a built-in browser (back, forward,
+  home, reload, an address bar that also searches). Go Live sends the
+  page, exactly as it moves, to the live output until Stop Live, Clear
+  or anything else goes live. See `docs/web-browser.md`.
+- New and Open are menus. New: New Schedule, New Song…. Open: Open
+  Schedule…, Import Songs and Files…. Save is greyed out until the
+  schedule or library has changed since it was last saved or opened.
+- Song editor: New Song… and Edit Song… (also from a right-click or the
+  gear menu in the Songs side panel), with title, author, copyright and
+  words, where a blank line starts a slide and a line like "Chorus"
+  names it. Delete from the same menus.
+- Search box with a field menu in the Songs (Any Field, Title, Author,
+  Lyrics) and Scriptures (Any Field, Reference, Scripture) side panels,
+  with a clear button. In Scriptures, typing a reference such as
+  John 3:16 and pressing Enter looks it up and adds its verses as rows.
+- `docs/roadmap.md`: a feature audit with the missing pieces ranked.
+
+### Changed
+
+- The Scriptures side panel lists only the versions you have added
+  (King James to begin with), plus "More Available…", which fetches the
+  list of versions only when opened and adds the ones you pick. The
+  separate look-up bar is gone.
+- Songs table gains a Copyright column. Collections and My Collections
+  are removed from the Songs and Scriptures side panels until they do
+  something.
+
 ## [0.12.0] - 2026-10-25
 
 ### Added

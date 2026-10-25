@@ -69,3 +69,35 @@ the app itself vouches for.
 - API.Bible with a key for copyrighted translations under licence.
 - Community songbook sync, which is where churches share corrections
   to lyrics they already hold rights to use.
+
+## Bible: downloadable Bibles (full text, offline)
+
+Adding a Bible from "More Available…" downloads the whole translation
+once and keeps it on the computer (IndexedDB, database `tw-bibles`), so
+the Scriptures table lists every verse and search covers all of them
+without a network. Code: `src/features/bible/packs.ts`.
+
+Source: the `scrollmapper/bible_databases` project on GitHub, which
+publishes each translation as one JSON file
+(`formats/json/<Name>.json`, about 8 MB, 31,102 verses for the standard
+66-book Bible). The project's catalogue mixes licences, so the app only
+offers an allowlist of translations that are public domain or dedicated
+to it:
+
+King James Version, American King James Version, American Standard
+Version (1901), Berean Standard Bible, Open English Bible, Webster's
+Bible, Darby Bible (1889), Young's Literal Translation (1898), Geneva
+Bible (1599), Tyndale Bible, Wycliffe Bible and Douay-Rheims
+(Challoner). Each file was checked for the full verse count and for
+clean text.
+
+Rules the code follows:
+
+- Only the versions the user adds are downloaded, one at a time, with a
+  progress figure.
+- A copyrighted translation is never offered here. It only arrives
+  through a licensed route.
+- The bible-api.com lookups above stay for versions without a download
+  ("Online lookup only" in the same dialog).
+- Typing a reference such as John 3:16 or 1 Cor 13:4-7 and pressing
+  Enter jumps to it in a downloaded Bible without going online.

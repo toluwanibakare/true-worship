@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { SchedulePanel } from '../features/schedule/SchedulePanel'
 import { SongLibrary } from '../features/songs/SongLibrary'
+import { SongEditor } from '../features/songs/SongEditor'
 import { BibleLookup } from '../features/bible/BibleLookup'
 import { MediaLibrary } from '../features/media/MediaLibrary'
+import { WebBrowser } from '../features/web/WebBrowser'
 import type { UserMedia } from '../electron'
 import { ThemePicker } from '../features/themes/ThemePicker'
 import { LivePanel } from '../features/live/LivePanel'
@@ -41,7 +43,7 @@ import {
   demoSongs,
   demoThemes,
 } from '../shared/lib/demo'
-import type { ScheduleItem, Song } from '../shared/lib/types'
+import type { ScheduleItem, Song, Verse } from '../shared/lib/types'
 
 /**
  * Toolbar button: an icon above a short label. The toolbar splits
@@ -93,6 +95,69 @@ function ToolButton({
 /** Thin rule between toolbar groups. */
 function ToolDivider() {
   return <span className="mx-1 h-8 w-px bg-slate-300 dark:bg-slate-700" aria-hidden="true" />
+}
+
+/**
+ * A toolbar button that opens a small menu under it (New, Open), with a
+ * caret beside the label. Items that cannot run are greyed out.
+ */
+function ToolMenuButton({
+  label,
+  icon,
+  items,
+}: {
+  label: string
+  icon: ReactNode
+  items: { label: string; onClick: () => void }[]
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className={`flex flex-col items-center gap-0.5 rounded-md px-2 py-1 ${
+          open ? 'bg-slate-200 dark:bg-slate-800' : 'hover:bg-slate-200 dark:hover:bg-slate-800'
+        }`}
+      >
+        <span>{icon}</span>
+        <span className="text-[11px] leading-none">
+          {label} <span className="text-[8px] opacity-70">▼</span>
+        </span>
+      </button>
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label="Close menu"
+            className="fixed inset-0 z-40 cursor-default"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            role="menu"
+            className="absolute left-0 top-full z-50 mt-1 w-52 rounded-md border border-slate-300 bg-white py-1 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          >
+            {items.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false)
+                  item.onClick()
+                }}
+                className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-200 dark:hover:bg-slate-800"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
 }
 
 const iconProps = {
@@ -200,7 +265,7 @@ type Preview = {
   slides: string[][]
   /** Names for the slides (Verse 1, Chorus); numbered when absent. */
   labels?: string[]
-  /** Book, chapter, verse and version under a scripture, e.g. "John 3:16 · KJV". */
+  /** Book, chapter, verse and version under a scripture, e.g. "John 3:16 (KJV)". */
   reference?: string
   /** Set when the previewed item is a media file rather than words. */
   media?: MediaLook
@@ -224,7 +289,7 @@ function previewForSchedule(item: ScheduleItem | undefined, songs: Song[]): Prev
     return {
       title: item.ref,
       slides: text ? [[text]] : [['Passage not in the demo library.']],
-      reference: text ? `${item.ref} · ${SCRIPTURE_VERSION}` : undefined,
+      reference: text ? `${item.ref} (${SCRIPTURE_VERSION})` : undefined,
     }
   }
   return { title: item.title, slides: [[item.title]] }
@@ -256,6 +321,19 @@ export function App() {
   const [customPreview, setCustomPreview] = useState<Preview | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [dialog, setDialog] = useState<Dialog | null>(null)
+  const [songEditor, setSongEditor] = useState<{ song: Song | null } | null>(null)
+  // The built-in web browser replaces the preview and live panes while open.
+  const [showWeb, setShowWeb] = useState(false)
+  // How long slides fade into each other on the live output (0 = straight cut).
+  const [transitionMs, setTransitionMs] = useState(() => {
+    try {
+      const stored = localStorage.getItem('tw-transition-ms')
+      return stored === null ? 300 : Math.max(0, Number(stored) || 0)
+    } catch {
+      return 300
+    }
+  })
+  const [webLive, setWebLive] = useState(false)
   // The media file on the live output, if any. The ref is read by sendLive in
   // the same tick the state is set, before React has re-rendered.
   const [liveMedia, setLiveMediaState] = useState<MediaLook | null>(null)
@@ -361,6 +439,7 @@ export function App() {
       fontSize: theme.fontSize,
       fontFamily: theme.fontFamily,
       bold: theme.bold,
+      transitionMs,
     })
   }
 
@@ -452,6 +531,8 @@ export function App() {
   const handleLogo = toggleLogo
 
   const handleClear = () => {
+    window.electronAPI?.stopWebLive()
+    setWebLive(false)
     setLive(null)
     setLiveMedia(null)
     setLiveReference(null)
@@ -491,6 +572,75 @@ export function App() {
     setBlack(false)
     setLogo(false)
     sendLive(live.title, lines)
+  }
+
+  // The main process ends the web feed when words, Black or Logo go live.
+  useEffect(() => {
+    window.electronAPI?.onWebLiveEnded(() => setWebLive(false))
+  }, [])
+
+  // Save is only live when the schedule or song library differ from what
+  // was last saved, opened or started fresh. The snapshot is compared as
+  // text; markClean re-reads it after the state it follows has landed.
+  const snapshot = JSON.stringify({ schedule, songs })
+  const [savedSnapshot, setSavedSnapshot] = useState(snapshot)
+  const [cleanTick, setCleanTick] = useState(0)
+  const cleanPending = useRef(false)
+  const markClean = () => {
+    cleanPending.current = true
+    setCleanTick((tick) => tick + 1)
+  }
+  useEffect(() => {
+    if (cleanPending.current) {
+      cleanPending.current = false
+      setSavedSnapshot(snapshot)
+    }
+  }, [snapshot, cleanTick])
+  const dirty = snapshot !== savedSnapshot
+
+  const saveSchedule = () => {
+    void downloadTworship({ title: 'Sunday Service', kind: 'schedule', songs, schedule })
+    setSavedSnapshot(snapshot)
+  }
+
+  const newSchedule = () => {
+    setSchedule([])
+    setSelectedId(null)
+    setCustomPreview(null)
+    markClean()
+  }
+
+  const saveSongDraft = (draft: { title: string; author: string; copyright: string; verses: Verse[] }) => {
+    const editing = songEditor?.song ?? null
+    if (editing) {
+      setSongs((current) =>
+        current.map((song) =>
+          song.id === editing.id
+            ? { ...song, title: draft.title, author: draft.author, copyright: draft.copyright || undefined, verses: draft.verses }
+            : song,
+        ),
+      )
+    } else {
+      const slug = draft.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'song'
+      setSongs((current) => [
+        ...current,
+        {
+          id: `my-${slug}-${Math.random().toString(36).slice(2, 7)}`,
+          title: draft.title,
+          author: draft.author,
+          copyright: draft.copyright || undefined,
+          verses: draft.verses,
+          source: 'owned',
+        },
+      ])
+    }
+    setSongEditor(null)
+  }
+
+  const deleteSong = (song: Song) => {
+    if (window.confirm(`Delete "${song.title}" from the song library?`)) {
+      setSongs((current) => current.filter((entry) => entry.id !== song.id))
+    }
   }
 
   const addItem = () =>
@@ -577,6 +727,16 @@ export function App() {
   const goToSlide = (index: number) =>
     setSlideIndex(Math.min(Math.max(index, 0), preview.slides.length - 1))
 
+  // While something is live, the left and right arrows step through its
+  // verses on the screen; with nothing live they move through the schedule.
+  const liveActive = live !== null && liveSlides !== null
+  const stepLive = (direction: -1 | 1) => {
+    if (!live || !liveSlides) return
+    const next = liveSlideIndex + direction
+    if (next < 0 || next >= liveSlides.length) return
+    handleLiveSlideSelect(next)
+  }
+
   const stepSchedule = (direction: -1 | 1) => {
     if (!selectedId) return
     const index = schedule.findIndex((item) => item.id === selectedId)
@@ -596,13 +756,16 @@ export function App() {
     toggleLogo,
     toggleText,
     stepSlide,
+    stepLive,
+    liveActive,
     goToSlide,
     nextItem: () => stepSchedule(1),
     prevItem: () => stepSchedule(-1),
     removeSelected,
     openService: () => fileInputRef.current?.click(),
-    saveService: () =>
-      downloadTworship({ title: 'Sunday Service', kind: 'schedule', songs, schedule }),
+    saveService: () => {
+      if (dirty) saveSchedule()
+    },
     showAlerts: () => setDialog('alerts'),
     setShowShortcuts,
     showShortcuts,
@@ -617,13 +780,16 @@ export function App() {
     toggleLogo,
     toggleText,
     stepSlide,
+    stepLive,
+    liveActive,
     goToSlide,
     nextItem: () => stepSchedule(1),
     prevItem: () => stepSchedule(-1),
     removeSelected,
     openService: () => fileInputRef.current?.click(),
-    saveService: () =>
-      downloadTworship({ title: 'Sunday Service', kind: 'schedule', songs, schedule }),
+    saveService: () => {
+      if (dirty) saveSchedule()
+    },
     showAlerts: () => setDialog('alerts'),
     setShowShortcuts,
     showShortcuts,
@@ -742,11 +908,13 @@ export function App() {
           break
         case 'ArrowRight':
           event.preventDefault()
-          a.nextItem()
+          if (a.liveActive) a.stepLive(1)
+          else a.nextItem()
           break
         case 'ArrowLeft':
           event.preventDefault()
-          a.prevItem()
+          if (a.liveActive) a.stepLive(-1)
+          else a.prevItem()
           break
         case ' ':
           // Only when nothing has focus, so Space still works on buttons.
@@ -796,10 +964,12 @@ export function App() {
       mergeSongs(result.songs)
       mergeSchedule(result.schedule)
     }
+    // What was just opened came from a file, so there is nothing new to save.
+    markClean()
   }
 
   // On air: something is live, or the output is held on Black or Logo.
-  const onAir = live !== null || black || logo
+  const onAir = live !== null || black || logo || webLive
   const liveLines = black ? [] : logo ? ['True Worship'] : (live?.lines ?? [])
   const liveTitle = black ? 'Black' : logo ? 'True Worship' : (live?.title ?? 'Nothing live')
 
@@ -832,15 +1002,9 @@ export function App() {
           <MenuBar
             theme={themeMode}
             onThemeChange={setThemeMode}
-            onNewSchedule={() => {
-              setSchedule([])
-              setSelectedId(null)
-              setCustomPreview(null)
-            }}
+            onNewSchedule={newSchedule}
             onOpenService={() => fileInputRef.current?.click()}
-            onSaveService={() =>
-              downloadTworship({ title: 'Sunday Service', kind: 'schedule', songs, schedule })
-            }
+            onSaveService={saveSchedule}
             onExportLibrary={() =>
               downloadTworship({ title: 'True Worship Library', kind: 'library', songs, schedule: [] })
             }
@@ -863,26 +1027,38 @@ export function App() {
 
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-2">
           <div className="flex items-center gap-1">
-            <ToolButton
+            <ToolMenuButton
               label="New"
               icon={IconNew}
-              onClick={() => {
-                setSchedule([])
-                setSelectedId(null)
-                setCustomPreview(null)
-              }}
+              items={[
+                { label: 'New Schedule', onClick: newSchedule },
+                { label: 'New Song…', onClick: () => setSongEditor({ song: null }) },
+              ]}
             />
-            <ToolButton label="Open" icon={IconOpen} onClick={() => fileInputRef.current?.click()} />
+            <ToolMenuButton
+              label="Open"
+              icon={IconOpen}
+              items={[
+                { label: 'Open Schedule…', onClick: () => fileInputRef.current?.click() },
+                { label: 'Import Songs and Files…', onClick: () => setDialog('import') },
+              ]}
+            />
             <ToolButton
               label="Save"
               icon={IconSave}
-              onClick={() =>
-                downloadTworship({ title: 'Sunday Service', kind: 'schedule', songs, schedule })
-              }
+              disabled={!dirty}
+              title={dirty ? 'Save the schedule' : 'Nothing to save'}
+              onClick={saveSchedule}
             />
             <ToolDivider />
             <ToolButton label="Store" icon={IconStore} disabled title="Coming soon" onClick={() => {}} />
-            <ToolButton label="Web" icon={IconWeb} disabled title="Coming soon" onClick={() => {}} />
+            <ToolButton
+              label="Web"
+              icon={IconWeb}
+              disabled={!window.electronAPI}
+              title={window.electronAPI ? 'Open the web browser' : 'The web browser needs the desktop app'}
+              onClick={() => setShowWeb((open) => !open)}
+            />
             <ToolDivider />
             <ToolButton label="Remote" icon={IconRemote} disabled title="Coming soon" onClick={() => {}} />
           </div>
@@ -958,6 +1134,11 @@ export function App() {
             onReset={() => setScheduleWidth(280)}
           />
 
+          {showWeb ? (
+            <div className="h-full min-w-0 flex-1">
+              <WebBrowser live={webLive} onLiveChange={setWebLive} onClose={() => setShowWeb(false)} />
+            </div>
+          ) : (
           <div ref={centreRef} className="flex min-h-0 min-w-0 flex-1">
             <div className="flex h-full min-w-0 flex-col" style={{ width: `${previewPercent}%` }}>
               <div className="min-h-0 flex-1">
@@ -1068,6 +1249,7 @@ export function App() {
               </div>
             </div>
           </div>
+          )}
         </div>
 
         <Splitter
@@ -1104,6 +1286,9 @@ export function App() {
                 songs={songs}
                 onOpen={openSong}
                 onGoLive={goLiveSong}
+                onNew={() => setSongEditor({ song: null })}
+                onEdit={(song) => setSongEditor({ song })}
+                onDelete={deleteSong}
                 onAdd={(song) =>
                   setSongs((current) =>
                     current.some((entry) => entry.id === song.id)
@@ -1116,11 +1301,11 @@ export function App() {
             {tab === 'bible' && (
               <BibleLookup
                 passages={demoPassage}
-                onOpen={(reference, slides) =>
-                  showPreview({ title: reference, slides })
+                onOpen={(reference, slides, version) =>
+                  showPreview({ title: reference, slides, reference: `${reference} (${version})` })
                 }
-                onGoLive={(reference, slides) => {
-                  const next = { title: reference, slides }
+                onGoLive={(reference, slides, version) => {
+                  const next = { title: reference, slides, reference: `${reference} (${version})` }
                   showPreview(next)
                   goLiveWith(
                     next,
@@ -1196,6 +1381,28 @@ export function App() {
       )}
       {dialog === 'liveSettings' && (
         <Modal title="Live Settings" onClose={() => setDialog(null)}>
+          <h3 className="mb-2 text-sm font-semibold">Transition</h3>
+          <label className="mb-6 flex items-center gap-3 text-sm">
+            Fade between slides and when clearing
+            <select
+              value={transitionMs}
+              onChange={(event) => {
+                const next = Number(event.target.value)
+                setTransitionMs(next)
+                try {
+                  localStorage.setItem('tw-transition-ms', String(next))
+                } catch {
+                  // Storage unavailable: the choice lasts until the app closes.
+                }
+              }}
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 dark:border-slate-700 dark:bg-slate-900"
+            >
+              <option value={0}>Off (cut)</option>
+              <option value={150}>Fast</option>
+              <option value={300}>Normal</option>
+              <option value={600}>Slow</option>
+            </select>
+          </label>
           <h3 className="mb-2 text-sm font-semibold">Display</h3>
           <DisplayPanel bare />
           <h3 className="mb-2 mt-6 border-t border-slate-300 pt-4 text-sm font-semibold dark:border-slate-700">
@@ -1214,6 +1421,14 @@ export function App() {
             onScheduleImported={mergeSchedule}
           />
         </Modal>
+      )}
+      {songEditor && (
+        <SongEditor
+          key={songEditor.song?.id ?? 'new'}
+          song={songEditor.song}
+          onSave={saveSongDraft}
+          onClose={() => setSongEditor(null)}
+        />
       )}
       <ShortcutsDialog open={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </div>

@@ -16,7 +16,7 @@ export type LiveUpdatePayload = {
   backgroundVideo?: string
   /** Layout id from features/layouts, default fullscreen. */
   layout?: string
-  /** Book, chapter, verse and version shown under a scripture. */
+  /** Book, chapter, verse and version shown under a scripture, e.g. "John 3:16 (KJV)". */
   reference?: string
   /** Scrolling alert at the top of the output, or null. */
   alert?: MarqueeAlert | null
@@ -26,6 +26,8 @@ export type LiveUpdatePayload = {
   fontFamily: string
   /** Bold slide text. */
   bold: boolean
+  /** Length of the fade between slides, in milliseconds; 0 for a straight cut. */
+  transitionMs?: number
 }
 
 /** A background the user added: a photo or a video kept in the app's data folder. */
@@ -54,11 +56,17 @@ export type ElectronAPI = {
   listBackgrounds: () => Promise<UserBackground[]>
   importBackgrounds: () => Promise<UserBackground[]>
   removeBackground: (file: string) => Promise<void>
+  startWebLive: (webContentsId: number) => void
+  stopWebLive: () => void
+  onWebFrame: (callback: (jpeg: Uint8Array) => void) => void
+  onWebFrameEnd: (callback: () => void) => void
+  onWebLiveEnded: (callback: () => void) => void
   listMedia: () => Promise<UserMedia[]>
   importMedia: () => Promise<UserMedia[]>
   removeMedia: (file: string) => Promise<void>
   getDisplays: () => Promise<DisplayInfo[]>
   sendLiveUpdate: (payload: LiveUpdatePayload) => void
+  getLastLive: () => Promise<LiveUpdatePayload | null>
   onLiveUpdate: (callback: (payload: LiveUpdatePayload) => void) => void
   ndiStatus: () => Promise<NdiStatus>
   setNdi: (options: NdiOptions) => Promise<NdiStatus>

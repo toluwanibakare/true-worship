@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Song } from '../../shared/lib/types'
 import { ResourceView } from '../../shared/components/ResourceView'
+import { ResourceTable, type Column } from '../../shared/components/ResourceTable'
 import {
   LYRICS_RIGHTS_NOTE,
   lyricsToSong,
@@ -14,7 +15,9 @@ import {
  * preview pane. Laid out as a resource tab: search
  * and the SONGS source list on the left, a table of Title, Author and
  * Source on the right, a count along the bottom. Click a row to
- * preview it, double-click to go live. Song storage moves to SQLite;
+ * preview it, double-click to go live, right-click for New Song,
+ * Edit Song and Delete. The side panel lists All Songs, with a + for
+ * a new song and a gear menu at the bottom. Song storage moves to SQLite;
  * this panel only renders
  * whatever the app hands it. The online section searches LRCLIB and
  * adds a found lyric to the library with source 'community'.
@@ -24,28 +27,50 @@ export function SongLibrary({
   onOpen,
   onGoLive,
   onAdd,
+  onNew,
+  onEdit,
+  onDelete,
 }: {
   songs: Song[]
   onOpen: (song: Song) => void
   onGoLive: (song: Song) => void
   onAdd: (song: Song) => void
+  onNew: () => void
+  onEdit: (song: Song) => void
+  onDelete: (song: Song) => void
 }) {
   const [query, setQuery] = useState('')
   const [pickedId, setPickedId] = useState<string | null>(null)
+  const [gearOpen, setGearOpen] = useState(false)
+  const [onlineOpen, setOnlineOpen] = useState(false)
+  const [menu, setMenu] = useState<{ x: number; y: number; song: Song | null } | null>(null)
+  const picked = songs.find((song) => song.id === pickedId) ?? null
+  const columns: Column<Song>[] = [
+    { key: 'title', label: 'Title', width: '34%', value: (song) => song.title, className: 'font-medium' },
+    { key: 'author', label: 'Author', width: '26%', value: (song) => song.author },
+    { key: 'copyright', label: 'Copyright', width: '26%', value: (song) => song.copyright ?? '' },
+    { key: 'source', label: 'Source', width: '14%', value: (song) => song.source },
+  ]
   const [onlineQuery, setOnlineQuery] = useState('')
   const [onlineResults, setOnlineResults] = useState<LyricResult[]>([])
   const [onlineBusy, setOnlineBusy] = useState(false)
   const [onlineError, setOnlineError] = useState<string | null>(null)
   const [addedIds, setAddedIds] = useState<string[]>([])
 
+  const [field, setField] = useState('Any Field')
   const lower = query.toLowerCase()
-  const visible = songs.filter(
-    (song) =>
-      song.title.toLowerCase().includes(lower) ||
-      song.author.toLowerCase().includes(lower) ||
-      song.verses.some((verse) =>
-        verse.lines.some((line) => line.toLowerCase().includes(lower)),
-      ),
+  const inTitle = (song: Song) => song.title.toLowerCase().includes(lower)
+  const inAuthor = (song: Song) => song.author.toLowerCase().includes(lower)
+  const inLyrics = (song: Song) =>
+    song.verses.some((verse) => verse.lines.some((line) => line.toLowerCase().includes(lower)))
+  const visible = songs.filter((song) =>
+    field === 'Title'
+      ? inTitle(song)
+      : field === 'Author'
+        ? inAuthor(song)
+        : field === 'Lyrics'
+          ? inLyrics(song)
+          : inTitle(song) || inAuthor(song) || inLyrics(song),
   )
 
   async function runOnlineSearch() {
@@ -66,47 +91,86 @@ export function SongLibrary({
     <ResourceView
       query={query}
       onQuery={setQuery}
-      placeholder="Search any field"
+      placeholder={`Search ${field}`}
+      searchFields={['Any Field', 'Title', 'Author', 'Lyrics']}
+      searchField={field}
+      onSearchField={setField}
       sourcesTitle="Songs"
       sources={['All Songs']}
       footer={`${visible.length} of ${songs.length} ${songs.length === 1 ? 'song' : 'songs'}`}
+      sideFooter={
+        <div className="relative flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onNew}
+            title="New song"
+            aria-label="New song"
+            className="rounded bg-slate-800 px-3 py-1 text-lg font-bold leading-none text-white dark:bg-slate-100 dark:text-slate-900"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={() => setGearOpen((open) => !open)}
+            title="Song actions"
+            aria-label="Song actions"
+            className="rounded px-2 py-1 text-base leading-none text-slate-600 hover:bg-slate-300 dark:text-slate-300 dark:hover:bg-slate-700"
+          >
+            ⚙ ▾
+          </button>
+          {gearOpen && (
+            <>
+              <button
+                type="button"
+                aria-label="Close menu"
+                className="fixed inset-0 z-40 cursor-default"
+                onClick={() => setGearOpen(false)}
+              />
+              <SongMenu
+                className="absolute bottom-full right-0 z-50 mb-1"
+                song={picked}
+                onNew={onNew}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                close={() => setGearOpen(false)}
+              />
+            </>
+          )}
+        </div>
+      }
     >
-      <table className="w-full border-collapse text-sm">
-        <thead className="sticky top-0 bg-slate-200 dark:bg-slate-800">
-          <tr className="text-left">
-            <th className="px-3 py-1.5 font-semibold">Title</th>
-            <th className="px-3 py-1.5 font-semibold">Author</th>
-            <th className="px-3 py-1.5 font-semibold">Source</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visible.map((song) => (
-            <tr
-              key={song.id}
-              onClick={() => {
-                setPickedId(song.id)
-                onOpen(song)
-              }}
-              onDoubleClick={() => onGoLive(song)}
-              title="Double-click to go live"
-              className={`cursor-pointer border-t border-slate-200 dark:border-slate-800 ${
-                song.id === pickedId
-                  ? 'bg-slate-300 dark:bg-slate-700'
-                  : 'hover:bg-slate-200 dark:hover:bg-slate-800'
-              }`}
-            >
-              <td className="px-3 py-1.5 font-medium">{song.title}</td>
-              <td className="px-3 py-1.5">{song.author}</td>
-              <td className="px-3 py-1.5 text-slate-500 dark:text-slate-400">{song.source}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {visible.length === 0 && (
-        <p className="px-3 py-4 text-sm text-slate-500">No songs match.</p>
-      )}
-      <div className="border-t border-slate-200 px-3 py-3 dark:border-slate-800">
-        <p className="text-sm font-semibold">Search online lyrics</p>
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="min-h-0 flex-1">
+          <ResourceTable
+            columns={columns}
+            rows={visible}
+            rowKey={(song) => song.id}
+            selectedKey={pickedId}
+            onSelect={(song) => {
+              setPickedId(song.id)
+              onOpen(song)
+            }}
+            onActivate={onGoLive}
+            onContextMenu={(song, event) => {
+              event.preventDefault()
+              setPickedId(song.id)
+              setMenu({ x: event.clientX, y: event.clientY, song })
+            }}
+            empty="No songs match."
+          />
+        </div>
+        <div className="shrink-0 border-t border-slate-200 dark:border-slate-800">
+          <button
+            type="button"
+            aria-expanded={onlineOpen}
+            onClick={() => setOnlineOpen((open) => !open)}
+            className="flex w-full items-center gap-1.5 px-3 py-1 text-left text-xs font-semibold text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            <span className="w-2 text-[9px]">{onlineOpen ? '▾' : '▸'}</span>
+            Search online lyrics
+          </button>
+          {onlineOpen && (
+        <div className="max-h-56 overflow-auto px-3 pb-3">
         <p className="py-1 text-xs text-slate-500 dark:text-slate-400">
           {LYRICS_RIGHTS_NOTE}
         </p>
@@ -163,7 +227,75 @@ export function SongLibrary({
             </div>
           )
         })}
+        </div>
+          )}
+        </div>
       </div>
+      {menu && (
+        <>
+          <button
+            type="button"
+            aria-label="Close menu"
+            className="fixed inset-0 z-40 cursor-default"
+            onClick={() => setMenu(null)}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              setMenu(null)
+            }}
+          />
+          <SongMenu
+            className="fixed z-50"
+            style={{ left: menu.x, top: menu.y }}
+            song={menu.song}
+            onNew={onNew}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            close={() => setMenu(null)}
+          />
+        </>
+      )}
     </ResourceView>
+  )
+}
+
+/** The New Song / Edit Song / Delete menu, from the right-click and the gear. */
+function SongMenu({
+  song,
+  onNew,
+  onEdit,
+  onDelete,
+  close,
+  className,
+  style,
+}: {
+  song: Song | null
+  onNew: () => void
+  onEdit: (song: Song) => void
+  onDelete: (song: Song) => void
+  close: () => void
+  className?: string
+  style?: React.CSSProperties
+}) {
+  const item =
+    'block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-slate-800'
+  const run = (action: () => void) => () => {
+    close()
+    action()
+  }
+  return (
+    <div
+      style={style}
+      className={`w-44 rounded-md border border-slate-300 bg-white py-1 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${className ?? ''}`}
+    >
+      <button type="button" className={item} onClick={run(onNew)}>
+        New Song…
+      </button>
+      <button type="button" className={item} disabled={!song} onClick={run(() => song && onEdit(song))}>
+        Edit Song…
+      </button>
+      <button type="button" className={item} disabled={!song} onClick={run(() => song && onDelete(song))}>
+        Delete
+      </button>
+    </div>
   )
 }

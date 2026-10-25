@@ -21,8 +21,8 @@ Keyboard Shortcuts) for the same list inside the app.
 | Keys | Does |
 | --- | --- |
 | Ctrl + Del | Delete the selected schedule item |
-| Right Arrow | Select the next schedule item |
-| Left Arrow | Select the previous schedule item |
+| Right Arrow | Next verse on the screen when something is live, otherwise the next schedule item |
+| Left Arrow | Previous verse on the screen when something is live, otherwise the previous schedule item |
 
 ## Show control
 

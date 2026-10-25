@@ -48,6 +48,17 @@ body {
   }
 }
 
+/* Fade for a new background or slide laid over the old one on the live
+   output (the new layer fades in while the old one stays underneath). */
+@keyframes tw-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Marquee: the track holds the message twice and slides one copy's
    width, so the loop restarts with no visible jump. Duration is set
    inline per speed. */

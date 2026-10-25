@@ -36,6 +36,8 @@ Licensed under GPL-3.0 (see `LICENSE`). Contributions are welcome, see
 - **Backgrounds** — photos, looping motion backgrounds and your own
   photos and videos, with text kept readable over all of them. Run
   `npm run backgrounds` once after cloning to generate the built-in set.
+- **Web** — a built-in browser whose page can be shown live on the
+  screen, video and all. See `docs/web-browser.md`.
 - **Alerts** — short messages over the live output.
 - **Community Songbook** — shared lyrics churches improve together,
   with version history, review and sync (sync service arrives in Phase 3).
@@ -91,7 +93,7 @@ later milestone and is not wired up yet.
 
 ## Status
 
-Version 0.12.0. The UI flow works with demo content (public domain:
+Version 0.15.0. The UI flow works with demo content (public domain:
 Amazing Grace, John 3:16 KJV). The main window uses
 the conventional worship-software layout: one title bar with the menus, a toolbar under it, the schedule down the
 left, the preview's slide list and the live slide grid side by side, the

@@ -11,8 +11,8 @@ import { Marquee, type MarqueeAlert } from './Marquee'
  * show the same picture at different sizes. Give it a width or a
  * height through className; it keeps 16:9.
  *
- * A scripture's reference (book, chapter, verse and version) sits
- * under the words in a smaller size.
+ * A scripture's reference (book, chapter, verse and version in
+ * brackets) sits under the words, on the right, in a smaller size.
  *
  * Words stay readable on any background: over a photo, video or
  * gradient the text is forced to white, a soft dark scrim sits between
@@ -65,6 +65,8 @@ export function SlideView({
   layoutId,
   reference,
   alert = null,
+  textOpacity,
+  textFadeMs,
   className = 'w-full',
 }: {
   lines: string[]
@@ -72,9 +74,13 @@ export function SlideView({
   backgroundCss?: string
   backgroundVideo?: string
   layoutId?: string
-  /** Shown under the words, e.g. "John 3:16 · KJV". */
+  /** Shown under the words, on the right, e.g. "John 3:16 (KJV)". */
   reference?: string
   alert?: MarqueeAlert | null
+  /** Fades just the words (0 to 1), leaving the background as it is. */
+  textOpacity?: number
+  /** How long the words take to fade when textOpacity changes. */
+  textFadeMs?: number
   className?: string
 }) {
   const frame = useRef<HTMLDivElement>(null)
@@ -126,7 +132,7 @@ export function SlideView({
 
   const referenceLine = reference ? (
     <p
-      className="mt-3 leading-tight"
+      className="mt-3 w-full text-right leading-tight"
       style={{
         fontSize: fontSize * 0.62,
         fontWeight: 600,
@@ -181,7 +187,13 @@ export function SlideView({
             <Marquee alert={alert} />
           </div>
         )}
-        <div className={`relative z-10 ${layout.wrapper}`}>
+        <div
+          className={`relative z-10 ${layout.wrapper}`}
+          style={{
+            opacity: textOpacity ?? 1,
+            transition: textFadeMs ? `opacity ${textFadeMs}ms ease` : undefined,
+          }}
+        >
           {layout.band ? (
             <div className={layout.band}>
               {words}

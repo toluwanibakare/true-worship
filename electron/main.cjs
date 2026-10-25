@@ -8,6 +8,7 @@ const {
   protocol,
   screen,
   shell,
+  webContents,
 } = require('electron')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -22,6 +23,67 @@ let liveWindow = null
 let liveSettings = { displayId: 'auto', fullscreen: true, alwaysOnTop: false }
 /** True while the live window is a normal window because no projector is connected. */
 let liveWindowed = false
+
+// The built-in web browser is a <webview> in the operator window. Pages
+// get a locked-down web preferences set: no Node, no preload, http(s)
+// only, and links that want a new window load in the same view.
+app.on('web-contents-created', (_event, contents) => {
+  contents.on('will-attach-webview', (event, webPreferences, params) => {
+    delete webPreferences.preload
+    webPreferences.nodeIntegration = false
+    webPreferences.contextIsolation = true
+    webPreferences.sandbox = true
+    if (!/^https?:\/\//i.test(params.src)) event.preventDefault()
+  })
+  if (contents.getType() === 'webview') {
+    contents.setWindowOpenHandler(({ url }) => {
+      if (/^https?:\/\//i.test(url)) contents.loadURL(url)
+      return { action: 'deny' }
+    })
+  }
+})
+
+// What the web browser shows is streamed to the live window as JPEG
+// frames, so it mirrors the page as it moves (video, animation, scrolling)
+// without the projector loading the page itself.
+let webLiveContents = null
+
+function stopWebLive(notifyOperator) {
+  if (webLiveContents && !webLiveContents.isDestroyed()) {
+    try {
+      webLiveContents.endFrameSubscription()
+    } catch {
+      // Already stopped.
+    }
+  }
+  webLiveContents = null
+  if (liveWindow && !liveWindow.isDestroyed()) liveWindow.webContents.send('web-frame-end')
+  if (notifyOperator && operatorWindow && !operatorWindow.isDestroyed()) {
+    operatorWindow.webContents.send('web-live-ended')
+  }
+}
+
+ipcMain.on('web-live-start', (_event, id) => {
+  const contents = webContents.fromId(Number(id))
+  if (!contents || contents.getType() !== 'webview') return
+  stopWebLive(false)
+  webLiveContents = contents
+  let last = 0
+  contents.beginFrameSubscription(false, (image) => {
+    const now = Date.now()
+    if (now - last < 50) return // about 20 frames a second
+    last = now
+    if (liveWindow && !liveWindow.isDestroyed()) {
+      liveWindow.webContents.send('web-frame', image.toJPEG(78))
+    }
+  })
+  contents.once('destroyed', () => {
+    if (webLiveContents === contents) stopWebLive(true)
+  })
+  contents.invalidate()
+})
+
+ipcMain.on('web-live-stop', () => stopWebLive(false))
 
 // Backgrounds the user adds live in userData and are served to both
 // windows through this scheme, so a path never has to leave the folder.
@@ -172,6 +234,7 @@ function createOperatorWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
+      webviewTag: true,
     },
   })
   // Links in the operator window (the GitHub repo) open in the browser,
@@ -212,10 +275,12 @@ function createLiveWindow(settings = {}) {
     alwaysOnTop: settings.alwaysOnTop ?? false,
   }
   if (liveWindow && !liveWindow.isDestroyed()) {
-    applyToLiveWindow(wanted)
-    // Bring it forward without taking the keyboard from the operator.
+    // Every Go Live calls this. Moving, resizing and fullscreen are slow
+    // on some systems, so only redo them when the settings really changed.
+    if (JSON.stringify(wanted) !== JSON.stringify(liveSettings)) applyToLiveWindow(wanted)
     if (liveWindow.isMinimized()) liveWindow.restore()
-    liveWindow.showInactive()
+    // Bring it forward without taking the keyboard from the operator.
+    if (!liveWindow.isVisible()) liveWindow.showInactive()
     return liveWindow
   }
   liveSettings = wanted
@@ -253,7 +318,16 @@ ipcMain.on('apply-display-settings', (_event, settings) => {
   applyToLiveWindow(settings)
 })
 
+// The last slide sent to the live window. The operator often sends it just
+// as the window is being created, before the page has loaded to hear it, so
+// the live window asks for it when it starts.
+let lastLivePayload = null
+ipcMain.handle('live-last', () => lastLivePayload)
+
 ipcMain.on('live-update', (_event, payload) => {
+  lastLivePayload = payload
+  // Words, Black or Logo replace whatever the web browser was showing.
+  if (webLiveContents) stopWebLive(true)
   if (liveWindow && !liveWindow.isDestroyed()) {
     liveWindow.webContents.send('live-update', payload)
   }
