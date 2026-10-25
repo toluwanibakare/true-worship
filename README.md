@@ -11,7 +11,9 @@ Licensed under GPL-3.0 (see `LICENSE`). Contributions are welcome, see
 
 ## Features (so far, scaffold stage)
 
-- **Schedule** — the ordered service list.
+- **Schedule** — the ordered service list, EasyWorship-style:
+  thumbnail, title and notes line per item, songs expand to show
+  their slides, double-click a row to send it live.
 - **Songs** — searchable song library with verse structure.
 - **Bible** — scripture lookup by reference.
 - **Media** — images, videos, audio.
@@ -81,7 +83,7 @@ later milestone and is not wired up yet.
 
 ## Status
 
-Version 0.3.2. The UI flow works with demo content (public domain:
+Version 0.4.0. The UI flow works with demo content (public domain:
 Amazing Grace, John 3:16 KJV). The main window now follows
 EasyWorship's layout, studied from the EasyWorship 7 screenshots:
 menu bar and toolbar on top, schedule down the left, preview in the

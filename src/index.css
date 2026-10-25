@@ -10,6 +10,13 @@ body,
   height: 100%;
 }
 
+/* EasyWorship is a Windows app, so its interface is drawn in Segoe
+   UI; the stack below matches it on Windows and falls back to the
+   system UI font everywhere else. */
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
 /* Marquee: the track holds the message twice and slides one copy's
    width, so the loop restarts with no visible jump. Duration is set
    inline per speed. */

@@ -37,8 +37,8 @@ export const demoSchedule: ScheduleItem[] = [
 ]
 
 export const demoThemes: Theme[] = [
-  { id: 'dark', name: 'Dark Stage', background: '#0f172a', textColor: '#ffffff', fontSize: 44 },
-  { id: 'light', name: 'Light', background: '#f8fafc', textColor: '#0f172a', fontSize: 44 },
+  { id: 'dark', name: 'Dark Stage', background: '#0f172a', textColor: '#ffffff', fontSize: 44, fontFamily: "'Calibri', 'Carlito', Arial, sans-serif" },
+  { id: 'light', name: 'Light', background: '#f8fafc', textColor: '#0f172a', fontSize: 44, fontFamily: "'Calibri', 'Carlito', Arial, sans-serif" },
 ]
 
 export const demoPassage: Record<string, string> = {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { SchedulePanel } from '../features/schedule/SchedulePanel'
 import { SongLibrary } from '../features/songs/SongLibrary'
 import { BibleLookup } from '../features/bible/BibleLookup'
@@ -28,6 +28,97 @@ import { MenuBar, type ThemeMode } from './MenuBar'
 import { Button, Panel } from '../shared/components/ui'
 import { demoPassage, demoSchedule, demoSongs, demoThemes } from '../shared/lib/demo'
 import type { ScheduleItem, Song } from '../shared/lib/types'
+
+/**
+ * Toolbar button, EasyWorship-style: an icon above a short label.
+ * EasyWorship's toolbar splits the same way: file commands on the
+ * left, Go Live, Alerts, Logo, Black and Clear on the right.
+ */
+function ToolButton({
+  label,
+  onClick,
+  icon,
+  accent,
+}: {
+  label: string
+  onClick: () => void
+  icon: ReactNode
+  accent?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-col items-center gap-0.5 rounded-md px-2 py-1 hover:bg-slate-200 dark:hover:bg-slate-800"
+    >
+      <span className={accent ? 'text-green-600 dark:text-green-400' : undefined}>{icon}</span>
+      <span className="text-[11px] leading-none">{label}</span>
+    </button>
+  )
+}
+
+const iconProps = {
+  width: 22,
+  height: 22,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.8,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+}
+
+const IconNew = (
+  <svg {...iconProps}>
+    <rect x="4" y="3" width="16" height="18" rx="2" />
+    <path d="M12 8v8M8 12h8" />
+  </svg>
+)
+const IconOpen = (
+  <svg {...iconProps}>
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+  </svg>
+)
+const IconSave = (
+  <svg {...iconProps}>
+    <rect x="4" y="3" width="16" height="18" rx="2" />
+    <rect x="7" y="3" width="8" height="5" />
+    <path d="M7 21v-6h10v6" />
+  </svg>
+)
+const IconPlus = (
+  <svg {...iconProps}>
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+)
+const IconPlay = (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M7 4l13 8-13 8z" />
+  </svg>
+)
+const IconBell = (
+  <svg {...iconProps}>
+    <path d="M18 9a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7" />
+    <path d="M10 20a2 2 0 0 0 4 0" />
+  </svg>
+)
+const IconImage = (
+  <svg {...iconProps}>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <circle cx="9" cy="10" r="1.5" />
+    <path d="M21 17l-5-5-4 4-3-3-6 6" />
+  </svg>
+)
+const IconBlack = (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+    <rect x="5" y="5" width="14" height="14" rx="2" />
+  </svg>
+)
+const IconClear = (
+  <svg {...iconProps}>
+    <path d="M6 6l12 12M18 6L6 18" />
+  </svg>
+)
 
 /**
  * App shell, laid out the way EasyWorship lays its main window out,
@@ -145,6 +236,7 @@ export function App() {
       alert: alertArg !== undefined ? alertArg : alert,
       textColor: theme.textColor,
       fontSize: theme.fontSize,
+      fontFamily: theme.fontFamily,
     })
   }
 
@@ -261,6 +353,35 @@ export function App() {
       setCustomPreview(null)
       return next
     })
+  }
+
+  const slideLabelsForItem = (item: ScheduleItem) => {
+    if (item.type === 'song') {
+      const song = songs.find((entry) => entry.id === item.ref)
+      return song ? song.verses.map((verse) => verse.label) : []
+    }
+    return ['Slide 1']
+  }
+
+  // Double-clicking a schedule row sends that item live from its
+  // first slide, the fastest path from plan to screen.
+  const selectAndGoLive = (id: string) => {
+    const item = schedule.find((entry) => entry.id === id)
+    if (!item) return
+    const itemPreview = previewForSchedule(item, songs)
+    const first = itemPreview.slides[0] ?? []
+    setSelectedId(id)
+    setCustomPreview(null)
+    setSlideIndex(0)
+    setLive({ title: itemPreview.title, lines: first })
+    setLiveSlides(itemPreview.slides)
+    setLiveSlideLabels(slideLabelsForItem(item))
+    setLiveSlideIndex(0)
+    setBlack(false)
+    setLogo(false)
+    clearedLiveRef.current = null
+    window.electronAPI?.openLiveWindow(loadDisplaySettings())
+    sendLive(itemPreview.title, first)
   }
 
   const stepSlide = (direction: -1 | 1) =>
@@ -512,7 +633,7 @@ export function App() {
 
   return (
     <div className="flex h-full flex-col bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <header className="border-b border-slate-300 dark:border-slate-800">
+      <header className="border-b border-slate-300 bg-gradient-to-b from-white to-slate-200 dark:border-slate-800 dark:from-slate-900 dark:to-slate-800">
         <div className="flex items-center justify-between px-4 py-1">
           <MenuBar
             theme={themeMode}
@@ -571,34 +692,34 @@ export function App() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1 px-4 pb-2">
-          <Button
-            onClick={() => {
-              setSchedule([])
-              setSelectedId(null)
-              setCustomPreview(null)
-            }}
-          >
-            New
-          </Button>
-          <Button onClick={() => fileInputRef.current?.click()}>Open</Button>
-          <Button
-            onClick={() =>
-              downloadTworship({ title: 'Sunday Service', kind: 'schedule', songs, schedule })
-            }
-          >
-            Save
-          </Button>
-          <span className="mx-1 h-5 border-l border-slate-300 dark:border-slate-700" />
-          <Button onClick={addItem}>Add Item</Button>
-          <span className="mx-1 h-5 border-l border-slate-300 dark:border-slate-700" />
-          <Button primary onClick={handleGoLive}>
-            Go Live
-          </Button>
-          <Button onClick={() => setTab('alerts')}>Alerts</Button>
-          <Button onClick={handleLogo}>Logo</Button>
-          <Button onClick={handleBlack}>Black</Button>
-          <Button onClick={handleClear}>Clear</Button>
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-2">
+          <div className="flex items-center gap-1">
+            <ToolButton
+              label="New"
+              icon={IconNew}
+              onClick={() => {
+                setSchedule([])
+                setSelectedId(null)
+                setCustomPreview(null)
+              }}
+            />
+            <ToolButton label="Open" icon={IconOpen} onClick={() => fileInputRef.current?.click()} />
+            <ToolButton
+              label="Save"
+              icon={IconSave}
+              onClick={() =>
+                downloadTworship({ title: 'Sunday Service', kind: 'schedule', songs, schedule })
+              }
+            />
+            <ToolButton label="Add Item" icon={IconPlus} onClick={addItem} />
+          </div>
+          <div className="flex items-center gap-1">
+            <ToolButton label="Go Live" icon={IconPlay} accent onClick={handleGoLive} />
+            <ToolButton label="Alerts" icon={IconBell} onClick={() => setTab('alerts')} />
+            <ToolButton label="Logo" icon={IconImage} onClick={handleLogo} />
+            <ToolButton label="Black" icon={IconBlack} onClick={handleBlack} />
+            <ToolButton label="Clear" icon={IconClear} onClick={handleClear} />
+          </div>
         </div>
 
         <input
@@ -619,22 +740,30 @@ export function App() {
           <SchedulePanel
             items={schedule}
             selectedId={selectedId}
+            slideIndex={slideIndex}
             onSelect={(id) => {
               setSelectedId(id)
               setCustomPreview(null)
               setSlideIndex(0)
             }}
+            onSelectSlide={(id, index) => {
+              setSelectedId(id)
+              setCustomPreview(null)
+              setSlideIndex(index)
+            }}
+            onGoLiveItem={selectAndGoLive}
             onAdd={addItem}
             onMoveUp={() => moveSelected(-1)}
             onMoveDown={() => moveSelected(1)}
             onRemove={removeSelected}
+            slideLabelsFor={slideLabelsForItem}
           />
 
           <div className="flex min-h-0 flex-col gap-3">
             <Panel title={`Preview — ${preview.title}`} className="flex-1">
               <div
                 className="relative h-full overflow-hidden rounded-md"
-                style={{ background: background?.css ?? theme.background, color: theme.textColor }}
+                style={{ background: background?.css ?? theme.background, color: theme.textColor, fontFamily: theme.fontFamily }}
               >
                 {background?.video && (
                   <video
@@ -684,12 +813,6 @@ export function App() {
                 ))}
               </div>
             )}
-
-            <div>
-              <Button primary onClick={handleGoLive}>
-                GO LIVE &gt;&gt;&gt;
-              </Button>
-            </div>
           </div>
 
           <LivePanel
@@ -769,7 +892,7 @@ export function App() {
       </main>
 
       <footer className="flex items-center justify-between border-t border-slate-300 px-4 py-1.5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-        <span>True Worship 0.3.2 · GPL-3.0 · {schedule.length} items in schedule</span>
+        <span>True Worship 0.4.0 · GPL-3.0 · {schedule.length} items in schedule</span>
         <span>
           Theme: {themeMode} · {live ? 'LIVE' : 'Not live'}
         </span>

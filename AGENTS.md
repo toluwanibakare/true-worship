@@ -80,6 +80,14 @@ src/
    window keydown listener in `app/App.tsx` reads its actions
    through a ref so handlers never go stale. Shortcuts never fire
    while typing, and Ctrl + C never hijacks Copy.
+9. **Fonts are EasyWorship's, too.** Interface: Segoe UI stack in
+   `index.css`. Slides: Calibri stack on every theme
+   (`fontFamily` on `Theme`, carried in the live payload), because
+   Calibri is EasyWorship's default song theme font and Arial is
+   its global font (both from their support forum). Schedule rows
+   are thumbnail + title + italic notes line, with expandable song
+   slides and double-click to go live. The toolbar splits left
+   (file) and right (live controls), icon above label.
 6. **Demo data is clearly marked.** Anything in `shared/lib/demo.ts` is
    placeholder content (public domain only: KJV text, Amazing Grace).
    Demo data never ships as if it were a real library.

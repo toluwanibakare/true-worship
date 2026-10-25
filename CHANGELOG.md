@@ -3,6 +3,36 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
+## [0.4.0] - 2026-10-25
+
+### Changed
+
+- Schedule panel reworked to EasyWorship's arrangement: each row has
+  a thumbnail, the title, and a notes line underneath (type and
+  reference, in the small italic notes style), songs expand with an
+  arrow to show their slides, clicking a slide selects it in the
+  preview, and double-clicking a row sends that item live from its
+  first slide. The toolbar above the list also shows the item count,
+  and an empty schedule explains how to fill it.
+- Toolbar now splits the way EasyWorship's does: New, Open, Save
+  and Add Item on the left, Go Live, Alerts, Logo, Black and Clear
+  on the right, each as an icon above a short label. The Go Live
+  button that sat under the preview is gone, so the live controls
+  live on the right only: the toolbar's right group and the live
+  column.
+- Pane titles are filled bars now, and the header carries the
+  subtle gradient EasyWorship's toolbar has.
+
+### Added
+
+- EasyWorship's fonts: the interface uses Segoe UI (the font
+  Windows draws EasyWorship's interface in), and slide text uses
+  Calibri, EasyWorship's default song theme font (per their support
+  forum; their global font is Arial, which is the fallback in the
+  stack). Themes carry a font family now, and it travels with the
+  live payload, so the projector shows the same font as the
+  preview.
+
 ## [0.3.2] - 2026-10-25
 
 ### Added

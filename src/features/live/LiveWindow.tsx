@@ -31,7 +31,7 @@ export function LiveWindow() {
   return (
     <div
       className="relative h-full overflow-hidden"
-      style={{ background: slide.backgroundCss ?? slide.background, color: slide.textColor }}
+      style={{ background: slide.backgroundCss ?? slide.background, color: slide.textColor, fontFamily: slide.fontFamily }}
     >
       {slide.backgroundVideo && (
         <video

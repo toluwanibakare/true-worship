@@ -20,6 +20,8 @@ export type LiveUpdatePayload = {
   alert?: MarqueeAlert | null
   textColor: string
   fontSize: number
+  /** Slide font stack (EasyWorship's default song theme font is Calibri). */
+  fontFamily: string
 }
 
 export type ElectronAPI = {

@@ -54,7 +54,7 @@ export function LivePanel({
         </div>
         <div
           className="flex aspect-video w-full shrink-0 flex-col items-center justify-center overflow-hidden rounded-md p-4 text-center"
-          style={{ background: theme.background, color: theme.textColor }}
+          style={{ background: theme.background, color: theme.textColor, fontFamily: theme.fontFamily }}
         >
           {lines.map((line) => (
             <p key={line} className="leading-snug" style={{ fontSize: theme.fontSize * 0.5 }}>
