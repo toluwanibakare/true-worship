@@ -276,56 +276,79 @@ ipcMain.on('window-close', (event) => {
 
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 const VIDEO_EXTENSIONS = ['mp4', 'webm', 'm4v', 'mov']
+const AUDIO_EXTENSIONS = ['mp3', 'wav', 'ogg', 'm4a', 'flac']
 
-function backgroundsDir() {
-  const dir = path.join(app.getPath('userData'), 'backgrounds')
+/** A folder of user-added files inside the app's data folder. */
+function libraryDir(folder) {
+  const dir = path.join(app.getPath('userData'), folder)
   fs.mkdirSync(dir, { recursive: true })
   return dir
 }
 
-function describeBackground(file) {
+function describeFile(file, host) {
   const extension = path.extname(file).slice(1).toLowerCase()
   return {
     file,
     // Stored as <time>-<n>-<original name>; show the original name.
     name: path.basename(file, path.extname(file)).replace(/^\d+-\d+-/, ''),
-    kind: VIDEO_EXTENSIONS.includes(extension) ? 'video' : 'still',
-    url: `tw-media://bg/${encodeURIComponent(file)}`,
+    kind: VIDEO_EXTENSIONS.includes(extension)
+      ? 'video'
+      : AUDIO_EXTENSIONS.includes(extension)
+        ? 'audio'
+        : 'still',
+    url: `tw-media://${host}/${encodeURIComponent(file)}`,
   }
 }
 
-ipcMain.handle('backgrounds-list', () =>
-  fs
-    .readdirSync(backgroundsDir())
-    .filter((file) =>
-      [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS].includes(path.extname(file).slice(1).toLowerCase()),
-    )
-    .sort()
-    .map(describeBackground),
-)
+/**
+ * List, add (through a file dialog) and remove the files in one library
+ * folder. Backgrounds take images and videos; Media also takes audio.
+ */
+function registerLibrary({ channel, folder, host, extensions, title }) {
+  ipcMain.handle(`${channel}-list`, () =>
+    fs
+      .readdirSync(libraryDir(folder))
+      .filter((file) => extensions.includes(path.extname(file).slice(1).toLowerCase()))
+      .sort()
+      .map((file) => describeFile(file, host)),
+  )
 
-ipcMain.handle('backgrounds-import', async (event) => {
-  const window = BrowserWindow.fromWebContents(event.sender)
-  const result = await dialog.showOpenDialog(window, {
-    title: 'Add backgrounds',
-    properties: ['openFile', 'multiSelect'],
-    filters: [
-      { name: 'Images and videos', extensions: [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS] },
-    ],
+  ipcMain.handle(`${channel}-import`, async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    const result = await dialog.showOpenDialog(window, {
+      title,
+      properties: ['openFile', 'multiSelect'],
+      filters: [{ name: 'Supported files', extensions }],
+    })
+    if (result.canceled) return []
+    const stamp = Date.now()
+    return result.filePaths.map((source, index) => {
+      const safeName = path.basename(source).replace(/[^\w.\- ]+/g, '_')
+      const file = `${stamp}-${index}-${safeName}`
+      fs.copyFileSync(source, path.join(libraryDir(folder), file))
+      return describeFile(file, host)
+    })
   })
-  if (result.canceled) return []
-  const stamp = Date.now()
-  return result.filePaths.map((source, index) => {
-    const safeName = path.basename(source).replace(/[^\w.\- ]+/g, '_')
-    const file = `${stamp}-${index}-${safeName}`
-    fs.copyFileSync(source, path.join(backgroundsDir(), file))
-    return describeBackground(file)
+
+  ipcMain.handle(`${channel}-remove`, (_event, file) => {
+    const target = path.join(libraryDir(folder), path.basename(String(file)))
+    if (fs.existsSync(target)) fs.unlinkSync(target)
   })
+}
+
+registerLibrary({
+  channel: 'backgrounds',
+  folder: 'backgrounds',
+  host: 'bg',
+  extensions: [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS],
+  title: 'Add backgrounds',
 })
-
-ipcMain.handle('backgrounds-remove', (_event, file) => {
-  const target = path.join(backgroundsDir(), path.basename(String(file)))
-  if (fs.existsSync(target)) fs.unlinkSync(target)
+registerLibrary({
+  channel: 'media',
+  folder: 'media',
+  host: 'media',
+  extensions: [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS, ...AUDIO_EXTENSIONS],
+  title: 'Add media',
 })
 
 ipcMain.handle('get-displays', () => listDisplays())
@@ -347,10 +370,13 @@ app.whenReady().then(() => {
   screen.on('display-added', () => applyToLiveWindow(liveSettings))
   screen.on('display-removed', () => applyToLiveWindow(liveSettings))
 
-  // Serve user-added backgrounds from userData (see backgroundsDir).
+  // Serve user-added backgrounds and media from userData (see libraryDir).
+  // The host says which folder: tw-media://bg/<file> or tw-media://media/<file>.
   protocol.handle('tw-media', (request) => {
-    const file = path.basename(decodeURIComponent(new URL(request.url).pathname))
-    return net.fetch(pathToFileURL(path.join(backgroundsDir(), file)).toString(), {
+    const url = new URL(request.url)
+    const folder = url.host === 'media' ? 'media' : 'backgrounds'
+    const file = path.basename(decodeURIComponent(url.pathname))
+    return net.fetch(pathToFileURL(path.join(libraryDir(folder), file)).toString(), {
       headers: request.headers,
     })
   })

@@ -16,6 +16,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   listBackgrounds: () => ipcRenderer.invoke('backgrounds-list'),
   importBackgrounds: () => ipcRenderer.invoke('backgrounds-import'),
   removeBackground: (file) => ipcRenderer.invoke('backgrounds-remove', file),
+  listMedia: () => ipcRenderer.invoke('media-list'),
+  importMedia: () => ipcRenderer.invoke('media-import'),
+  removeMedia: (file) => ipcRenderer.invoke('media-remove', file),
   getDisplays: () => ipcRenderer.invoke('get-displays'),
   sendLiveUpdate: (payload) => ipcRenderer.send('live-update', payload),
   onLiveUpdate: (callback) =>

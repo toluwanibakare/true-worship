@@ -3,6 +3,7 @@ import { SchedulePanel } from '../features/schedule/SchedulePanel'
 import { SongLibrary } from '../features/songs/SongLibrary'
 import { BibleLookup } from '../features/bible/BibleLookup'
 import { MediaLibrary } from '../features/media/MediaLibrary'
+import type { UserMedia } from '../electron'
 import { ThemePicker } from '../features/themes/ThemePicker'
 import { LivePanel } from '../features/live/LivePanel'
 import { LiveWindow } from '../features/live/LiveWindow'
@@ -182,10 +183,17 @@ type Tab = 'songs' | 'bible' | 'media' | 'themes' | 'backgrounds' | 'layouts' | 
 /** Dialogs opened from the toolbar and menus rather than from the resource tabs. */
 type Dialog = 'alerts' | 'liveSettings' | 'import'
 
+/** An image or video from the Media library, shown in place of the picked background. */
+type MediaLook = { css: string; video?: string }
+
 type Preview = {
   title: string
   /** Slides: each entry is one slide's lines. */
   slides: string[][]
+  /** Names for the slides (Verse 1, Chorus); numbered when absent. */
+  labels?: string[]
+  /** Set when the previewed item is a media file rather than words. */
+  media?: MediaLook
 }
 
 const clamp = (value: number, min: number, max: number) =>
@@ -234,6 +242,14 @@ export function App() {
   const [customPreview, setCustomPreview] = useState<Preview | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [dialog, setDialog] = useState<Dialog | null>(null)
+  // The media file on the live output, if any. The ref is read by sendLive in
+  // the same tick the state is set, before React has re-rendered.
+  const [liveMedia, setLiveMediaState] = useState<MediaLook | null>(null)
+  const liveMediaRef = useRef<MediaLook | null>(null)
+  const setLiveMedia = (next: MediaLook | null) => {
+    liveMediaRef.current = next
+    setLiveMediaState(next)
+  }
   // Draggable dividers. Sizes persist between launches.
   const [scheduleWidth, setScheduleWidth] = usePaneSize('tw-pane-schedule', 280)
   const [previewPercent, setPreviewPercent] = usePaneSize('tw-pane-preview', 50)
@@ -273,12 +289,15 @@ export function App() {
   const theme = themes.find((entry) => entry.id === themeId) ?? themes[0]
 
   // Slide labels: song verses keep their names (Verse 1, Chorus),
-  // everything else is numbered.
+  // everything else is numbered. A previewed item that did not come from
+  // the schedule (a library song, a passage, a media file) brings its own.
   const selectedSong =
     selected?.type === 'song' ? songs.find((entry) => entry.id === selected.ref) : undefined
-  const slideLabels = selectedSong
-    ? selectedSong.verses.map((verse) => verse.label)
-    : preview.slides.map((_, index) => `Slide ${index + 1}`)
+  const slideLabels =
+    preview.labels ??
+    (selectedSong && !customPreview
+      ? selectedSong.verses.map((verse) => verse.label)
+      : preview.slides.map((_, index) => `Slide ${index + 1}`))
 
   // The Electron main process loads the projector window with ?live=1.
   // That window only renders what the operator window sends it.
@@ -295,8 +314,14 @@ export function App() {
       lines,
       background: forcedBackground ?? theme.background,
       // A forced background (Black, Logo) overrides the picked look.
-      backgroundCss: forcedBackground ? undefined : (background?.css ?? theme.background),
-      backgroundVideo: forcedBackground ? undefined : background?.video,
+      backgroundCss: forcedBackground
+        ? undefined
+        : (liveMediaRef.current?.css ?? background?.css ?? theme.background),
+      backgroundVideo: forcedBackground
+        ? undefined
+        : liveMediaRef.current
+          ? liveMediaRef.current.video
+          : background?.video,
       layout: layoutId,
       alert: alertArg !== undefined ? alertArg : alert,
       textColor: theme.textColor,
@@ -312,7 +337,11 @@ export function App() {
   }
 
   const openSong = (song: Song) => {
-    showPreview({ title: song.title, slides: song.verses.map((verse) => verse.lines) })
+    showPreview({
+      title: song.title,
+      slides: song.verses.map((verse) => verse.lines),
+      labels: song.verses.map((verse) => verse.label),
+    })
   }
 
   // Send an item live, starting at the given slide. Double-clicking a
@@ -321,6 +350,7 @@ export function App() {
   const goLiveWith = (target: Preview, labels: string[], index: number) => {
     const lines = target.slides[index] ?? []
     setLive({ title: target.title, lines })
+    setLiveMedia(target.media ?? null)
     setLiveSlides(target.slides)
     setLiveSlideLabels(labels)
     setLiveSlideIndex(index)
@@ -333,8 +363,28 @@ export function App() {
 
   const goLiveSlide = (index: number) => goLiveWith(preview, slideLabels, index)
 
+  // Media files show as the whole slide: an image fitted to the screen, or a
+  // video, with no words over it.
+  const mediaLook = (item: UserMedia): MediaLook =>
+    item.kind === 'video'
+      ? { css: '#000000', video: item.url }
+      : { css: `url("${item.url}") center / contain no-repeat, #000000` }
+
+  const previewMedia = (item: UserMedia) =>
+    showPreview({ title: item.name, slides: [[]], media: mediaLook(item) })
+
+  const goLiveMedia = (item: UserMedia) => {
+    const next = { title: item.name, slides: [[]], media: mediaLook(item) }
+    showPreview(next)
+    goLiveWith(next, ['Slide 1'], 0)
+  }
+
   const goLiveSong = (song: Song) => {
-    const next = { title: song.title, slides: song.verses.map((verse) => verse.lines) }
+    const next = {
+      title: song.title,
+      slides: song.verses.map((verse) => verse.lines),
+      labels: song.verses.map((verse) => verse.label),
+    }
     showPreview(next)
     goLiveWith(next, song.verses.map((verse) => verse.label), 0)
   }
@@ -374,6 +424,7 @@ export function App() {
 
   const handleClear = () => {
     setLive(null)
+    setLiveMedia(null)
     setLiveSlides(null)
     setLiveSlideLabels([])
     setBlack(false)
@@ -475,6 +526,7 @@ export function App() {
     setCustomPreview(null)
     setSlideIndex(0)
     setLive({ title: itemPreview.title, lines: first })
+    setLiveMedia(null)
     setLiveSlides(itemPreview.slides)
     setLiveSlideLabels(slideLabelsForItem(item))
     setLiveSlideIndex(0)
@@ -900,8 +952,8 @@ export function App() {
                   <SlideView
                     lines={slide}
                     theme={theme}
-                    backgroundCss={background?.css}
-                    backgroundVideo={background?.video}
+                    backgroundCss={preview.media?.css ?? background?.css}
+                    backgroundVideo={preview.media ? preview.media.video : background?.video}
                     layoutId={layoutId}
                     alert={alert}
                     className="h-full max-w-full"
@@ -931,7 +983,7 @@ export function App() {
                   slideLabels={liveSlideLabels}
                   liveSlideIndex={liveSlideIndex}
                   live={live !== null && !black && !logo}
-                  backgroundCss={background?.css}
+                  backgroundCss={liveMedia?.css ?? background?.css}
                   layoutId={layoutId}
                   onSelectLiveSlide={handleLiveSlideSelect}
                 />
@@ -958,8 +1010,14 @@ export function App() {
                   <SlideView
                     lines={liveLines}
                     theme={theme}
-                    backgroundCss={live === null || black ? '#000000' : background?.css}
-                    backgroundVideo={live === null || black ? undefined : background?.video}
+                    backgroundCss={live === null || black ? '#000000' : (liveMedia?.css ?? background?.css)}
+                    backgroundVideo={
+                      live === null || black
+                        ? undefined
+                        : liveMedia
+                          ? liveMedia.video
+                          : background?.video
+                    }
                     layoutId={layoutId}
                     alert={live !== null && !black && !logo ? alert : null}
                     className="h-full max-w-full"
@@ -1011,7 +1069,7 @@ export function App() {
                 onGoLive={goLiveScripture}
               />
             )}
-            {tab === 'media' && <MediaLibrary />}
+            {tab === 'media' && <MediaLibrary onPreview={previewMedia} onGoLive={goLiveMedia} />}
             {tab === 'themes' && (
               <ThemePicker
                 themes={themes}
@@ -1035,7 +1093,12 @@ export function App() {
               <BackgroundPicker activeId={background?.id ?? null} onPick={setBackground} />
             )}
             {tab === 'layouts' && (
-              <LayoutPicker activeId={layoutId} onPick={setLayoutId} />
+              <LayoutPicker
+                activeId={layoutId}
+                theme={theme}
+                backgroundCss={background?.css}
+                onPick={setLayoutId}
+              />
             )}
             {tab === 'songbook' && <SongbookPanel songs={songs} />}
           </div>

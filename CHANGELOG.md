@@ -3,6 +3,31 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
+## [0.10.0] - 2026-10-25
+
+### Added
+
+- A real Media library. The side panel filters by All, Videos, Images
+  and Audio; "Add media…" copies files into the app's data folder.
+  Click an image or video to preview it and double-click to put it
+  live; click an audio track to play it. See `docs/media.md`.
+- Icons beside every entry in the resource side panels (Songs,
+  Scriptures, Media, Backgrounds).
+- Backgrounds side panel: All, Photos, Motion, Classic and Added, with
+  a search box and a count, the same frame as Songs and Scriptures.
+
+### Changed
+
+- Layouts are small thumbnails like Backgrounds, each drawn with the
+  real slide renderer in your current theme and background.
+
+### Fixed
+
+- Slide labels in the Preview pane follow what is being previewed: a
+  library song keeps its verse names, and a passage or media file is
+  numbered, instead of borrowing the labels of the selected schedule
+  song.
+
 ## [0.9.0] - 2026-10-25
 
 ### Added

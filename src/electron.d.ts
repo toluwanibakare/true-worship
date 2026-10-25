@@ -34,6 +34,14 @@ export type UserBackground = {
   url: string
 }
 
+/** A file in the Media library: an image, a video or an audio track. */
+export type UserMedia = {
+  file: string
+  name: string
+  kind: 'still' | 'video' | 'audio'
+  url: string
+}
+
 export type ElectronAPI = {
   isElectron: true
   openLiveWindow: (settings?: DisplaySettings) => void
@@ -44,6 +52,9 @@ export type ElectronAPI = {
   listBackgrounds: () => Promise<UserBackground[]>
   importBackgrounds: () => Promise<UserBackground[]>
   removeBackground: (file: string) => Promise<void>
+  listMedia: () => Promise<UserMedia[]>
+  importMedia: () => Promise<UserMedia[]>
+  removeMedia: (file: string) => Promise<void>
   getDisplays: () => Promise<DisplayInfo[]>
   sendLiveUpdate: (payload: LiveUpdatePayload) => void
   onLiveUpdate: (callback: (payload: LiveUpdatePayload) => void) => void

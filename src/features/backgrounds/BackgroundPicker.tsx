@@ -6,13 +6,15 @@ import {
   userBackground,
   type BackgroundPreset,
 } from './backgrounds'
-import { Button, Panel } from '../../shared/components/ui'
+import { Button } from '../../shared/components/ui'
+import { ResourceView } from '../../shared/components/ResourceView'
 
 /**
  * Feature: backgrounds.
- * Pick a look for slides from small thumbnail grids: generated photos,
- * looping motion backgrounds, built-in classics, and the photos and
- * videos the user adds. Added files are copied into the desktop app's
+ * Pick a look for slides from a small thumbnail grid. The side panel
+ * filters it: All, Photos (generated stills), Motion (looping videos),
+ * Classic (built-in CSS looks) and Added (the photos and videos the
+ * user adds). A search box narrows the grid by name. Added files are copied into the desktop app's
  * data folder and served to the projector window from there; in a
  * plain browser they last until the page is closed.
  */
@@ -111,50 +113,72 @@ export function BackgroundPicker({
     setMine((current) => current.filter((entry) => entry.id !== preset.id))
   }
 
-  const section = (title: string, list: BackgroundPreset[], removable = false) => (
-    <section className="mb-3">
-      <h3 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        {title}
-      </h3>
-      <div className={GRID}>
-        {list.map((preset) => (
-          <Tile
-            key={preset.id}
-            preset={preset}
-            active={activeId === preset.id}
-            onPick={() => onPick(preset)}
-            onRemove={removable ? () => remove(preset) : undefined}
-          />
-        ))}
-      </div>
-    </section>
-  )
+  const [source, setSource] = useState('All')
+  const [query, setQuery] = useState('')
+
+  const groups: Record<string, BackgroundPreset[]> = {
+    Photos: PHOTO_BACKGROUNDS,
+    Motion: MOTION_BACKGROUNDS,
+    Classic: CLASSIC_BACKGROUNDS,
+    Added: mine,
+  }
+  const everything = [...mine, ...PHOTO_BACKGROUNDS, ...MOTION_BACKGROUNDS, ...CLASSIC_BACKGROUNDS]
+  const inSource = source === 'All' ? everything : (groups[source] ?? [])
+  const lower = query.trim().toLowerCase()
+  const visible = lower
+    ? inSource.filter((preset) => preset.name.toLowerCase().includes(lower))
+    : inSource
 
   return (
-    <Panel title="Backgrounds" className="h-full">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        {api ? (
-          <Button onClick={() => void add()}>Add photos or videos…</Button>
-        ) : (
-          <label className="cursor-pointer rounded-md bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
-            Add photos or videos…
-            <input
-              type="file"
-              accept="image/*,video/*"
-              multiple
-              className="hidden"
-              onChange={(event) => addInBrowser(event.target.files)}
+    <ResourceView
+      query={query}
+      onQuery={setQuery}
+      placeholder="Search backgrounds"
+      sourcesTitle="Backgrounds"
+      sources={['All', 'Photos', 'Motion', 'Classic', 'Added']}
+      activeSource={source}
+      onSelectSource={setSource}
+      footer={`${visible.length} of ${everything.length} backgrounds`}
+    >
+      <div className="p-3">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {api ? (
+            <Button onClick={() => void add()}>Add photos or videos…</Button>
+          ) : (
+            <label className="cursor-pointer rounded-md bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+              Add photos or videos…
+              <input
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                className="hidden"
+                onChange={(event) => addInBrowser(event.target.files)}
+              />
+            </label>
+          )}
+          <Button onClick={() => onPick(null)} active={activeId === null}>
+            Plain theme colour
+          </Button>
+        </div>
+        <div className={GRID}>
+          {visible.map((preset) => (
+            <Tile
+              key={preset.id}
+              preset={preset}
+              active={activeId === preset.id}
+              onPick={() => onPick(preset)}
+              onRemove={preset.id.startsWith('mine:') ? () => remove(preset) : undefined}
             />
-          </label>
+          ))}
+        </div>
+        {visible.length === 0 && (
+          <p className="py-4 text-sm text-slate-500">
+            {source === 'Added' && !lower
+              ? 'Nothing added yet. Use "Add photos or videos…" to bring in your own.'
+              : 'No backgrounds match.'}
+          </p>
         )}
-        <Button onClick={() => onPick(null)} active={activeId === null}>
-          Plain theme colour
-        </Button>
       </div>
-      {mine.length > 0 && section('My Backgrounds', mine, true)}
-      {section('Photos', PHOTO_BACKGROUNDS)}
-      {section('Motion', MOTION_BACKGROUNDS)}
-      {section('Classic', CLASSIC_BACKGROUNDS)}
-    </Panel>
+    </ResourceView>
   )
 }

@@ -1,57 +1,55 @@
 import { LAYOUTS } from '../../shared/lib/layouts'
+import type { Theme } from '../../shared/lib/types'
 import { Panel } from '../../shared/components/ui'
+import { SlideView } from '../../shared/components/SlideView'
 
 /**
  * Feature: layouts.
- * Pick a pre-installed slide layout. Each card shows a small diagram
- * of where the words sit: full screen, bottom band, top band, left
- * panel, or centre card.
+ * Pick a pre-installed slide layout from small thumbnails. Each one is
+ * drawn with the same renderer as the preview and the projector, using
+ * the current theme and background, so it shows exactly where the words
+ * will sit: full screen, bottom band, top band, left panel or centre
+ * card.
  */
+const SAMPLE = ['Amazing grace, how sweet', 'the sound']
+
 export function LayoutPicker({
   activeId,
+  theme,
+  backgroundCss,
   onPick,
 }: {
   activeId: string
+  theme: Theme
+  backgroundCss?: string
   onPick: (id: string) => void
 }) {
   return (
     <Panel title="Layouts" className="h-full">
-      <p className="text-sm text-slate-500 dark:text-slate-400">
-        Where the words sit on screen. The preview and the projector
-        always match.
-      </p>
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-x-2 gap-y-1.5">
         {LAYOUTS.map((layout) => (
-          <button
-            key={layout.id}
-            type="button"
-            onClick={() => onPick(layout.id)}
-            className={`rounded-md border p-2 text-left ${
-              activeId === layout.id ? 'border-cyan-400' : 'border-slate-300 dark:border-slate-700'
-            }`}
-          >
-            <span className="relative block aspect-video overflow-hidden rounded bg-slate-200 dark:bg-slate-800">
-              {layout.id === 'fullscreen' && (
-                <span className="absolute left-1/2 top-1/2 h-2 w-10 -translate-x-1/2 -translate-y-1/2 rounded bg-slate-400 dark:bg-slate-200" />
-              )}
-              {layout.id === 'lower-third' && (
-                <span className="absolute bottom-0 left-0 right-0 h-1/3 bg-slate-400 dark:bg-slate-200/80" />
-              )}
-              {layout.id === 'upper-third' && (
-                <span className="absolute left-0 right-0 top-0 h-1/3 bg-slate-400 dark:bg-slate-200/80" />
-              )}
-              {layout.id === 'left-panel' && (
-                <span className="absolute bottom-0 left-0 top-0 w-1/2 bg-slate-400 dark:bg-slate-200/80" />
-              )}
-              {layout.id === 'center-card' && (
-                <span className="absolute left-1/2 top-1/2 h-1/2 w-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-slate-400 dark:bg-slate-200/80" />
-              )}
-            </span>
-            <span className="mt-2 block text-sm font-medium text-slate-900 dark:text-slate-100">
+          <div key={layout.id}>
+            <button
+              type="button"
+              onClick={() => onPick(layout.id)}
+              title={layout.hint}
+              className={`block w-full overflow-hidden rounded border-2 ${
+                activeId === layout.id
+                  ? 'border-blue-500'
+                  : 'border-transparent hover:border-slate-400'
+              }`}
+            >
+              <SlideView
+                lines={SAMPLE}
+                theme={theme}
+                backgroundCss={backgroundCss}
+                layoutId={layout.id}
+              />
+            </button>
+            <span className="mt-0.5 block truncate text-[11px] leading-tight text-slate-600 dark:text-slate-300">
               {layout.name}
             </span>
-            <span className="block text-xs text-slate-500 dark:text-slate-400">{layout.hint}</span>
-          </button>
+          </div>
         ))}
       </div>
     </Panel>
