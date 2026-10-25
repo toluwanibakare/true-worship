@@ -12,11 +12,16 @@ import { ImporterPanel } from '../features/importer/ImporterPanel'
 import { DisplayPanel } from '../features/display/DisplayPanel'
 import { loadDisplaySettings } from '../features/display/displaySettings'
 import { NdiPanel } from '../features/ndi/NdiPanel'
+import { BackgroundPicker } from '../features/backgrounds/BackgroundPicker'
+import type { BackgroundPreset } from '../features/backgrounds/backgrounds'
+import { LayoutPicker } from '../features/layouts/LayoutPicker'
+import { layoutById } from '../shared/lib/layouts'
+import { Marquee, type MarqueeAlert } from '../shared/components/Marquee'
 import { Button, Panel } from '../shared/components/ui'
 import { demoPassage, demoSchedule, demoSongs, demoThemes } from '../shared/lib/demo'
 import type { ScheduleItem, Song } from '../shared/lib/types'
 
-type Tab = 'songs' | 'bible' | 'media' | 'themes' | 'songbook' | 'import' | 'alerts' | 'display' | 'ndi'
+type Tab = 'songs' | 'bible' | 'media' | 'themes' | 'backgrounds' | 'layouts' | 'songbook' | 'import' | 'alerts' | 'display' | 'ndi'
 
 type Preview = {
   title: string
@@ -24,10 +29,10 @@ type Preview = {
   slides: string[][]
 }
 
-function previewForSchedule(item: ScheduleItem | undefined): Preview {
+function previewForSchedule(item: ScheduleItem | undefined, songs: Song[]): Preview {
   if (!item) return { title: 'Nothing selected', slides: [['Select an item from the schedule.']] }
   if (item.type === 'song') {
-    const song = demoSongs.find((entry) => entry.id === item.ref)
+    const song = songs.find((entry) => entry.id === item.ref)
     if (!song) return { title: item.title, slides: [['Song not found.']] }
     return {
       title: song.title,
@@ -43,9 +48,13 @@ function previewForSchedule(item: ScheduleItem | undefined): Preview {
 
 export function App() {
   const [schedule, setSchedule] = useState<ScheduleItem[]>(demoSchedule)
+  const [songs, setSongs] = useState<Song[]>(demoSongs)
   const [selectedId, setSelectedId] = useState<string | null>(demoSchedule[0]?.id ?? null)
   const [tab, setTab] = useState<Tab>('songs')
   const [themeId, setThemeId] = useState(demoThemes[0].id)
+  const [background, setBackground] = useState<BackgroundPreset | null>(null)
+  const [layoutId, setLayoutId] = useState('fullscreen')
+  const [alert, setAlert] = useState<MarqueeAlert | null>(null)
   const [slideIndex, setSlideIndex] = useState(0)
   const [live, setLive] = useState<{ title: string; lines: string[] } | null>(null)
   const [black, setBlack] = useState(false)
@@ -54,8 +63,8 @@ export function App() {
 
   const selected = schedule.find((item) => item.id === selectedId)
   const preview = useMemo(
-    () => customPreview ?? previewForSchedule(selected),
-    [customPreview, selected],
+    () => customPreview ?? previewForSchedule(selected, songs),
+    [customPreview, selected, songs],
   )
   const slide = preview.slides[Math.min(slideIndex, preview.slides.length - 1)] ?? []
   const theme = demoThemes.find((entry) => entry.id === themeId) ?? demoThemes[0]
@@ -64,11 +73,21 @@ export function App() {
   // That window only renders what the operator window sends it.
   const isLiveWindow =
     new URLSearchParams(window.location.search).get('live') === '1'
-  const sendLive = (title: string, lines: string[], background?: string) => {
+  const sendLive = (
+    title: string,
+    lines: string[],
+    forcedBackground?: string,
+    alertArg?: MarqueeAlert | null,
+  ) => {
     window.electronAPI?.sendLiveUpdate({
       title,
       lines,
-      background: background ?? theme.background,
+      background: forcedBackground ?? theme.background,
+      // A forced background (Black, Logo) overrides the picked look.
+      backgroundCss: forcedBackground ? undefined : (background?.css ?? theme.background),
+      backgroundVideo: forcedBackground ? undefined : background?.video,
+      layout: layoutId,
+      alert: alertArg !== undefined ? alertArg : alert,
       textColor: theme.textColor,
       fontSize: theme.fontSize,
     })
@@ -90,6 +109,8 @@ export function App() {
     { id: 'bible', label: 'Bible' },
     { id: 'media', label: 'Media' },
     { id: 'themes', label: 'Themes' },
+    { id: 'backgrounds', label: 'Backgrounds' },
+    { id: 'layouts', label: 'Layouts' },
     { id: 'songbook', label: 'Songbook' },
     { id: 'import', label: 'Import' },
     { id: 'alerts', label: 'Alerts' },
@@ -134,14 +155,41 @@ export function App() {
         <div className="flex min-h-0 flex-col gap-3">
           <Panel title={`Preview — ${preview.title}`} className="flex-1">
             <div
-              className="flex h-full flex-col items-center justify-center rounded-md p-6 text-center"
-              style={{ background: theme.background, color: theme.textColor }}
+              className="relative h-full overflow-hidden rounded-md"
+              style={{ background: background?.css ?? theme.background, color: theme.textColor }}
             >
-              {slide.map((line) => (
-                <p key={line} className="leading-snug" style={{ fontSize: theme.fontSize * 0.6 }}>
-                  {line}
-                </p>
-              ))}
+              {background?.video && (
+                <video
+                  src={background.video}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              )}
+              {alert && (
+                <div className="absolute inset-x-0 top-0 z-20">
+                  <Marquee alert={alert} />
+                </div>
+              )}
+              <div className={`relative z-10 ${layoutById(layoutId).wrapper}`}>
+                {layoutById(layoutId).band ? (
+                  <div className={layoutById(layoutId).band}>
+                    {slide.map((line) => (
+                      <p key={line} className="leading-snug" style={{ fontSize: theme.fontSize * 0.6 }}>
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  slide.map((line) => (
+                    <p key={line} className="leading-snug" style={{ fontSize: theme.fontSize * 0.6 }}>
+                      {line}
+                    </p>
+                  ))
+                )}
+              </div>
             </div>
             {preview.slides.length > 1 && (
               <div className="mt-3 flex gap-2">
@@ -196,7 +244,7 @@ export function App() {
             ))}
           </div>
           <div className="min-h-0 flex-1">
-            {tab === 'songs' && <SongLibrary songs={demoSongs} onOpen={openSong} />}
+            {tab === 'songs' && <SongLibrary songs={songs} onOpen={openSong} />}
             {tab === 'bible' && (
               <BibleLookup
                 passages={demoPassage}
@@ -209,9 +257,58 @@ export function App() {
             {tab === 'themes' && (
               <ThemePicker themes={demoThemes} activeId={themeId} onPick={setThemeId} />
             )}
-            {tab === 'songbook' && <SongbookPanel songs={demoSongs} />}
-            {tab === 'import' && <ImporterPanel />}
-            {tab === 'alerts' && <AlertBar />}
+            {tab === 'backgrounds' && (
+              <BackgroundPicker activeId={background?.id ?? null} onPick={setBackground} />
+            )}
+            {tab === 'layouts' && (
+              <LayoutPicker activeId={layoutId} onPick={setLayoutId} />
+            )}
+            {tab === 'songbook' && <SongbookPanel songs={songs} />}
+            {tab === 'import' && (
+              <ImporterPanel
+                songs={songs}
+                schedule={schedule}
+                onSongsImported={(incoming) =>
+                  setSongs((current) => {
+                    const titles = new Set(current.map((song) => song.title.toLowerCase()))
+                    const fresh = incoming.filter((song) => {
+                      if (titles.has(song.title.toLowerCase())) return false
+                      titles.add(song.title.toLowerCase())
+                      return true
+                    })
+                    return [...current, ...fresh]
+                  })
+                }
+                onScheduleImported={(incoming) =>
+                  setSchedule((current) => {
+                    const ids = new Set(current.map((item) => item.id))
+                    const fresh = incoming.map((item) =>
+                      ids.has(item.id)
+                        ? { ...item, id: `imp-${Math.random().toString(36).slice(2, 7)}` }
+                        : item,
+                    )
+                    return [...current, ...fresh]
+                  })
+                }
+              />
+            )}
+            {tab === 'alerts' && (
+              <AlertBar
+                alert={alert}
+                onShow={(next) => {
+                  setAlert(next)
+                  if (live && !black && !logo) {
+                    sendLive(live.title, live.lines, undefined, next)
+                  }
+                }}
+                onHide={() => {
+                  setAlert(null)
+                  if (live && !black && !logo) {
+                    sendLive(live.title, live.lines, undefined, null)
+                  }
+                }}
+              />
+            )}
             {tab === 'display' && <DisplayPanel />}
             {tab === 'ndi' && <NdiPanel />}
           </div>

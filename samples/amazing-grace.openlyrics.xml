@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<song xmlns="http://openlyrics.org/namespace/2009/song" version="0.8">
+  <properties>
+    <titles><title>Amazing Grace</title></titles>
+    <authors><author>John Newton</author></authors>
+    <copyright>Public Domain</copyright>
+    <verseOrder>v1 v2 c</verseOrder>
+  </properties>
+  <lyrics>
+    <verse name="v1">
+      <lines>Amazing grace, how sweet the sound<br/>That saved a wretch like me!</lines>
+      <lines>I once was lost, but now am found,<br/>Was blind but now I see.</lines>
+    </verse>
+    <verse name="v2">
+      <lines>'Twas grace that taught my heart to fear<br/>And grace my fears relieved</lines>
+      <lines>How precious did that grace appear<br/>The hour I first believed</lines>
+    </verse>
+    <verse name="c">
+      <lines>Amazing grace, how sweet the sound<br/>That saved a wretch like me</lines>
+    </verse>
+  </lyrics>
+</song>

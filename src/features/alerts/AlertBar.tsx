@@ -1,15 +1,25 @@
 import { useState } from 'react'
 import { Button, Panel, SearchInput } from '../../shared/components/ui'
+import { Marquee, type MarqueeAlert, type MarqueeSpeed } from '../../shared/components/Marquee'
 
 /**
  * Feature: alerts.
  * Owns short messages shown over the live output, independent of the
- * schedule. State lives here for now; it moves to the app store once
- * alerts need to reach the second window.
+ * schedule. The marquee scrolls across the top of the preview and the
+ * projector until it is hidden. State lives in the app so it can reach
+ * the second window; this panel only edits it.
  */
-export function AlertBar() {
+export function AlertBar({
+  alert,
+  onShow,
+  onHide,
+}: {
+  alert: MarqueeAlert | null
+  onShow: (alert: MarqueeAlert) => void
+  onHide: () => void
+}) {
   const [message, setMessage] = useState('')
-  const [shown, setShown] = useState<string | null>(null)
+  const [speed, setSpeed] = useState<MarqueeSpeed>('normal')
 
   return (
     <Panel title="Alerts" className="h-full">
@@ -19,22 +29,38 @@ export function AlertBar() {
           onChange={setMessage}
           placeholder="Alert message..."
         />
+        <select
+          value={speed}
+          onChange={(event) => setSpeed(event.target.value as MarqueeSpeed)}
+          className="rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-slate-100"
+          aria-label="Marquee speed"
+        >
+          <option value="slow">Slow</option>
+          <option value="normal">Normal</option>
+          <option value="fast">Fast</option>
+        </select>
+      </div>
+      <div className="mt-2 flex gap-2">
         <Button
           primary
           onClick={() => {
-            setShown(message.trim() || null)
-            setMessage('')
+            const text = message.trim()
+            if (text) onShow({ text, speed })
           }}
         >
-          Show
+          Show marquee
         </Button>
-        <Button onClick={() => setShown(null)}>Hide</Button>
+        <Button onClick={onHide}>Hide</Button>
       </div>
-      {shown && (
-        <p className="mt-3 rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-black">
-          {shown}
-        </p>
+      {alert && (
+        <div className="mt-3 overflow-hidden rounded-md">
+          <Marquee alert={alert} />
+        </div>
       )}
+      <p className="mt-3 text-xs text-slate-500">
+        The marquee scrolls across the top of the live output until you
+        hide it. It keeps scrolling even when slides change.
+      </p>
     </Panel>
   )
 }

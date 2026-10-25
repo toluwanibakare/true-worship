@@ -28,7 +28,7 @@ export function LivePanel({
   onClear: () => void
 }) {
   return (
-    <Panel title={live ? 'Live Output — LIVE' : 'Live Output'} className="h-full">
+    <Panel title={live ? 'Live Output — LIVE' : 'Live Output'}>
       <div
         className="flex min-h-40 flex-col items-center justify-center rounded-md p-6 text-center"
         style={{ background: theme.background, color: theme.textColor }}

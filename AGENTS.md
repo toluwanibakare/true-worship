@@ -29,18 +29,24 @@ src/
     bible/        Scripture lookup by reference.
     media/        Images, videos, audio.
     themes/       Look of the output: background, text, size.
+    backgrounds/  Pre-installed still and motion backgrounds.
+    layouts/      Pre-installed slide layouts (picker only; the
+                  definitions live in shared/lib/layouts.ts because
+                  the live window renders them too).
     live/         What the congregation sees: output, Go Live,
                   Logo, Black, Clear.
-    alerts/       Short messages over the live output.
+    alerts/       Marquee alerts over the live output (the Marquee
+                  component itself lives in shared/components/
+                  because the live window renders it too).
     display/      Output monitor choice, fullscreen, always-on-top.
     ndi/          NDI output: source name, switch, status.
     songbook/     The community songbook: shared lyrics, versions,
                   review, sync.
-    importer/     Moving churches in: .ews schedules, Songs.db,
-                  OpenSong, OpenLP.
+    importer/     Moving churches in: .tworship, .ews schedules,
+                  Songs.db/SQLite, OpenSong, OpenLyrics, plain text.
   shared/
     components/   Only UI used by two or more features
-                  (Panel, Button, SearchInput).
+                  (Panel, Button, SearchInput, Marquee).
     lib/          Types and helpers used by two or more features.
 ```
 

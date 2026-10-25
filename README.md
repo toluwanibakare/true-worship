@@ -21,7 +21,16 @@ Licensed under GPL-3.0 (see `LICENSE`). Contributions are welcome, see
 - **Community Songbook** — shared lyrics churches improve together,
   with version history, review and sync (sync service arrives in Phase 3).
 - **Import** — move churches off EasyWorship (.ews schedules, Songs.db
-  library), OpenSong and OpenLP.
+  library), OpenSong and OpenLP, plus True Worship's own `.tworship`
+  format for moving services between computers. See
+  `docs/file-formats.md`.
+- **Backgrounds** — pre-installed still looks built into the app, plus
+  looping motion backgrounds. See `docs/backgrounds.md`.
+- **Layouts** — pre-installed slide layouts: Full Screen, Lower Third,
+  Upper Third, Left Panel, Centre Card. The preview and the projector
+  always match.
+- **Alerts** — a scrolling marquee across the top of the live output,
+  with speed control, until you hide it.
 - **Display** — pick the output monitor (auto picks the projector when
   connected), fullscreen and always-on-top. If the projector is
   unplugged mid-service, the live window moves back to the main display.
@@ -63,6 +72,9 @@ later milestone and is not wired up yet.
 
 ## Status
 
-Scaffold stage, version 0.1.0. The UI flow works with demo content
-(public domain: Amazing Grace, John 3:16 KJV). Next milestones: SQLite
-storage, then the EasyWorship importers, then the songbook sync service.
+Version 0.2.0. The UI flow works with demo content (public domain:
+Amazing Grace, John 3:16 KJV). Import, backgrounds, layouts and the
+marquee are in; what still needs a real file to finish is full-fidelity
+.ews schedule parsing and non-SQLite Songs.db reading (see
+`docs/file-formats.md`). Next milestones: SQLite storage, then the
+songbook sync service.

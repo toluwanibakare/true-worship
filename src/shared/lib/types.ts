@@ -10,6 +10,8 @@ export type Song = {
   verses: Verse[]
   /** CCLI number, when the church holds a licence for this song. */
   ccli?: string
+  /** Copyright line, for example "Public Domain" or a publisher credit. */
+  copyright?: string
   /** Where the lyric came from: public domain, owned, licensed, community. */
   source: 'public-domain' | 'owned' | 'licensed' | 'community'
 }
