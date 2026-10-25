@@ -18,9 +18,14 @@ Licensed under GPL-3.0 (see `LICENSE`). Contributions are welcome, see
 - **Themes** — backgrounds, text colour and size for the output.
 - **Live** — preview, Go Live, Logo, Black, Clear, arranged the way
   EasyWorship arranges its main window: schedule down the left,
-  preview in the centre, live output up the right, resources tabbed
-  under it, with a menu bar and toolbar on top. Light, dark and
-  system themes.
+  preview in the centre, live output up the right, resources as a
+  strip across the bottom, with a menu bar and toolbar on top.
+  Light, dark and system themes.
+- **Shortcuts** — EasyWorship 7's keyboard shortcuts exactly: Page
+  Down goes live, Ctrl + B black, Ctrl + L logo, Ctrl + C toggles
+  the live text, arrows move slides and schedule items, V/C/number
+  + Enter jumps to a verse, chorus or slide. Press ? for the list.
+  See `docs/keyboard-shortcuts.md`.
 - **Alerts** — short messages over the live output.
 - **Community Songbook** — shared lyrics churches improve together,
   with version history, review and sync (sync service arrives in Phase 3).
@@ -76,7 +81,7 @@ later milestone and is not wired up yet.
 
 ## Status
 
-Version 0.3.1. The UI flow works with demo content (public domain:
+Version 0.3.2. The UI flow works with demo content (public domain:
 Amazing Grace, John 3:16 KJV). The main window now follows
 EasyWorship's layout, studied from the EasyWorship 7 screenshots:
 menu bar and toolbar on top, schedule down the left, preview in the

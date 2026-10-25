@@ -97,7 +97,7 @@ export async function buildTworshipFile(options: {
         title: options.title,
         created: new Date().toISOString(),
         app: 'True Worship',
-        appVersion: '0.3.1',
+        appVersion: '0.3.2',
       },
       null,
       2,

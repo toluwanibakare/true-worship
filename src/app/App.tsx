@@ -19,6 +19,11 @@ import type { BackgroundPreset } from '../features/backgrounds/backgrounds'
 import { LayoutPicker } from '../features/layouts/LayoutPicker'
 import { layoutById } from '../shared/lib/layouts'
 import { Marquee, type MarqueeAlert } from '../shared/components/Marquee'
+import { ShortcutsDialog } from '../features/shortcuts/ShortcutsDialog'
+import {
+  isTypingTarget,
+  resolveJumpSequence,
+} from '../features/shortcuts/shortcuts'
 import { MenuBar, type ThemeMode } from './MenuBar'
 import { Button, Panel } from '../shared/components/ui'
 import { demoPassage, demoSchedule, demoSongs, demoThemes } from '../shared/lib/demo'
@@ -79,7 +84,10 @@ export function App() {
   const [black, setBlack] = useState(false)
   const [logo, setLogo] = useState(false)
   const [customPreview, setCustomPreview] = useState<Preview | null>(null)
+  const [showShortcuts, setShowShortcuts] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // What Ctrl + C cleared, so a second Ctrl + C can bring it back.
+  const clearedLiveRef = useRef<{ title: string; lines: string[] } | null>(null)
 
   // Light / dark / system theme. System follows the operating system
   // and keeps following it when the OS setting changes.
@@ -156,19 +164,35 @@ export function App() {
     setLiveSlideIndex(slideIndex)
     setBlack(false)
     setLogo(false)
+    clearedLiveRef.current = null
     window.electronAPI?.openLiveWindow(loadDisplaySettings())
     sendLive(preview.title, slide)
   }
 
-  const handleBlack = () => {
-    setBlack(true)
-    sendLive('Black', [], '#000000')
+  // EasyWorship's Black and Logo are toggles, not one-way buttons:
+  // pressing again returns to whatever was live.
+  const toggleBlack = () => {
+    if (black) {
+      setBlack(false)
+      sendLive(live?.title ?? '', live?.lines ?? [])
+    } else {
+      setBlack(true)
+      sendLive('Black', [], '#000000')
+    }
   }
 
-  const handleLogo = () => {
-    setLogo(true)
-    sendLive('True Worship', ['True Worship'])
+  const toggleLogo = () => {
+    if (logo) {
+      setLogo(false)
+      sendLive(live?.title ?? '', live?.lines ?? [])
+    } else {
+      setLogo(true)
+      sendLive('True Worship', ['True Worship'])
+    }
   }
+
+  const handleBlack = toggleBlack
+  const handleLogo = toggleLogo
 
   const handleClear = () => {
     setLive(null)
@@ -176,7 +200,25 @@ export function App() {
     setLiveSlideLabels([])
     setBlack(false)
     setLogo(false)
+    clearedLiveRef.current = null
     sendLive('', [])
+  }
+
+  // Ctrl + C in EasyWorship toggles the live text on and off. The
+  // second press brings back exactly what the first press cleared.
+  const toggleText = () => {
+    if (live) {
+      clearedLiveRef.current = live
+      setLive(null)
+      sendLive('', [])
+    } else if (clearedLiveRef.current) {
+      const restored = clearedLiveRef.current
+      clearedLiveRef.current = null
+      setLive(restored)
+      setBlack(false)
+      setLogo(false)
+      sendLive(restored.title, restored.lines)
+    }
   }
 
   // Stepping through the live item's slides from the live column
@@ -220,6 +262,197 @@ export function App() {
       return next
     })
   }
+
+  const stepSlide = (direction: -1 | 1) =>
+    setSlideIndex((current) =>
+      Math.min(Math.max(current + direction, 0), preview.slides.length - 1),
+    )
+
+  const goToSlide = (index: number) =>
+    setSlideIndex(Math.min(Math.max(index, 0), preview.slides.length - 1))
+
+  const stepSchedule = (direction: -1 | 1) => {
+    if (!selectedId) return
+    const index = schedule.findIndex((item) => item.id === selectedId)
+    const target = index + direction
+    if (index < 0 || target < 0 || target >= schedule.length) return
+    setSelectedId(schedule[target].id)
+    setCustomPreview(null)
+    setSlideIndex(0)
+  }
+
+  // Keyboard shortcuts, EasyWorship's own. The effect mounts once and
+  // reads every action through a ref, so the handlers are always the
+  // current render's and the listener never goes stale.
+  const actionsRef = useRef({
+    goLive: handleGoLive,
+    toggleBlack,
+    toggleLogo,
+    toggleText,
+    stepSlide,
+    goToSlide,
+    nextItem: () => stepSchedule(1),
+    prevItem: () => stepSchedule(-1),
+    removeSelected,
+    openService: () => fileInputRef.current?.click(),
+    saveService: () =>
+      downloadTworship({ title: 'Sunday Service', kind: 'schedule', songs, schedule }),
+    showAlerts: () => setTab('alerts'),
+    setShowShortcuts,
+    showShortcuts,
+    labels: slideLabels,
+    slideCount: preview.slides.length,
+  })
+  actionsRef.current = {
+    goLive: handleGoLive,
+    toggleBlack,
+    toggleLogo,
+    toggleText,
+    stepSlide,
+    goToSlide,
+    nextItem: () => stepSchedule(1),
+    prevItem: () => stepSchedule(-1),
+    removeSelected,
+    openService: () => fileInputRef.current?.click(),
+    saveService: () =>
+      downloadTworship({ title: 'Sunday Service', kind: 'schedule', songs, schedule }),
+    showAlerts: () => setTab('alerts'),
+    setShowShortcuts,
+    showShortcuts,
+    labels: slideLabels,
+    slideCount: preview.slides.length,
+  }
+
+  useEffect(() => {
+    let buffer = ''
+    let bufferTimer: ReturnType<typeof setTimeout> | undefined
+    const resetBuffer = () => {
+      buffer = ''
+      if (bufferTimer) clearTimeout(bufferTimer)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      const a = actionsRef.current
+      if (event.key === 'Escape') {
+        resetBuffer()
+        if (a.showShortcuts) {
+          event.preventDefault()
+          a.setShowShortcuts(false)
+        }
+        return
+      }
+      // While the shortcut list is open, nothing else fires.
+      if (a.showShortcuts) return
+      // Typing stays typing: no shortcut fires from a field.
+      if (isTypingTarget(event.target)) return
+      if (event.metaKey) return
+      const key = event.key
+      if (event.ctrlKey && !event.shiftKey && !event.altKey) {
+        const lower = key.toLowerCase()
+        if (lower === 'o') {
+          event.preventDefault()
+          a.openService()
+        } else if (lower === 's') {
+          event.preventDefault()
+          a.saveService()
+        } else if (lower === 'f' || lower === 'm' || lower === 'n') {
+          event.preventDefault()
+          a.showAlerts()
+        } else if (lower === 'b') {
+          event.preventDefault()
+          a.toggleBlack()
+        } else if (lower === 'l') {
+          event.preventDefault()
+          a.toggleLogo()
+        } else if (lower === 'c') {
+          // A real selection means Copy, not Clear.
+          if (!window.getSelection()?.toString()) {
+            event.preventDefault()
+            a.toggleText()
+          }
+        } else if (key === 'Delete') {
+          event.preventDefault()
+          a.removeSelected()
+        }
+        resetBuffer()
+        return
+      }
+      if (event.ctrlKey || event.altKey) {
+        resetBuffer()
+        return
+      }
+      // Jump-to-slide sequences: V, C and digits build up, Enter fires.
+      if (/^[vVcC0-9]$/.test(key)) {
+        buffer = (buffer + key.toLowerCase()).slice(0, 4)
+        if (bufferTimer) clearTimeout(bufferTimer)
+        bufferTimer = setTimeout(resetBuffer, 2000)
+        return
+      }
+      if (key === 'Enter' && buffer) {
+        const index = resolveJumpSequence(buffer, a.labels)
+        resetBuffer()
+        if (index !== null) {
+          event.preventDefault()
+          a.goToSlide(index)
+        }
+        return
+      }
+      resetBuffer()
+      switch (key) {
+        case 'PageDown':
+          event.preventDefault()
+          a.goLive()
+          break
+        case 'PageUp':
+          event.preventDefault()
+          a.stepSlide(-1)
+          break
+        case 'Home':
+          event.preventDefault()
+          a.goToSlide(0)
+          break
+        case 'End':
+          event.preventDefault()
+          a.goToSlide(a.slideCount - 1)
+          break
+        case 'ArrowDown':
+        case 'n':
+        case 'N':
+          event.preventDefault()
+          a.stepSlide(1)
+          break
+        case 'ArrowUp':
+        case 'p':
+        case 'P':
+        case 'Backspace':
+          event.preventDefault()
+          a.stepSlide(-1)
+          break
+        case 'ArrowRight':
+          event.preventDefault()
+          a.nextItem()
+          break
+        case 'ArrowLeft':
+          event.preventDefault()
+          a.prevItem()
+          break
+        case ' ':
+          // Only when nothing has focus, so Space still works on buttons.
+          if (event.target === document.body) {
+            event.preventDefault()
+            a.stepSlide(1)
+          }
+          break
+        case '?':
+          event.preventDefault()
+          a.setShowShortcuts(true)
+          break
+        default:
+          break
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   const mergeSongs = (incoming: Song[]) =>
     setSongs((current) => {
@@ -306,8 +539,16 @@ export function App() {
             onClear={handleClear}
             onShowLayouts={() => setTab('layouts')}
             onShowBackgrounds={() => setTab('backgrounds')}
+            onShowShortcuts={() => setShowShortcuts(true)}
           />
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(true)}
+              className="rounded px-2 py-0.5 text-xs hover:bg-slate-200 dark:hover:bg-slate-800"
+            >
+              Shortcuts (?)
+            </button>
             <div className="flex gap-1" role="group" aria-label="Theme">
               {(['light', 'dark', 'system'] as ThemeMode[]).map((mode) => (
                 <button
@@ -528,11 +769,13 @@ export function App() {
       </main>
 
       <footer className="flex items-center justify-between border-t border-slate-300 px-4 py-1.5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-        <span>True Worship 0.3.1 · GPL-3.0 · {schedule.length} items in schedule</span>
+        <span>True Worship 0.3.2 · GPL-3.0 · {schedule.length} items in schedule</span>
         <span>
           Theme: {themeMode} · {live ? 'LIVE' : 'Not live'}
         </span>
       </footer>
+
+      <ShortcutsDialog open={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </div>
   )
 }

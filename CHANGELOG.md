@@ -3,6 +3,26 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
+## [0.3.2] - 2026-10-25
+
+### Added
+
+- EasyWorship 7's keyboard shortcuts, exactly as listed in
+  EasyWorship's own support article: Page Down goes live,
+  Ctrl + B toggles black, Ctrl + L toggles logo, Ctrl + C toggles
+  the live text (a second press restores it), Up/Down move slides,
+  Left/Right move schedule items, Home/End jump to the first/last
+  slide, Ctrl + O opens, Ctrl + S saves, Ctrl + Del deletes the
+  selected schedule item, Ctrl + F/M/N open the Alerts tab, and
+  V/C/number + Enter jumps to a verse, chorus or slide number.
+  N, P, Space, Backspace and Page Up also step slides, as in
+  EasyWorship's default hotkey set. See
+  `docs/keyboard-shortcuts.md`.
+- Keyboard Shortcuts dialog (Help menu, header button, or `?`),
+  with the full grouped list; menu items show their shortcut on
+  the right. Shortcuts never fire while typing in a field, and
+  Ctrl + C never hijacks Copy when text is selected.
+
 ## [0.3.1] - 2026-10-25
 
 ### Fixed

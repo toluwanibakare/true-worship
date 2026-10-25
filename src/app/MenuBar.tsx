@@ -51,19 +51,22 @@ function Menu({ label, open, onToggle, onClose, children }: MenuProps) {
 function Item({
   label,
   checked,
+  shortcut,
   onClick,
 }: {
   label: string
   checked?: boolean
+  shortcut?: string
   onClick: () => void
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-200 dark:hover:bg-slate-800"
+      className="flex w-full items-center justify-between gap-4 px-3 py-1.5 text-left text-sm hover:bg-slate-200 dark:hover:bg-slate-800"
     >
-      {checked ? `✓ ${label}` : label}
+      <span>{checked ? `✓ ${label}` : label}</span>
+      {shortcut && <span className="text-xs opacity-60">{shortcut}</span>}
     </button>
   )
 }
@@ -85,6 +88,7 @@ export function MenuBar(props: {
   onClear: () => void
   onShowLayouts: () => void
   onShowBackgrounds: () => void
+  onShowShortcuts: () => void
 }) {
   const [open, setOpen] = useState<string | null>(null)
   const close = () => setOpen(null)
@@ -98,21 +102,21 @@ export function MenuBar(props: {
     <nav className="flex items-center gap-1">
       <Menu label="File" open={open === 'file'} onToggle={() => toggle('file')} onClose={close}>
         <Item label="New Schedule" onClick={run(props.onNewSchedule)} />
-        <Item label="Open Service…" onClick={run(props.onOpenService)} />
-        <Item label="Save Service" onClick={run(props.onSaveService)} />
+        <Item label="Open Service…" shortcut="Ctrl + O" onClick={run(props.onOpenService)} />
+        <Item label="Save Service" shortcut="Ctrl + S" onClick={run(props.onSaveService)} />
         <Item label="Export Song Library" onClick={run(props.onExportLibrary)} />
       </Menu>
       <Menu label="Schedule" open={open === 'schedule'} onToggle={() => toggle('schedule')} onClose={close}>
         <Item label="Add Item" onClick={run(props.onAddItem)} />
         <Item label="Move Selected Up" onClick={run(props.onMoveUp)} />
         <Item label="Move Selected Down" onClick={run(props.onMoveDown)} />
-        <Item label="Remove Selected" onClick={run(props.onRemoveSelected)} />
+        <Item label="Remove Selected" shortcut="Ctrl + Del" onClick={run(props.onRemoveSelected)} />
       </Menu>
       <Menu label="Live" open={open === 'live'} onToggle={() => toggle('live')} onClose={close}>
-        <Item label="Go Live" onClick={run(props.onGoLive)} />
-        <Item label="Logo" onClick={run(props.onLogo)} />
-        <Item label="Black" onClick={run(props.onBlack)} />
-        <Item label="Clear" onClick={run(props.onClear)} />
+        <Item label="Go Live" shortcut="Page Down" onClick={run(props.onGoLive)} />
+        <Item label="Logo" shortcut="Ctrl + L" onClick={run(props.onLogo)} />
+        <Item label="Black" shortcut="Ctrl + B" onClick={run(props.onBlack)} />
+        <Item label="Clear" shortcut="Ctrl + C" onClick={run(props.onClear)} />
       </Menu>
       <Menu label="View" open={open === 'view'} onToggle={() => toggle('view')} onClose={close}>
         <Item label="Light Theme" checked={props.theme === 'light'} onClick={run(() => props.onThemeChange('light'))} />
@@ -120,6 +124,9 @@ export function MenuBar(props: {
         <Item label="System Theme" checked={props.theme === 'system'} onClick={run(() => props.onThemeChange('system'))} />
         <Item label="Layouts…" onClick={run(props.onShowLayouts)} />
         <Item label="Backgrounds…" onClick={run(props.onShowBackgrounds)} />
+      </Menu>
+      <Menu label="Help" open={open === 'help'} onToggle={() => toggle('help')} onClose={close}>
+        <Item label="Keyboard Shortcuts…" shortcut="?" onClick={run(props.onShowShortcuts)} />
       </Menu>
     </nav>
   )

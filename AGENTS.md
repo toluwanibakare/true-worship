@@ -74,6 +74,12 @@ src/
    system themes: Tailwind v4 class-based dark mode (`@custom-variant`
    in `index.css`), `.dark` toggled on `<html>`, panels use light
    classes with `dark:` variants.
+8. **Shortcuts are EasyWorship's, exactly.** The list lives in
+   `features/shortcuts/shortcuts.ts` (source: EasyWorship's own
+   support article), the dialog in `ShortcutsDialog.tsx`, and one
+   window keydown listener in `app/App.tsx` reads its actions
+   through a ref so handlers never go stale. Shortcuts never fire
+   while typing, and Ctrl + C never hijacks Copy.
 6. **Demo data is clearly marked.** Anything in `shared/lib/demo.ts` is
    placeholder content (public domain only: KJV text, Amazing Grace).
    Demo data never ships as if it were a real library.
