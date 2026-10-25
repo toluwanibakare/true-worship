@@ -9,9 +9,21 @@
 
   /* A hairline under the bar once the page moves. */
   const bar = $('.bar')
-  const onScroll = () => bar && bar.classList.toggle('scrolled', window.scrollY > 8)
+  const toTop = $('.to-top')
+  const onScroll = () => {
+    if (bar) bar.classList.toggle('scrolled', window.scrollY > 8)
+    if (toTop) toTop.classList.toggle('show', window.scrollY > 700)
+  }
   onScroll()
   window.addEventListener('scroll', onScroll, { passive: true })
+
+  /* Back to top. */
+  if (toTop) {
+    toTop.addEventListener('click', (event) => {
+      event.preventDefault()
+      window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })
+    })
+  }
 
   /* Mobile menu. */
   const menuButton = $('.menu-btn')
