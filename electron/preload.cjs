@@ -10,6 +10,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openLiveWindow: (settings) => ipcRenderer.send('open-live-window', settings),
   applyDisplaySettings: (settings) =>
     ipcRenderer.send('apply-display-settings', settings),
+  minimizeWindow: () => ipcRenderer.send('window-minimize'),
+  toggleMaximizeWindow: () => ipcRenderer.send('window-toggle-maximize'),
+  closeWindow: () => ipcRenderer.send('window-close'),
   getDisplays: () => ipcRenderer.invoke('get-displays'),
   sendLiveUpdate: (payload) => ipcRenderer.send('live-update', payload),
   onLiveUpdate: (callback) =>

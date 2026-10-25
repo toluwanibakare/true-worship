@@ -97,7 +97,8 @@ export async function buildTworshipFile(options: {
         title: options.title,
         created: new Date().toISOString(),
         app: 'True Worship',
-        appVersion: '0.6.0',
+        // Plain Node (the importer smoke test) has no Vite define.
+        appVersion: typeof __APP_VERSION__ === 'undefined' ? 'dev' : __APP_VERSION__,
       },
       null,
       2,

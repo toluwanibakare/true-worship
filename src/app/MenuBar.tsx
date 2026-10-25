@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 /**
  * App shell: the EasyWorship-style menu bar.
- * File, Schedule, Live and View menus, every item wired to a real
+ * File, Edit, Live, View and Help menus, every item wired to a real
  * action. Menus are deliberately small: an item that does nothing is
  * worse than no item at all.
  */
@@ -25,8 +25,8 @@ function Menu({ label, open, onToggle, onClose, children }: MenuProps) {
         onClick={onToggle}
         className={`rounded px-2 py-1 text-sm ${
           open
-            ? 'bg-slate-300 dark:bg-slate-700'
-            : 'hover:bg-slate-200 dark:hover:bg-slate-800'
+            ? 'bg-white/25 dark:bg-black/15'
+            : 'hover:bg-white/15 dark:hover:bg-black/10'
         }`}
       >
         {label}
@@ -39,7 +39,7 @@ function Menu({ label, open, onToggle, onClose, children }: MenuProps) {
             className="fixed inset-0 z-40 cursor-default"
             onClick={onClose}
           />
-          <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-md border border-slate-300 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+          <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-md border border-slate-300 bg-white py-1 text-slate-900 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
             {children}
           </div>
         </>
@@ -106,7 +106,7 @@ export function MenuBar(props: {
         <Item label="Save Service" shortcut="Ctrl + S" onClick={run(props.onSaveService)} />
         <Item label="Export Song Library" onClick={run(props.onExportLibrary)} />
       </Menu>
-      <Menu label="Schedule" open={open === 'schedule'} onToggle={() => toggle('schedule')} onClose={close}>
+      <Menu label="Edit" open={open === 'edit'} onToggle={() => toggle('edit')} onClose={close}>
         <Item label="Add Item" onClick={run(props.onAddItem)} />
         <Item label="Move Selected Up" onClick={run(props.onMoveUp)} />
         <Item label="Move Selected Down" onClick={run(props.onMoveDown)} />

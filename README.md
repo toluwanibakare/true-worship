@@ -1,6 +1,6 @@
 # True Worship
 
-![True Worship logo](assets/logo/true-worship-icon-512.png)
+![True Worship logo](assets/logo/object-logo.png)
 
 Free, open worship presentation software for churches, on Windows, Linux
 and macOS. A clean-room rebuild in the spirit of EasyWorship: same
@@ -83,13 +83,14 @@ later milestone and is not wired up yet.
 
 ## Status
 
-Version 0.6.0. The UI flow works with demo content (public domain:
-Amazing Grace, John 3:16 KJV). The main window now follows
-EasyWorship's layout, studied from the EasyWorship 7 screenshots:
-menu bar and toolbar on top, schedule down the left, preview in the
-centre with a slide selector and a big GO LIVE button, live output up
-the right, resources tabbed under it. Light, dark and system themes
-are in. What still needs a real file to finish is full-fidelity
+Version 0.7.0. The UI flow works with demo content (public domain:
+Amazing Grace, John 3:16 KJV). The main window follows
+EasyWorship's default view, studied from the EasyWorship 7 screenshots:
+one title bar with the menus, a toolbar under it, the schedule down the
+left, the preview's slide list and the live slide grid side by side, the
+preview and live output monitors beneath them, and the resources as a
+tab strip along the bottom. Every divider can be dragged. Light, dark
+and system themes are in. What still needs a real file to finish is full-fidelity
 .ews schedule parsing and non-SQLite Songs.db reading (see
 `docs/file-formats.md`). Next milestones: SQLite storage, then the
 songbook sync service.

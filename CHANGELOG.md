@@ -3,6 +3,52 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
+## [0.7.0] - 2026-10-25
+
+### Added
+
+- Splash screen on launch: the True Worship logo, tagline, version
+  and licence, shown while the main window loads. The app then opens
+  maximized.
+- One title bar across the top, replacing the native title bar and
+  menu: window controls, menus (File, Edit, Live, View, Help), the
+  app name centred, then Shortcuts, a sliding Light / Dark / System
+  switch, the live status and a GitHub link. Black in light mode,
+  white in dark mode.
+- Preview and Live arranged the way EasyWorship 7's default view is:
+  the Preview pane lists the item's slides as labelled blocks
+  (Chorus in purple, Verse in blue), the Live pane shows the live
+  item's slides as a thumbnail grid with the on-screen slide
+  outlined, and Preview Output and Live Output monitors with slide
+  counters and Prev / Next sit underneath.
+- Draggable dividers between the schedule, the preview and live
+  panes, the output monitors and the resources strip. Sizes are
+  remembered; double-click a divider to reset it, or focus it and
+  use the arrow keys.
+- Toolbar in EasyWorship's order: New, Open, Save, Store, Web,
+  Remote on the left; Go Live, Alerts, Logo, Black, Clear and Live
+  on the right. Live opens the output window. Store, Web and Remote
+  are greyed out until those features exist.
+- Resources as a tab strip (Songs, Scriptures, Media and the rest)
+  with a search box and source list beside each table and a count
+  along the bottom.
+- Schedule rows with larger thumbnails and a gear menu for Add,
+  Move Up, Move Down and Remove.
+- Version number now has one source, package.json: the footer, the
+  .tworship manifest and the splash all read it.
+
+### Changed
+
+- The Bible tab is now called Scriptures. The Schedule menu is now
+  Edit, with the same items.
+- Window icon and README logo use the new object logo.
+
+### Fixed
+
+- The desktop app crashed on launch ("screen module can't be used
+  before the app ready event"); the display-removed listener now
+  registers after the app is ready.
+
 ## [0.6.0] - 2026-10-25
 
 ### Added

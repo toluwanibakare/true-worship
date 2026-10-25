@@ -4,3 +4,8 @@ dist
 
 # Generated media (regenerate with python3 assets/backgrounds/generate.py)
 public/backgrounds/
+
+# EasyWorship reference screenshots: study material only, never committed
+# (AGENTS.md: nothing from EasyWorship is ever copied into this repo).
+easyworship-7-screenshots/
+easyworship-7-screenshots.zip

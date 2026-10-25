@@ -28,6 +28,9 @@ export type ElectronAPI = {
   isElectron: true
   openLiveWindow: (settings?: DisplaySettings) => void
   applyDisplaySettings: (settings: DisplaySettings) => void
+  minimizeWindow: () => void
+  toggleMaximizeWindow: () => void
+  closeWindow: () => void
   getDisplays: () => Promise<DisplayInfo[]>
   sendLiveUpdate: (payload: LiveUpdatePayload) => void
   onLiveUpdate: (callback: (payload: LiveUpdatePayload) => void) => void

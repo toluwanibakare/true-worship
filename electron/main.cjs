@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen } = require('electron')
+const { app, BrowserWindow, Menu, ipcMain, screen, shell } = require('electron')
 const path = require('node:path')
 const ndi = require('./ndi.cjs')
 
@@ -68,18 +68,82 @@ function applyToLiveWindow(settings) {
   liveWindow.setAlwaysOnTop(Boolean(settings.alwaysOnTop), 'screen-saver')
 }
 
+const appIcon = path.join(__dirname, '..', 'assets', 'logo', 'object-logo.png')
+
+/** Shortest time the splash stays up, so it reads instead of flashing. */
+const SPLASH_MIN_MS = 2500
+/** If the operator window never reports ready, show it anyway after this. */
+const SPLASH_MAX_MS = 15000
+
+function createSplashWindow() {
+  const splash = new BrowserWindow({
+    width: 640,
+    height: 360,
+    frame: false,
+    resizable: false,
+    movable: true,
+    center: true,
+    show: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    title: 'True Worship',
+    icon: appIcon,
+    webPreferences: { contextIsolation: true },
+  })
+  splash.loadFile(path.join(__dirname, 'splash.html'), {
+    query: { version: app.getVersion() },
+  })
+  splash.once('ready-to-show', () => splash.show())
+  return splash
+}
+
+/**
+ * Show the splash, load the operator window hidden behind it, then swap:
+ * close the splash and open the operator window maximized.
+ */
 function createOperatorWindow() {
+  const splash = createSplashWindow()
+  const splashShownAt = Date.now()
+
   operatorWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    show: false,
+    // The React title bar draws the window controls, menus and title.
+    frame: false,
     title: 'True Worship',
-    icon: path.join(__dirname, '..', 'assets', 'logo', 'true-worship-icon-512.png'),
+    icon: appIcon,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
     },
   })
+  // Links in the operator window (the GitHub repo) open in the browser,
+  // never in a new Electron window.
+  operatorWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://github.com/toluwanibakare/')) {
+      void shell.openExternal(url)
+    }
+    return { action: 'deny' }
+  })
   loadOperator(operatorWindow)
+
+  let revealed = false
+  const reveal = () => {
+    if (revealed) return
+    revealed = true
+    if (!splash.isDestroyed()) splash.close()
+    if (operatorWindow && !operatorWindow.isDestroyed()) {
+      operatorWindow.maximize()
+      operatorWindow.show()
+    }
+  }
+  operatorWindow.once('ready-to-show', () => {
+    const wait = Math.max(0, SPLASH_MIN_MS - (Date.now() - splashShownAt))
+    setTimeout(reveal, wait)
+  })
+  setTimeout(reveal, SPLASH_MAX_MS)
+
   operatorWindow.on('closed', () => {
     operatorWindow = null
   })
@@ -133,27 +197,48 @@ ipcMain.on('live-update', (_event, payload) => {
   }
 })
 
+ipcMain.on('window-minimize', (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.minimize()
+})
+
+ipcMain.on('window-toggle-maximize', (event) => {
+  const window = BrowserWindow.fromWebContents(event.sender)
+  if (!window) return
+  if (window.isMaximized()) window.unmaximize()
+  else window.maximize()
+})
+
+ipcMain.on('window-close', (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.close()
+})
+
 ipcMain.handle('get-displays', () => listDisplays())
 ipcMain.handle('ndi-status', () => ndi.getStatus())
 ipcMain.handle('ndi-set', (_event, options) =>
   ndi.setNdi(options, () => liveWindow),
 )
 
-// If the projector is unplugged, move the live window back to the main
-// display instead of leaving it on a screen that no longer exists.
-screen.on('display-removed', () => {
-  if (!liveWindow || liveWindow.isDestroyed()) return
-  const stillThere = screen
-    .getAllDisplays()
-    .some((display) => display.id === liveDisplayId)
-  if (!stillThere) {
-    const primary = screen.getPrimaryDisplay()
-    liveDisplayId = primary.id
-    liveWindow.setBounds({ ...primary.bounds })
-  }
-})
-
 app.whenReady().then(() => {
+  // The in-app title bar carries the menus, so drop the default native
+  // menu (File Edit View Window Help). macOS keeps its own, which it
+  // needs for the Edit shortcuts.
+  if (process.platform !== 'darwin') Menu.setApplicationMenu(null)
+
+  // If the projector is unplugged, move the live window back to the main
+  // display instead of leaving it on a screen that no longer exists. The
+  // screen module can only be used once the app is ready.
+  screen.on('display-removed', () => {
+    if (!liveWindow || liveWindow.isDestroyed()) return
+    const stillThere = screen
+      .getAllDisplays()
+      .some((display) => display.id === liveDisplayId)
+    if (!stillThere) {
+      const primary = screen.getPrimaryDisplay()
+      liveDisplayId = primary.id
+      liveWindow.setBounds({ ...primary.bounds })
+    }
+  })
+
   createOperatorWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createOperatorWindow()

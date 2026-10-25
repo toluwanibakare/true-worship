@@ -17,6 +17,16 @@ body {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
+/* Title bar: the frameless window drags by the bar; anything clickable
+   inside it opts out so buttons and menus still receive clicks. */
+.tw-drag {
+  -webkit-app-region: drag;
+}
+
+.tw-no-drag {
+  -webkit-app-region: no-drag;
+}
+
 /* Marquee: the track holds the message twice and slides one copy's
    width, so the loop restarts with no visible jump. Duration is set
    inline per speed. */

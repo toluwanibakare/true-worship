@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ScheduleItem } from '../../shared/lib/types'
-import { Button, Panel } from '../../shared/components/ui'
+import { Panel } from '../../shared/components/ui'
 
 /**
  * Feature: schedule.
@@ -10,9 +10,9 @@ import { Button, Panel } from '../../shared/components/ui'
  * and reference, in EasyWorship's small italic notes style). Songs
  * expand with the arrow to show their slides, and clicking a slide
  * selects it in the preview. Double-clicking a row sends it live.
- * The selected row is blue. The toolbar above the list moves and
- * removes the selected item, the way a schedule is actually built
- * during the week and reordered on Sunday morning.
+ * The selected row is blue. The gear menu in the header adds, moves
+ * and removes items, the way a schedule is actually built during the
+ * week and reordered on Sunday morning.
  */
 
 const THUMBNAIL: Record<ScheduleItem['type'], string> = {
@@ -48,21 +48,54 @@ export function SchedulePanel({
   slideLabelsFor: (item: ScheduleItem) => string[]
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const run = (action: () => void) => () => {
+    setMenuOpen(false)
+    action()
+  }
+  const menuItem =
+    'block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-slate-800'
+
+  const gear = (
+    <div className="relative">
+      <button
+        type="button"
+        aria-label="Schedule actions"
+        title="Schedule actions"
+        onClick={() => setMenuOpen((open) => !open)}
+        className="rounded px-1.5 text-base leading-none text-slate-600 hover:bg-slate-300 dark:text-slate-300 dark:hover:bg-slate-700"
+      >
+        ⚙
+      </button>
+      {menuOpen && (
+        <>
+          <button
+            type="button"
+            aria-label="Close menu"
+            className="fixed inset-0 z-40 cursor-default"
+            onClick={() => setMenuOpen(false)}
+          />
+          <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-md border border-slate-300 bg-white py-1 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+            <button type="button" className={menuItem} onClick={run(onAdd)}>
+              Add Item
+            </button>
+            <button type="button" className={menuItem} disabled={!selectedId} onClick={run(onMoveUp)}>
+              Move Item Up
+            </button>
+            <button type="button" className={menuItem} disabled={!selectedId} onClick={run(onMoveDown)}>
+              Move Item Down
+            </button>
+            <button type="button" className={menuItem} disabled={!selectedId} onClick={run(onRemove)}>
+              Remove Item
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
 
   return (
-    <Panel title="Schedule" className="h-full">
-      <div className="mb-2 flex items-center gap-1">
-        <Button onClick={onAdd}>Add item</Button>
-        <Button title="Move selected up" disabled={!selectedId} onClick={onMoveUp}>
-          ↑
-        </Button>
-        <Button title="Move selected down" disabled={!selectedId} onClick={onMoveDown}>
-          ↓
-        </Button>
-        <Button disabled={!selectedId} onClick={onRemove}>
-          Remove
-        </Button>
-      </div>
+    <Panel title="Schedule" className="h-full" actions={gear}>
       {items.length === 0 ? (
         <p className="text-sm text-slate-500">
           No items yet. Add one, or open a service with Ctrl + O.
@@ -84,7 +117,7 @@ export function SchedulePanel({
                         onSelect(item.id)
                         setExpandedId(expanded ? null : item.id)
                       }}
-                      className="shrink-0 rounded px-1 text-sm text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800"
+                      className="w-5 shrink-0 rounded text-center text-sm text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800"
                     >
                       {expanded ? '▾' : '▸'}
                     </button>
@@ -103,7 +136,7 @@ export function SchedulePanel({
                     }`}
                   >
                     <span
-                      className="h-10 w-14 shrink-0 rounded border border-black/10"
+                      className="h-9 w-16 shrink-0 rounded border border-black/10"
                       style={{ background: THUMBNAIL[item.type] }}
                     />
                     <span className="min-w-0">
@@ -141,9 +174,6 @@ export function SchedulePanel({
       )}
       <p className="mt-3 text-xs text-slate-500">
         {items.length} {items.length === 1 ? 'item' : 'items'} in this schedule.
-      </p>
-      <p className="mt-1 text-xs text-slate-500">
-        Saving and loading schedules to disk comes with the SQLite store.
       </p>
     </Panel>
   )

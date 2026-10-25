@@ -17,15 +17,19 @@ import { NdiPanel } from '../features/ndi/NdiPanel'
 import { BackgroundPicker } from '../features/backgrounds/BackgroundPicker'
 import type { BackgroundPreset } from '../features/backgrounds/backgrounds'
 import { LayoutPicker } from '../features/layouts/LayoutPicker'
-import { layoutById } from '../shared/lib/layouts'
-import { Marquee, type MarqueeAlert } from '../shared/components/Marquee'
+import type { MarqueeAlert } from '../shared/components/Marquee'
 import { ShortcutsDialog } from '../features/shortcuts/ShortcutsDialog'
 import {
   isTypingTarget,
   resolveJumpSequence,
 } from '../features/shortcuts/shortcuts'
 import { MenuBar, type ThemeMode } from './MenuBar'
-import { Button, Panel } from '../shared/components/ui'
+import { TitleBar } from './TitleBar'
+import { PreviewPanel } from '../features/preview/PreviewPanel'
+import { OutputPanel } from '../shared/components/OutputPanel'
+import { SlideView } from '../shared/components/SlideView'
+import { Splitter } from '../shared/components/Splitter'
+import { usePaneSize } from '../shared/lib/usePaneSize'
 import { demoPassage, demoSchedule, demoSongs, demoThemes } from '../shared/lib/demo'
 import type { ScheduleItem, Song } from '../shared/lib/types'
 
@@ -39,22 +43,33 @@ function ToolButton({
   onClick,
   icon,
   accent,
+  disabled,
+  title,
 }: {
   label: string
   onClick: () => void
   icon: ReactNode
   accent?: boolean
+  disabled?: boolean
+  title?: string
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-center gap-0.5 rounded-md px-2 py-1 hover:bg-slate-200 dark:hover:bg-slate-800"
+      disabled={disabled}
+      title={title}
+      className="flex flex-col items-center gap-0.5 rounded-md px-2 py-1 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-slate-800"
     >
       <span className={accent ? 'text-green-600 dark:text-green-400' : undefined}>{icon}</span>
       <span className="text-[11px] leading-none">{label}</span>
     </button>
   )
+}
+
+/** Thin rule between toolbar groups, as in EasyWorship's toolbar. */
+function ToolDivider() {
+  return <span className="mx-1 h-8 w-px bg-slate-300 dark:bg-slate-700" aria-hidden="true" />
 }
 
 const iconProps = {
@@ -86,11 +101,6 @@ const IconSave = (
     <path d="M7 21v-6h10v6" />
   </svg>
 )
-const IconPlus = (
-  <svg {...iconProps}>
-    <path d="M12 5v14M5 12h14" />
-  </svg>
-)
 const IconPlay = (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
     <path d="M7 4l13 8-13 8z" />
@@ -112,6 +122,30 @@ const IconImage = (
 const IconBlack = (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
     <rect x="5" y="5" width="14" height="14" rx="2" />
+  </svg>
+)
+const IconStore = (
+  <svg {...iconProps}>
+    <path d="M5 8h14l-1 12H6z" />
+    <path d="M9 8a3 3 0 0 1 6 0" />
+  </svg>
+)
+const IconWeb = (
+  <svg {...iconProps}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" />
+  </svg>
+)
+const IconRemote = (
+  <svg {...iconProps}>
+    <circle cx="12" cy="12" r="2" />
+    <path d="M7.5 7.5a6 6 0 0 0 0 9M16.5 7.5a6 6 0 0 1 0 9M4.5 4.5a10 10 0 0 0 0 15M19.5 4.5a10 10 0 0 1 0 15" />
+  </svg>
+)
+const IconLiveOutput = (
+  <svg {...iconProps}>
+    <rect x="3" y="4" width="18" height="13" rx="2" />
+    <path d="M8 4v13M12 4v13M16 4v13M9 21h6" />
   </svg>
 )
 const IconClear = (
@@ -137,6 +171,9 @@ type Preview = {
   /** Slides: each entry is one slide's lines. */
   slides: string[][]
 }
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max)
 
 function previewForSchedule(item: ScheduleItem | undefined, songs: Song[]): Preview {
   if (!item) return { title: 'Nothing selected', slides: [['Select an item from the schedule.']] }
@@ -177,6 +214,12 @@ export function App() {
   const [logo, setLogo] = useState(false)
   const [customPreview, setCustomPreview] = useState<Preview | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
+  // Draggable dividers. Sizes persist between launches.
+  const [scheduleWidth, setScheduleWidth] = usePaneSize('tw-pane-schedule', 280)
+  const [previewPercent, setPreviewPercent] = usePaneSize('tw-pane-preview', 50)
+  const [outputsHeight, setOutputsHeight] = usePaneSize('tw-pane-outputs', 220)
+  const [stripHeight, setStripHeight] = usePaneSize('tw-pane-strip', 280)
+  const centreRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   // What Ctrl + C cleared, so a second Ctrl + C can bring it back.
   const clearedLiveRef = useRef<{ title: string; lines: string[] } | null>(null)
@@ -612,7 +655,7 @@ export function App() {
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'songs', label: 'Songs' },
-    { id: 'bible', label: 'Bible' },
+    { id: 'bible', label: 'Scriptures' },
     { id: 'media', label: 'Media' },
     { id: 'themes', label: 'Themes' },
     { id: 'backgrounds', label: 'Backgrounds' },
@@ -635,7 +678,12 @@ export function App() {
   return (
     <div className="flex h-full flex-col bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <header className="border-b border-slate-300 bg-gradient-to-b from-white to-slate-200 dark:border-slate-800 dark:from-slate-900 dark:to-slate-800">
-        <div className="flex items-center justify-between px-4 py-1">
+        <TitleBar
+          live={live !== null}
+          theme={themeMode}
+          onThemeChange={setThemeMode}
+          onShowShortcuts={() => setShowShortcuts(true)}
+          menu={
           <MenuBar
             theme={themeMode}
             onThemeChange={setThemeMode}
@@ -663,35 +711,8 @@ export function App() {
             onShowBackgrounds={() => setTab('backgrounds')}
             onShowShortcuts={() => setShowShortcuts(true)}
           />
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setShowShortcuts(true)}
-              className="rounded px-2 py-0.5 text-xs hover:bg-slate-200 dark:hover:bg-slate-800"
-            >
-              Shortcuts (?)
-            </button>
-            <div className="flex gap-1" role="group" aria-label="Theme">
-              {(['light', 'dark', 'system'] as ThemeMode[]).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => setThemeMode(mode)}
-                  className={`rounded px-2 py-0.5 text-xs capitalize ${
-                    themeMode === mode
-                      ? 'bg-blue-600 text-white'
-                      : 'hover:bg-slate-200 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              {live ? '● LIVE' : '○ Not live'} · Free worship presentation
-            </span>
-          </div>
-        </div>
+          }
+        />
 
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-2">
           <div className="flex items-center gap-1">
@@ -712,14 +733,27 @@ export function App() {
                 downloadTworship({ title: 'Sunday Service', kind: 'schedule', songs, schedule })
               }
             />
-            <ToolButton label="Add Item" icon={IconPlus} onClick={addItem} />
+            <ToolDivider />
+            <ToolButton label="Store" icon={IconStore} disabled title="Coming soon" onClick={() => {}} />
+            <ToolButton label="Web" icon={IconWeb} disabled title="Coming soon" onClick={() => {}} />
+            <ToolDivider />
+            <ToolButton label="Remote" icon={IconRemote} disabled title="Coming soon" onClick={() => {}} />
           </div>
           <div className="flex items-center gap-1">
             <ToolButton label="Go Live" icon={IconPlay} accent onClick={handleGoLive} />
+            <ToolDivider />
             <ToolButton label="Alerts" icon={IconBell} onClick={() => setTab('alerts')} />
+            <ToolDivider />
             <ToolButton label="Logo" icon={IconImage} onClick={handleLogo} />
             <ToolButton label="Black" icon={IconBlack} onClick={handleBlack} />
             <ToolButton label="Clear" icon={IconClear} onClick={handleClear} />
+            <ToolDivider />
+            <ToolButton
+              label="Live"
+              icon={IconLiveOutput}
+              title="Open the live output window"
+              onClick={() => window.electronAPI?.openLiveWindow(loadDisplaySettings())}
+            />
           </div>
         </div>
 
@@ -737,110 +771,160 @@ export function App() {
       </header>
 
       <main className="flex min-h-0 flex-1 flex-col">
-        <div className="grid min-h-0 flex-1 grid-cols-[260px_minmax(0,1fr)_430px] gap-3 p-3 pb-0">
-          <SchedulePanel
-            items={schedule}
-            selectedId={selectedId}
-            slideIndex={slideIndex}
-            onSelect={(id) => {
-              setSelectedId(id)
-              setCustomPreview(null)
-              setSlideIndex(0)
-            }}
-            onSelectSlide={(id, index) => {
-              setSelectedId(id)
-              setCustomPreview(null)
-              setSlideIndex(index)
-            }}
-            onGoLiveItem={selectAndGoLive}
-            onAdd={addItem}
-            onMoveUp={() => moveSelected(-1)}
-            onMoveDown={() => moveSelected(1)}
-            onRemove={removeSelected}
-            slideLabelsFor={slideLabelsForItem}
-          />
-
-          <div className="flex min-h-0 flex-col gap-3">
-            <Panel title={`Preview — ${preview.title}`} className="flex-1">
-              <div
-                className="relative h-full overflow-hidden rounded-md"
-                style={{ background: background?.css ?? theme.background, color: theme.textColor, fontFamily: theme.fontFamily }}
-              >
-                {background?.video && (
-                  <video
-                    src={background.video}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                )}
-                {alert && (
-                  <div className="absolute inset-x-0 top-0 z-20">
-                    <Marquee alert={alert} />
-                  </div>
-                )}
-                <div className={`relative z-10 ${layoutById(layoutId).wrapper}`}>
-                  {layoutById(layoutId).band ? (
-                    <div className={layoutById(layoutId).band}>
-                      {slide.map((line) => (
-                        <p key={line} className="leading-snug" style={{ fontSize: theme.fontSize * 0.6 }}>
-                          {line}
-                        </p>
-                      ))}
-                    </div>
-                  ) : (
-                    slide.map((line) => (
-                      <p key={line} className="leading-snug" style={{ fontSize: theme.fontSize * 0.6 }}>
-                        {line}
-                      </p>
-                    ))
-                  )}
-                </div>
-              </div>
-            </Panel>
-
-            {preview.slides.length > 1 && (
-              <div className="flex flex-wrap gap-1">
-                {slideLabels.map((label, index) => (
-                  <Button
-                    key={`${label}-${index}`}
-                    active={index === slideIndex}
-                    onClick={() => setSlideIndex(index)}
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
-            )}
+        <div className="flex min-h-0 flex-1 p-3 pb-0">
+          <div className="h-full shrink-0" style={{ width: scheduleWidth }}>
+            <SchedulePanel
+              items={schedule}
+              selectedId={selectedId}
+              slideIndex={slideIndex}
+              onSelect={(id) => {
+                setSelectedId(id)
+                setCustomPreview(null)
+                setSlideIndex(0)
+              }}
+              onSelectSlide={(id, index) => {
+                setSelectedId(id)
+                setCustomPreview(null)
+                setSlideIndex(index)
+              }}
+              onGoLiveItem={selectAndGoLive}
+              onAdd={addItem}
+              onMoveUp={() => moveSelected(-1)}
+              onMoveDown={() => moveSelected(1)}
+              onRemove={removeSelected}
+              slideLabelsFor={slideLabelsForItem}
+            />
           </div>
-
-          <LivePanel
-            title={liveTitle}
-            lines={liveLines}
-            theme={theme}
-            live={live !== null && !black && !logo}
-            slides={liveSlides ?? []}
-            slideLabels={liveSlideLabels}
-            liveSlideIndex={liveSlideIndex}
-            onSelectLiveSlide={handleLiveSlideSelect}
-            onGoLive={handleGoLive}
-            onBlack={handleBlack}
-            onLogo={handleLogo}
-            onClear={handleClear}
+          <Splitter
+            orientation="vertical"
+            label="Resize schedule"
+            onDrag={(delta) => setScheduleWidth((width) => clamp(width + delta, 180, 560))}
+            onReset={() => setScheduleWidth(280)}
           />
+
+          <div ref={centreRef} className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1">
+              <div className="h-full min-w-0" style={{ width: `${previewPercent}%` }}>
+                <PreviewPanel
+                  title={preview.title}
+                  slides={preview.slides}
+                  labels={slideLabels}
+                  selectedIndex={slideIndex}
+                  onSelect={setSlideIndex}
+                />
+              </div>
+              <Splitter
+                orientation="vertical"
+                label="Resize preview and live"
+                onDrag={(delta) => {
+                  const width = centreRef.current?.clientWidth ?? 0
+                  if (width > 0) {
+                    setPreviewPercent((percent) => clamp(percent + (delta / width) * 100, 25, 75))
+                  }
+                }}
+                onReset={() => setPreviewPercent(50)}
+              />
+              <div className="h-full min-w-0 flex-1">
+                <LivePanel
+                  title={liveTitle}
+                  theme={theme}
+                  slides={liveSlides ?? []}
+                  slideLabels={liveSlideLabels}
+                  liveSlideIndex={liveSlideIndex}
+                  live={live !== null && !black && !logo}
+                  backgroundCss={background?.css}
+                  layoutId={layoutId}
+                  onSelectLiveSlide={handleLiveSlideSelect}
+                />
+              </div>
+            </div>
+
+            <Splitter
+              orientation="horizontal"
+              label="Resize outputs"
+              onDrag={(delta) => setOutputsHeight((height) => clamp(height - delta, 150, 480))}
+              onReset={() => setOutputsHeight(220)}
+            />
+
+            <div className="flex shrink-0" style={{ height: outputsHeight }}>
+              <div className="h-full min-w-0" style={{ width: `${previewPercent}%` }}>
+                <OutputPanel
+                  title="Preview Output"
+                  counter={`Slide ${Math.min(slideIndex, preview.slides.length - 1) + 1} of ${preview.slides.length}`}
+                  canPrev={slideIndex > 0}
+                  canNext={slideIndex < preview.slides.length - 1}
+                  onPrev={() => stepSlide(-1)}
+                  onNext={() => stepSlide(1)}
+                >
+                  <SlideView
+                    lines={slide}
+                    theme={theme}
+                    backgroundCss={background?.css}
+                    backgroundVideo={background?.video}
+                    layoutId={layoutId}
+                    alert={alert}
+                    className="h-full max-w-full"
+                  />
+                </OutputPanel>
+              </div>
+              <span className="w-3 shrink-0" aria-hidden="true" />
+              <div className="h-full min-w-0 flex-1">
+                <OutputPanel
+                  title="Live Output"
+                  counter={
+                    liveSlides && live
+                      ? `Slide ${liveSlideIndex + 1} of ${liveSlides.length}`
+                      : 'Not live'
+                  }
+                  canPrev={live !== null && liveSlideIndex > 0}
+                  canNext={live !== null && liveSlides !== null && liveSlideIndex < liveSlides.length - 1}
+                  onPrev={() => handleLiveSlideSelect(liveSlideIndex - 1)}
+                  onNext={() => handleLiveSlideSelect(liveSlideIndex + 1)}
+                >
+                  <SlideView
+                    lines={liveLines}
+                    theme={theme}
+                    backgroundCss={live === null || black ? '#000000' : background?.css}
+                    backgroundVideo={live === null || black ? undefined : background?.video}
+                    layoutId={layoutId}
+                    alert={live !== null && !black && !logo ? alert : null}
+                    className="h-full max-w-full"
+                  />
+                </OutputPanel>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-3 flex h-[300px] shrink-0 flex-col border-t border-slate-300 px-3 py-2 dark:border-slate-800">
-          <div className="mb-2 flex flex-wrap gap-1">
+        <Splitter
+          orientation="horizontal"
+          label="Resize resources"
+          onDrag={(delta) =>
+            setStripHeight((height) => clamp(height - delta, 160, Math.round(window.innerHeight * 0.6)))
+          }
+          onReset={() => setStripHeight(280)}
+        />
+
+        <div className="flex shrink-0 flex-col px-3 pb-2" style={{ height: stripHeight }}>
+          <div className="flex shrink-0 items-end gap-0.5 overflow-x-auto" role="tablist">
             {tabs.map((entry) => (
-              <Button key={entry.id} active={tab === entry.id} onClick={() => setTab(entry.id)}>
+              <button
+                key={entry.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === entry.id}
+                onClick={() => setTab(entry.id)}
+                className={`shrink-0 rounded-t-md border border-b-0 px-4 py-1.5 text-sm ${
+                  tab === entry.id
+                    ? 'border-slate-300 bg-white font-semibold dark:border-slate-700 dark:bg-slate-900'
+                    : 'border-transparent text-slate-600 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800'
+                }`}
+              >
                 {entry.label}
-              </Button>
+              </button>
             ))}
           </div>
-          <div className="min-h-0 flex-1">
+          <div className="min-h-0 flex-1 rounded-b-md rounded-tr-md border border-slate-300 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
             {tab === 'songs' && <SongLibrary songs={songs} onOpen={openSong} />}
             {tab === 'bible' && (
               <BibleLookup
@@ -904,7 +988,7 @@ export function App() {
       </main>
 
       <footer className="flex items-center justify-between border-t border-slate-300 px-4 py-1.5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-        <span>True Worship 0.6.0 · GPL-3.0 · {schedule.length} items in schedule</span>
+        <span>True Worship {__APP_VERSION__} · GPL-3.0 · {schedule.length} items in schedule</span>
         <span>
           Theme: {themeMode} · {live ? 'LIVE' : 'Not live'}
         </span>

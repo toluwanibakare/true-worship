@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import type { Song } from '../../shared/lib/types'
-import { Panel, SearchInput } from '../../shared/components/ui'
+import { ResourceView } from '../../shared/components/ResourceView'
 
 /**
  * Feature: songs.
  * Owns the song library: search, list, and opening a song into the
- * preview pane. The list is a table the way EasyWorship's resource
- * lists are: Title, Author, Source, one row per song, click a row to
+ * preview pane. Laid out the way EasyWorship's Songs tab is: search
+ * and the SONGS source list on the left, a table of Title, Author and
+ * Source on the right, a count along the bottom. Click a row to
  * preview it. Song storage moves to SQLite; this panel only renders
  * whatever the app hands it.
  */
@@ -18,6 +19,7 @@ export function SongLibrary({
   onOpen: (song: Song) => void
 }) {
   const [query, setQuery] = useState('')
+  const [pickedId, setPickedId] = useState<string | null>(null)
   const lower = query.toLowerCase()
   const visible = songs.filter(
     (song) =>
@@ -29,37 +31,46 @@ export function SongLibrary({
   )
 
   return (
-    <Panel title="Songs" className="h-full">
-      <SearchInput
-        value={query}
-        onChange={setQuery}
-        placeholder="Search title, author, or lyric..."
-      />
-      <table className="mt-3 w-full border-collapse text-sm">
-        <thead>
-          <tr className="bg-slate-200 text-left dark:bg-slate-800">
-            <th className="px-2 py-1.5 font-semibold">Title</th>
-            <th className="px-2 py-1.5 font-semibold">Author</th>
-            <th className="px-2 py-1.5 font-semibold">Source</th>
+    <ResourceView
+      query={query}
+      onQuery={setQuery}
+      placeholder="Search any field"
+      sourcesTitle="Songs"
+      sources={['All Songs']}
+      footer={`${visible.length} of ${songs.length} ${songs.length === 1 ? 'song' : 'songs'}`}
+    >
+      <table className="w-full border-collapse text-sm">
+        <thead className="sticky top-0 bg-slate-200 dark:bg-slate-800">
+          <tr className="text-left">
+            <th className="px-3 py-1.5 font-semibold">Title</th>
+            <th className="px-3 py-1.5 font-semibold">Author</th>
+            <th className="px-3 py-1.5 font-semibold">Source</th>
           </tr>
         </thead>
         <tbody>
           {visible.map((song) => (
             <tr
               key={song.id}
-              onClick={() => onOpen(song)}
-              className="cursor-pointer border-t border-slate-200 hover:bg-slate-200 dark:border-slate-800 dark:hover:bg-slate-800"
+              onClick={() => {
+                setPickedId(song.id)
+                onOpen(song)
+              }}
+              className={`cursor-pointer border-t border-slate-200 dark:border-slate-800 ${
+                song.id === pickedId
+                  ? 'bg-slate-300 dark:bg-slate-700'
+                  : 'hover:bg-slate-200 dark:hover:bg-slate-800'
+              }`}
             >
-              <td className="px-2 py-1.5 font-medium">{song.title}</td>
-              <td className="px-2 py-1.5">{song.author}</td>
-              <td className="px-2 py-1.5 text-slate-500">{song.source}</td>
+              <td className="px-3 py-1.5 font-medium">{song.title}</td>
+              <td className="px-3 py-1.5">{song.author}</td>
+              <td className="px-3 py-1.5 text-slate-500 dark:text-slate-400">{song.source}</td>
             </tr>
           ))}
         </tbody>
       </table>
       {visible.length === 0 && (
-        <p className="px-2 py-4 text-sm text-slate-500">No songs match.</p>
+        <p className="px-3 py-4 text-sm text-slate-500">No songs match.</p>
       )}
-    </Panel>
+    </ResourceView>
   )
 }

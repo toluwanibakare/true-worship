@@ -33,8 +33,10 @@ src/
     layouts/      Pre-installed slide layouts (picker only; the
                   definitions live in shared/lib/layouts.ts because
                   the live window renders them too).
-    live/         What the congregation sees: output, Go Live,
-                  Logo, Black, Clear.
+    preview/      The preview pane: the selected item's slides as
+                  labelled blocks.
+    live/         What the congregation sees: the live slide grid
+                  and the projector window.
     alerts/       Marquee alerts over the live output (the Marquee
                   component itself lives in shared/components/
                   because the live window renders it too).
@@ -46,7 +48,8 @@ src/
                   Songs.db/SQLite, OpenSong, OpenLyrics, plain text.
   shared/
     components/   Only UI used by two or more features
-                  (Panel, Button, SearchInput, Marquee).
+                  (Panel, Button, SearchInput, Marquee, SlideView,
+                  OutputPanel, ResourceView, Splitter).
     lib/          Types and helpers used by two or more features.
 ```
 
@@ -65,15 +68,21 @@ src/
    three jobs wants to be split.
 5. **Types live with their feature first.** Only types used by two or more
    features move to `shared/lib/types.ts`.
-7. **The shell follows EasyWorship's arrangement.** Menu bar and
-   toolbar on top, schedule left, preview centre, live output right
-   as three full-height columns, resources as a strip across the
-   bottom (studied from the EasyWorship 7 screenshots; own code and
-   styling, never copied artwork). The live column carries its own
-   slide list for stepping through the live item. Light, dark and
-   system themes: Tailwind v4 class-based dark mode (`@custom-variant`
-   in `index.css`), `.dark` toggled on `<html>`, panels use light
-   classes with `dark:` variants.
+7. **The shell follows EasyWorship's arrangement.** One title bar
+   (window controls, menus, app name, GitHub) and the toolbar on
+   top (New, Open, Save, Store, Web, Remote on the left; Go Live,
+   Alerts, Logo, Black, Clear, Live on the right). Below: the
+   schedule down the left; beside it the Preview pane (slides as
+   labelled blocks) and the Live pane (slides as a thumbnail grid)
+   side by side, with Preview Output and Live Output monitors
+   under them; resources as a tab strip across the bottom. This is
+   EasyWorship 7's default "Preview and Live" view, studied from
+   its screenshots; own code and styling, never copied artwork.
+   Every divider is draggable and its size is remembered. Light,
+   dark and system themes: Tailwind v4 class-based dark mode
+   (`@custom-variant` in `index.css`), `.dark` toggled on `<html>`,
+   panels use light classes with `dark:` variants. The title bar is
+   inverted: black in light mode, white in dark mode.
 8. **Shortcuts are EasyWorship's, exactly.** The list lives in
    `features/shortcuts/shortcuts.ts` (source: EasyWorship's own
    support article), the dialog in `ShortcutsDialog.tsx`, and one
