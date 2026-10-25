@@ -3,6 +3,15 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
+## [Unreleased]
+
+### Added
+
+- `web/`: a static website for True Worship in its own theme, with
+  features, screenshots of the real app, how a service runs, moving
+  over from other tools, the Community Songbook, content licensing,
+  and run instructions. Screenshots are embedded in `index.html`.
+
 ## [0.15.0] - 2026-10-25
 
 ### Added
