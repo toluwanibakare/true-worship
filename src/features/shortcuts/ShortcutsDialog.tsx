@@ -3,7 +3,7 @@ import { SHORTCUT_LIST } from './shortcuts'
 /**
  * Feature: shortcuts help.
  * A plain list of every keyboard shortcut, grouped the way
- * EasyWorship groups them. Opens with ? and closes with Esc.
+ * worship software usually groups them. Opens with ? and closes with Esc.
  */
 export function ShortcutsDialog({
   open,
@@ -28,8 +28,7 @@ export function ShortcutsDialog({
           </button>
         </div>
         <p className="mb-4 text-sm text-slate-500">
-          EasyWorship 7&apos;s shortcuts, as listed in EasyWorship&apos;s own
-          support article. Shortcuts never fire while you are typing in
+          The shortcut set worship operators already know. Shortcuts never fire while you are typing in
           a field.
         </p>
         {groups.map((group) => (

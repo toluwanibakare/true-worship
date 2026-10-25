@@ -1,8 +1,8 @@
 # True Worship — Project Brief
 
 Free, open worship presentation software for churches everywhere.
-A clean-room rebuild in the spirit of EasyWorship: same workflow, own code,
-own design, nothing lifted from EasyWorship.
+Own code, own design, with a workflow that follows conventions common to
+worship presentation software. Nothing lifted from any other program.
 
 ## Identity
 

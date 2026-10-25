@@ -28,3 +28,13 @@ Worship's license.
 - Bible translations and song lyrics are only bundled when their license
   allows it. See `PROJECT_BRIEF.md` for the content plan and
   `CONTRIBUTING.md` for the contribution rules.
+
+## Trademarks and independence
+
+True Worship is an independent project. It is not affiliated with,
+endorsed by, or sponsored by EasyWorship, Softouch Development, or any
+other worship software maker. Product and company names such as
+EasyWorship, OpenSong, OpenLP, CCLI, SongSelect, NDI, Calibri and Segoe
+UI belong to their owners and are used only to say what True Worship can
+import from or work with. Calibri and Segoe UI are Microsoft fonts that
+are named in font stacks but never bundled with the app.

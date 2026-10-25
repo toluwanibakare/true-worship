@@ -20,8 +20,18 @@ export type LiveUpdatePayload = {
   alert?: MarqueeAlert | null
   textColor: string
   fontSize: number
-  /** Slide font stack (EasyWorship's default song theme font is Calibri). */
+  /** Slide font stack (Calibri first, with open fallbacks). */
   fontFamily: string
+  /** Bold slide text. */
+  bold: boolean
+}
+
+/** A background the user added: a photo or a video kept in the app's data folder. */
+export type UserBackground = {
+  file: string
+  name: string
+  kind: 'still' | 'video'
+  url: string
 }
 
 export type ElectronAPI = {
@@ -31,6 +41,9 @@ export type ElectronAPI = {
   minimizeWindow: () => void
   toggleMaximizeWindow: () => void
   closeWindow: () => void
+  listBackgrounds: () => Promise<UserBackground[]>
+  importBackgrounds: () => Promise<UserBackground[]>
+  removeBackground: (file: string) => Promise<void>
   getDisplays: () => Promise<DisplayInfo[]>
   sendLiveUpdate: (payload: LiveUpdatePayload) => void
   onLiveUpdate: (callback: (payload: LiveUpdatePayload) => void) => void

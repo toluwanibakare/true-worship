@@ -2,9 +2,9 @@ import { Panel } from '../../shared/components/ui'
 
 /**
  * Feature: preview — the verse list.
- * EasyWorship's Preview pane lists the selected item's slides as
- * blocks: a coloured label bar (Chorus in purple, Verse in blue, the
- * way its song editor colours sections) over the words, one block per
+ * The Preview pane lists the selected item's slides as blocks: a
+ * coloured label bar (Chorus in purple, Verse in blue) over the
+ * words, one block per
  * slide. Click a block to select that slide; the Preview Output below
  * shows it. Double-click a block to send it live. The list scrolls on its own.
  */

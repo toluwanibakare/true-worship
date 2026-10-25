@@ -4,12 +4,12 @@ import { SlideView } from '../../shared/components/SlideView'
 
 /**
  * Feature: live — the slide grid.
- * EasyWorship's Live pane shows the live item's slides as a grid of
+ * The Live pane shows the live item's slides as a grid of
  * thumbnails, each with a blue label bar underneath; the slide on
  * screen has a bright outline. Click a thumbnail to put that slide on
  * the output. Thumbnails stay still (no video, no marquee) so a grid
  * of them is not playing at once. The Go Live, Logo, Black and Clear
- * controls are in the toolbar, as in EasyWorship, so this pane only
+ * controls are in the toolbar, so this pane only
  * steps through slides.
  */
 export function LivePanel({

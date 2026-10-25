@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 /**
- * App shell: the EasyWorship-style menu bar.
+ * App shell: the menu bar.
  * File, Edit, Live, View and Help menus, every item wired to a real
  * action. Menus are deliberately small: an item that does nothing is
  * worse than no item at all.

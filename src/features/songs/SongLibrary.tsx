@@ -5,18 +5,21 @@ import { ResourceView } from '../../shared/components/ResourceView'
 /**
  * Feature: songs.
  * Owns the song library: search, list, and opening a song into the
- * preview pane. Laid out the way EasyWorship's Songs tab is: search
+ * preview pane. Laid out as a resource tab: search
  * and the SONGS source list on the left, a table of Title, Author and
  * Source on the right, a count along the bottom. Click a row to
- * preview it. Song storage moves to SQLite; this panel only renders
+ * preview it, double-click to go live. Song storage moves to SQLite;
+ * this panel only renders
  * whatever the app hands it.
  */
 export function SongLibrary({
   songs,
   onOpen,
+  onGoLive,
 }: {
   songs: Song[]
   onOpen: (song: Song) => void
+  onGoLive: (song: Song) => void
 }) {
   const [query, setQuery] = useState('')
   const [pickedId, setPickedId] = useState<string | null>(null)
@@ -55,6 +58,8 @@ export function SongLibrary({
                 setPickedId(song.id)
                 onOpen(song)
               }}
+              onDoubleClick={() => onGoLive(song)}
+              title="Double-click to go live"
               className={`cursor-pointer border-t border-slate-200 dark:border-slate-800 ${
                 song.id === pickedId
                   ? 'bg-slate-300 dark:bg-slate-700'

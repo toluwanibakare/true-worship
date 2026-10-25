@@ -4,10 +4,9 @@ import { Panel } from '../../shared/components/ui'
 
 /**
  * Feature: schedule.
- * Owns the ordered service list, arranged the way EasyWorship
- * arranges its schedule: one row per item with a thumbnail on the
- * left, the title next to it, and a notes line underneath (the type
- * and reference, in EasyWorship's small italic notes style). Songs
+ * Owns the ordered service list: one row per item with a thumbnail
+ * on the left, the title next to it, and a small italic notes line
+ * underneath (the type and reference). Songs
  * expand with the arrow to show their slides, and clicking a slide
  * selects it in the preview. Double-clicking a row sends it live.
  * Drag a row up or down to reorder it; a blue line shows where it

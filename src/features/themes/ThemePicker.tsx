@@ -7,21 +7,18 @@ import { Panel } from '../../shared/components/ui'
  * display font. A theme applies to whatever is live, so this panel
  * picks the theme and its display font, and the live feature does
  * the rendering. The font travels to the projector with the live
- * slide, the way EasyWorship's theme font decides what the room
- * sees.
+ * slide, so the theme font decides what the room sees.
  */
 
 /**
- * Display font choices. EasyWorship's own defaults lead the list:
- * Calibri is its default song theme font, Arial its global font,
- * and the rest are the usual Windows presentation fonts churches
- * pick from. Calibri and Segoe UI are Microsoft fonts, so they are
+ * Display font choices. Calibri and Arial lead the list, followed by
+ * the usual Windows presentation fonts churches pick from. Calibri and Segoe UI are Microsoft fonts, so they are
  * named here, never bundled; on machines without them the stack
  * falls back to the next font in line.
  */
 export const DISPLAY_FONTS = [
-  { label: 'Calibri (EasyWorship default)', value: "'Calibri', 'Carlito', Arial, sans-serif" },
-  { label: 'Arial (EasyWorship global)', value: 'Arial, sans-serif' },
+  { label: 'Calibri', value: "'Calibri', 'Carlito', Arial, sans-serif" },
+  { label: 'Arial', value: 'Arial, sans-serif' },
   { label: 'Segoe UI', value: "'Segoe UI', system-ui, sans-serif" },
   { label: 'Verdana', value: 'Verdana, sans-serif' },
   { label: 'Tahoma', value: 'Tahoma, sans-serif' },
@@ -35,11 +32,13 @@ export function ThemePicker({
   activeId,
   onPick,
   onFontChange,
+  onBoldChange,
 }: {
   themes: Theme[]
   activeId: string
   onPick: (id: string) => void
   onFontChange: (id: string, fontFamily: string) => void
+  onBoldChange: (id: string, bold: boolean) => void
 }) {
   const active = themes.find((entry) => entry.id === activeId) ?? themes[0]
 
@@ -79,12 +78,21 @@ export function ThemePicker({
               </option>
             ))}
           </select>
+          <label className="mt-2 flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={active.bold}
+              onChange={(event) => onBoldChange(active.id, event.target.checked)}
+            />
+            Bold text
+          </label>
           <div
             className="mt-2 rounded-md p-3 text-center text-lg"
             style={{
               background: active.background,
               color: active.textColor,
               fontFamily: active.fontFamily,
+              fontWeight: active.bold ? 700 : 400,
             }}
           >
             Amazing grace, how sweet the sound

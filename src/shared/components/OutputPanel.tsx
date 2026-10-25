@@ -3,8 +3,8 @@ import { Panel } from './ui'
 
 /**
  * A 16:9 output monitor with its slide counter and the Prev / Next
- * steppers underneath, the way EasyWorship pairs "Preview Output" and
- * "Live Output" along the middle of the window. Preview and live both
+ * steppers underneath, paired as "Preview Output" and "Live Output"
+ * along the middle of the window. Preview and live both
  * use it, so it lives in shared.
  */
 export function OutputPanel({

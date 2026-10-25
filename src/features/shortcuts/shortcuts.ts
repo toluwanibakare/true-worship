@@ -1,13 +1,8 @@
 /**
- * Keyboard shortcuts, exactly as EasyWorship 7 uses them.
- *
- * Source: EasyWorship's own support article "Shortcut Keys For
- * EasyWorship 7" (support.easyworship.com), which groups them into
- * Editor Keys, Schedule Keys and Show Control Keys. The "also active"
- * group at the end comes from EasyWorship's own default hotkey set
- * (Hotkeys2.ini, quoted in their support article on reverting
- * hotkeys): N and Space step forward, P, Backspace and Page Up step
- * back. Shortcuts marked desktop-only cannot fire in a browser tab
+ * Keyboard shortcuts: the key set worship operators already know,
+ * grouped into Editor Keys, Schedule Keys and Show Control Keys. The
+ * "also active" group at the end adds N and Space to step forward and
+ * P, Backspace and Page Up to step back. Shortcuts marked desktop-only cannot fire in a browser tab
  * because the browser claims the key first; they work in the
  * packaged desktop app.
  */

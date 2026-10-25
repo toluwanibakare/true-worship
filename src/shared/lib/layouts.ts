@@ -23,7 +23,7 @@ export const LAYOUTS: LayoutPreset[] = [
     id: 'fullscreen',
     name: 'Full Screen',
     hint: 'Big centred words over the whole background.',
-    wrapper: 'flex h-full flex-col items-center justify-center p-10 text-center',
+    wrapper: 'flex h-full flex-col items-center justify-center px-8 py-6 text-center',
     band: '',
   },
   {

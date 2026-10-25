@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { SearchInput } from './ui'
 
 /**
- * The frame EasyWorship gives every resource tab: a search box over a
+ * The frame every resource tab shares: a search box over a
  * source list on the left (SONGS, SCRIPTURES, ...), the table on the
  * right, and a count line along the bottom. Songs and Scriptures both
  * use it, so it lives in shared.

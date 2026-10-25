@@ -8,6 +8,7 @@ import { parseTextSong } from './textSong'
 import {
   buildTworshipFile,
   parseTworshipFile,
+  TWORSHIP_EXTENSION,
   type TworshipKind,
 } from './tworship'
 
@@ -102,6 +103,7 @@ export async function importFile(
   const ext = extensionOf(file.name)
   try {
     switch (ext) {
+      case 'twp':
       case 'tworship': {
         const parsed = await parseTworshipFile(file)
         return {
@@ -175,7 +177,7 @@ export async function downloadTworship(options: {
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = `${options.title.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'true-worship'}.tworship`
+  anchor.download = `${options.title.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'true-worship'}${TWORSHIP_EXTENSION}`
   anchor.click()
   URL.revokeObjectURL(url)
 }

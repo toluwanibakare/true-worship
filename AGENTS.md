@@ -6,12 +6,13 @@ follows here. Read this before adding or moving code.
 ## What this is
 
 True Worship is free, open worship presentation software for churches.
-It is a clean-room rebuild in the spirit of EasyWorship: same workflow,
-own code, own design. Nothing from EasyWorship's program, assets, or
-artwork is ever copied into this repo. The EasyWorship screenshots in the
-project docs are reference for what screens need to do, not material to
-reuse. Interoperability (reading a user's own .ews files and song
-database) is the goal, imitation of their code is not.
+Own code, own design. The workflow follows conventions common to worship
+presentation software, so operators moving over from other tools feel at
+home. Nothing from any other program's code, assets, artwork or text is
+ever copied into this repo, and third-party reference material
+(screenshots, support articles) is never committed. Interoperability
+(reading a user's own .ews files and song database) is the goal;
+imitating anyone's code is not.
 
 ## Folder structure: features first
 
@@ -44,7 +45,7 @@ src/
     ndi/          NDI output: source name, switch, status.
     songbook/     The community songbook: shared lyrics, versions,
                   review, sync.
-    importer/     Moving churches in: .tworship, .ews schedules,
+    importer/     Moving churches in: .twp, .ews schedules,
                   Songs.db/SQLite, OpenSong, OpenLyrics, plain text.
   shared/
     components/   Only UI used by two or more features
@@ -68,32 +69,29 @@ src/
    three jobs wants to be split.
 5. **Types live with their feature first.** Only types used by two or more
    features move to `shared/lib/types.ts`.
-7. **The shell follows EasyWorship's arrangement.** One title bar
+7. **The shell follows the conventional worship-software arrangement.** One title bar
    (window controls, menus, app name, GitHub) and the toolbar on
    top (New, Open, Save, Store, Web, Remote on the left; Go Live,
    Alerts, Logo, Black, Clear, Live on the right). Below: the
    schedule down the left; beside it the Preview pane (slides as
    labelled blocks) and the Live pane (slides as a thumbnail grid)
    side by side, with Preview Output and Live Output monitors
-   under them; resources as a tab strip across the bottom. This is
-   EasyWorship 7's default "Preview and Live" view, studied from
-   its screenshots; own code and styling, never copied artwork.
-   Every divider is draggable and its size is remembered. Light,
+   under them; resources as a tab strip across the bottom. Own code
+   and own styling. Every divider is draggable and its size is remembered. Light,
    dark and system themes: Tailwind v4 class-based dark mode
    (`@custom-variant` in `index.css`), `.dark` toggled on `<html>`,
    panels use light classes with `dark:` variants. The title bar is
    inverted: black in light mode, white in dark mode.
-8. **Shortcuts are EasyWorship's, exactly.** The list lives in
-   `features/shortcuts/shortcuts.ts` (source: EasyWorship's own
-   support article), the dialog in `ShortcutsDialog.tsx`, and one
+8. **Shortcuts follow the key set operators already know.** The list lives in
+   `features/shortcuts/shortcuts.ts`, the dialog in `ShortcutsDialog.tsx`, and one
    window keydown listener in `app/App.tsx` reads its actions
    through a ref so handlers never go stale. Shortcuts never fire
    while typing, and Ctrl + C never hijacks Copy.
-9. **Fonts are EasyWorship's, too.** Interface: Segoe UI stack in
+9. **Fonts are widely installed defaults.** Interface: Segoe UI stack in
    `index.css`. Slides: Calibri stack on every theme
    (`fontFamily` on `Theme`, carried in the live payload), because
-   Calibri is EasyWorship's default song theme font and Arial is
-   its global font (both from their support forum). Schedule rows
+   Calibri and Arial are what operators expect to see. Neither is
+   bundled; Carlito is the open, metric-compatible fallback. Schedule rows
    are thumbnail + title + italic notes line, with expandable song
    slides and double-click to go live. The toolbar splits left
    (file) and right (live controls), icon above label.
@@ -103,9 +101,8 @@ src/
     current slide, Prev/Next steppers sit under the live controls,
     and live slide rows show label plus first line.
 11. **Display font is per theme, picked in the Themes tab.**
-    EasyWorship's rule is song font, then theme font, then global
-    font; True Worship's display follows the theme font, and the
-    picker leads with EW's own defaults (Calibri, Arial). The
+    The display follows the theme font, and the picker leads with
+    Calibri and Arial. The
     font travels in the live payload, so preview, live monitor
     and projector always match.
 6. **Demo data is clearly marked.** Anything in `shared/lib/demo.ts` is

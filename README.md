@@ -3,36 +3,39 @@
 ![True Worship logo](assets/logo/object-logo.png)
 
 Free, open worship presentation software for churches, on Windows, Linux
-and macOS. A clean-room rebuild in the spirit of EasyWorship: same
-workflow, own code, own design.
+and macOS. Own code, own design, with the familiar workflow churches
+already know.
 
 Licensed under GPL-3.0 (see `LICENSE`). Contributions are welcome, see
 `CONTRIBUTING.md`, and the community rules are in `CODE_OF_CONDUCT.md`.
 
 ## Features (so far, scaffold stage)
 
-- **Schedule** — the ordered service list, EasyWorship-style:
+- **Schedule** — the ordered service list:
   thumbnail, title and notes line per item, songs expand to show
   their slides, double-click a row to send it live.
 - **Songs** — searchable song library with verse structure.
 - **Bible** — scripture lookup by reference.
 - **Media** — images, videos, audio.
 - **Themes** — backgrounds, text colour and size for the output.
-- **Live** — preview, Go Live, Logo, Black, Clear, arranged the way
-  EasyWorship arranges its main window: schedule down the left,
-  preview in the centre, live output up the right, resources as a
-  strip across the bottom, with a menu bar and toolbar on top.
+- **Live** — preview, Go Live, Logo, Black, Clear, arranged in
+  the conventional way: schedule down the left, preview and live
+  side by side with their output monitors, resources as a strip
+  across the bottom, with a title bar and toolbar on top.
   Light, dark and system themes.
-- **Shortcuts** — EasyWorship 7's keyboard shortcuts exactly: Page
+- **Shortcuts** — the keyboard shortcuts operators already know: Page
   Down goes live, Ctrl + B black, Ctrl + L logo, Ctrl + C toggles
   the live text, arrows move slides and schedule items, V/C/number
   + Enter jumps to a verse, chorus or slide. Press ? for the list.
   See `docs/keyboard-shortcuts.md`.
+- **Backgrounds** — photos, looping motion backgrounds and your own
+  photos and videos, with text kept readable over all of them. Run
+  `npm run backgrounds` once after cloning to generate the built-in set.
 - **Alerts** — short messages over the live output.
 - **Community Songbook** — shared lyrics churches improve together,
   with version history, review and sync (sync service arrives in Phase 3).
 - **Import** — move churches off EasyWorship (.ews schedules, Songs.db
-  library), OpenSong and OpenLP, plus True Worship's own `.tworship`
+  library), OpenSong and OpenLP, plus True Worship's own `.twp`
   format for moving services between computers. See
   `docs/file-formats.md`.
 - **Backgrounds** — pre-installed still looks built into the app, plus
@@ -83,10 +86,9 @@ later milestone and is not wired up yet.
 
 ## Status
 
-Version 0.8.0. The UI flow works with demo content (public domain:
-Amazing Grace, John 3:16 KJV). The main window follows
-EasyWorship's default view, studied from the EasyWorship 7 screenshots:
-one title bar with the menus, a toolbar under it, the schedule down the
+Version 0.9.0. The UI flow works with demo content (public domain:
+Amazing Grace, John 3:16 KJV). The main window uses
+the conventional worship-software layout: one title bar with the menus, a toolbar under it, the schedule down the
 left, the preview's slide list and the live slide grid side by side, the
 preview and live output monitors beneath them, and the resources as a
 tab strip along the bottom. Every divider can be dragged. Light, dark

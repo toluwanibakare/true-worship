@@ -3,6 +3,39 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
+## [0.9.0] - 2026-10-25
+
+### Added
+
+- Backgrounds: eight generated photos (Sunrise Peaks, Ocean Dusk,
+  Calvary Sunset and more), nine seamless motion loops (Drifting
+  Clouds, Aurora, Rising Lights and more) and "Add photos or
+  videos…" for your own, shown as small thumbnail grids. Run
+  `npm run backgrounds` once after cloning to generate the built-in
+  set; everything in it is drawn by the script, so it is original work.
+- Slide text stays readable on any background: forced to white over a
+  photo, video or gradient, with a soft scrim and a shadow behind the
+  words.
+- Bold switch in the Themes tab. Slide text is bold by default.
+- Double-click a song row to go live, as with a Scriptures row.
+
+### Changed
+
+- Deep Rays is the default background, and slide text is bigger (64
+  against 44) and heavier, with less empty margin around it.
+- The projector window draws with the same renderer as the monitors,
+  scaled to fit, so the room sees exactly what the preview shows.
+- True Worship's own file format is now `.twp` (True Worship Package),
+  shorter than `.tworship`. Older `.tworship` files still import.
+- The window icon and favicon are the object logo.
+
+### Fixed
+
+- With no projector connected, the live output covered the operator's
+  screen. It now opens as a normal window, and moves to a projector
+  when one is plugged in. Opening or updating it no longer takes
+  keyboard focus away from the operator window.
+
 ## [0.8.0] - 2026-10-25
 
 ### Added
@@ -39,7 +72,7 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
   app name centred, then Shortcuts, a sliding Light / Dark / System
   switch, the live status and a GitHub link. Black in light mode,
   white in dark mode.
-- Preview and Live arranged the way EasyWorship 7's default view is:
+- Preview and Live arranged side by side:
   the Preview pane lists the item's slides as labelled blocks
   (Chorus in purple, Verse in blue), the Live pane shows the live
   item's slides as a thumbnail grid with the on-screen slide
@@ -49,7 +82,7 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
   panes, the output monitors and the resources strip. Sizes are
   remembered; double-click a divider to reset it, or focus it and
   use the arrow keys.
-- Toolbar in EasyWorship's order: New, Open, Save, Store, Web,
+- Toolbar order: New, Open, Save, Store, Web,
   Remote on the left; Go Live, Alerts, Logo, Black, Clear and Live
   on the right. Live opens the output window. Store, Web and Remote
   are greyed out until those features exist.
@@ -78,12 +111,11 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
 ### Added
 
 - Display font picker in the Themes tab. Each theme now carries
-  its own display font, picked from a list led by EasyWorship's
-  own defaults (Calibri, its default song theme font, and Arial,
-  its global font), with a live preview line in the theme's
+  its own display font, picked from a list led by Calibri and
+  Arial, with a live preview line in the theme's
   colours. The chosen font flows to the preview, the live monitor
-  and the projector window, the way EasyWorship's theme font
-  decides what the room sees.
+  and the projector window, so the theme font decides what the
+  room sees.
 
 ## [0.5.0] - 2026-10-25
 
@@ -93,8 +125,7 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
   up, move down, Remove, with the arrows and Remove greyed out
   when nothing is selected, and the item count moved to the panel
   footer. Buttons no longer wrap their labels.
-- Song list and Bible list are tables now, the way EasyWorship's
-  resource lists are: songs show Title, Author, Source; scripture
+- Song list and Bible list are tables now: songs show Title, Author, Source; scripture
   shows Translation, Reference, Scripture. Click a row to preview
   it; the search box filters the table, and Bible keeps its Show
   button for an exact reference.
@@ -108,29 +139,27 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
 ### Changed
 
-- Schedule panel reworked to EasyWorship's arrangement: each row has
+- Schedule panel reworked: each row has
   a thumbnail, the title, and a notes line underneath (type and
   reference, in the small italic notes style), songs expand with an
   arrow to show their slides, clicking a slide selects it in the
   preview, and double-clicking a row sends that item live from its
   first slide. The toolbar above the list also shows the item count,
   and an empty schedule explains how to fill it.
-- Toolbar now splits the way EasyWorship's does: New, Open, Save
+- Toolbar now splits in two: New, Open, Save
   and Add Item on the left, Go Live, Alerts, Logo, Black and Clear
   on the right, each as an icon above a short label. The Go Live
   button that sat under the preview is gone, so the live controls
   live on the right only: the toolbar's right group and the live
   column.
 - Pane titles are filled bars now, and the header carries the
-  subtle gradient EasyWorship's toolbar has.
+  subtle gradient.
 
 ### Added
 
-- EasyWorship's fonts: the interface uses Segoe UI (the font
-  Windows draws EasyWorship's interface in), and slide text uses
-  Calibri, EasyWorship's default song theme font (per their support
-  forum; their global font is Arial, which is the fallback in the
-  stack). Themes carry a font family now, and it travels with the
+- Fonts: the interface uses Segoe UI (the Windows system font),
+  and slide text uses Calibri, with Arial as the fallback in the
+  stack. Themes carry a font family now, and it travels with the
   live payload, so the projector shows the same font as the
   preview.
 
@@ -138,16 +167,14 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
 ### Added
 
-- EasyWorship 7's keyboard shortcuts, exactly as listed in
-  EasyWorship's own support article: Page Down goes live,
+- Keyboard shortcuts for worship operators: Page Down goes live,
   Ctrl + B toggles black, Ctrl + L toggles logo, Ctrl + C toggles
   the live text (a second press restores it), Up/Down move slides,
   Left/Right move schedule items, Home/End jump to the first/last
   slide, Ctrl + O opens, Ctrl + S saves, Ctrl + Del deletes the
   selected schedule item, Ctrl + F/M/N open the Alerts tab, and
   V/C/number + Enter jumps to a verse, chorus or slide number.
-  N, P, Space, Backspace and Page Up also step slides, as in
-  EasyWorship's default hotkey set. See
+  N, P, Space, Backspace and Page Up also step slides. See
   `docs/keyboard-shortcuts.md`.
 - Keyboard Shortcuts dialog (Help menu, header button, or `?`),
   with the full grouped list; menu items show their shortcut on
@@ -158,10 +185,9 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
 ### Fixed
 
-- Main window arrangement now matches EasyWorship's for real:
-  schedule, preview and live output are three full-height columns,
-  and the resources live as a strip across the bottom, the way the
-  EasyWorship 7 overview shows them. The previous 0.3.0 layout put
+- Main window arrangement fixed: schedule, preview and live output
+  are three full-height columns, and the resources live as a strip
+  across the bottom. The previous 0.3.0 layout put
   the resources in the right column and squeezed live into a small
   box above them; live is no longer smaller than it should be.
 - Live column is a full workstation now: a 16:9 output monitor at
@@ -174,24 +200,21 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
 ### Changed
 
-- Main window rebuilt on EasyWorship's layout, studied from the
-  EasyWorship 7 screenshots: menu bar (File, Schedule, Live, View)
+- Main window rebuilt on the conventional worship-software layout:
+  menu bar (File, Schedule, Live, View)
   and toolbar (New, Open, Save, Add Item, Go Live, Alerts, Logo,
   Black, Clear) on top, schedule down the left with type marks and
   move/remove controls, preview in the centre with a slide selector
   (song verses keep their names) and a big GO LIVE button, live
   output up the right with a LIVE badge, resources tabbed under it,
-  and a status bar at the bottom. Own code and styling throughout;
-  the screenshots were reference for the arrangement, not material
-  to copy.
+  and a status bar at the bottom. Own code and styling throughout.
 - File menu and toolbar Open now open a service or library file
   (.tworship, .ews, .ewsx, .xml, .txt, .db, .zip); Save writes the
   current service as .tworship; File also exports the song library.
 
 ### Added
 
-- Light, dark and system themes, the same choice EasyWorship itself
-  offers. System follows the operating system and keeps following it
+- Light, dark and system themes. System follows the operating system and keeps following it
   when the OS setting changes; the choice is remembered between runs.
 
 ## [0.2.0] - 2026-10-25

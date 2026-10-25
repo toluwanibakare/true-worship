@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimizeWindow: () => ipcRenderer.send('window-minimize'),
   toggleMaximizeWindow: () => ipcRenderer.send('window-toggle-maximize'),
   closeWindow: () => ipcRenderer.send('window-close'),
+  listBackgrounds: () => ipcRenderer.invoke('backgrounds-list'),
+  importBackgrounds: () => ipcRenderer.invoke('backgrounds-import'),
+  removeBackground: (file) => ipcRenderer.invoke('backgrounds-remove', file),
   getDisplays: () => ipcRenderer.invoke('get-displays'),
   sendLiveUpdate: (payload) => ipcRenderer.send('live-update', payload),
   onLiveUpdate: (callback) =>

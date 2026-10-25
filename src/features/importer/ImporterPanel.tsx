@@ -7,8 +7,8 @@ import wasmUrl from './sqlWasmUrl'
 /**
  * Feature: importer.
  * Owns moving churches off EasyWorship and other tools, and True
- * Worship's own .tworship format. One file input takes everything:
- * .tworship, .ews/.ewsx, OpenSong/OpenLyrics .xml, plain .txt songs,
+ * Worship's own .twp format. One file input takes everything:
+ * .twp, .ews/.ewsx, OpenSong/OpenLyrics .xml, plain .txt songs,
  * SQLite song databases (.db/.sqlite), and zips of song files.
  * Results land in the app library and schedule through the callbacks;
  * warnings are shown, never hidden.
@@ -52,11 +52,11 @@ export function ImporterPanel({
         library and schedule.
       </p>
       <label className="mt-3 block text-sm text-slate-700 dark:text-slate-300">
-        Import files (.tworship, .ews, .ewsx, .xml, .txt, .db, .sqlite, .zip)
+        Import files (.twp, .ews, .ewsx, .xml, .txt, .db, .sqlite, .zip)
         <input
           type="file"
           multiple
-          accept=".tworship,.ews,.ewsx,.xml,.txt,.db,.sqlite,.sqlite3,.zip"
+          accept=".twp,.tworship,.ews,.ewsx,.xml,.txt,.db,.sqlite,.sqlite3,.zip"
           className="mt-1 block w-full text-sm text-slate-500 dark:text-slate-400"
           onChange={(event) => void handleFiles(event.target.files)}
         />
@@ -77,7 +77,7 @@ export function ImporterPanel({
       ))}
 
       <div className="mt-4 border-t border-slate-300 dark:border-slate-800 pt-3">
-        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Export as .tworship</p>
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Export as .twp</p>
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
           True Worship's own format: a zip with a manifest and your songs
           and schedule as JSON. Send it to another computer and import it

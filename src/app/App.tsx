@@ -15,7 +15,7 @@ import { DisplayPanel } from '../features/display/DisplayPanel'
 import { loadDisplaySettings } from '../features/display/displaySettings'
 import { NdiPanel } from '../features/ndi/NdiPanel'
 import { BackgroundPicker } from '../features/backgrounds/BackgroundPicker'
-import type { BackgroundPreset } from '../features/backgrounds/backgrounds'
+import { BACKGROUNDS, type BackgroundPreset } from '../features/backgrounds/backgrounds'
 import { LayoutPicker } from '../features/layouts/LayoutPicker'
 import type { MarqueeAlert } from '../shared/components/Marquee'
 import { ShortcutsDialog } from '../features/shortcuts/ShortcutsDialog'
@@ -35,9 +35,9 @@ import { demoPassage, demoSchedule, demoSongs, demoThemes } from '../shared/lib/
 import type { ScheduleItem, Song } from '../shared/lib/types'
 
 /**
- * Toolbar button, EasyWorship-style: an icon above a short label.
- * EasyWorship's toolbar splits the same way: file commands on the
- * left, Go Live, Alerts, Logo, Black and Clear on the right.
+ * Toolbar button: an icon above a short label. The toolbar splits
+ * in two: file commands on the left, Go Live, Alerts, Logo, Black,
+ * Clear and Live on the right.
  */
 function ToolButton({
   label,
@@ -81,7 +81,7 @@ function ToolButton({
   )
 }
 
-/** Thin rule between toolbar groups, as in EasyWorship's toolbar. */
+/** Thin rule between toolbar groups. */
 function ToolDivider() {
   return <span className="mx-1 h-8 w-px bg-slate-300 dark:bg-slate-700" aria-hidden="true" />
 }
@@ -169,13 +169,12 @@ const IconClear = (
 )
 
 /**
- * App shell, laid out the way EasyWorship lays its main window out,
- * from the EasyWorship 7 screenshots: a menu bar and toolbar on top,
- * then three full-height columns — the schedule down the left, the
- * preview in the centre, the live output down the right — and the
- * resources (songs, Bible, media, themes, and the rest) as a strip
- * across the bottom. Light, dark and system themes, the same choice
- * EasyWorship itself offers.
+ * App shell, laid out the conventional way for worship software: a
+ * title bar and toolbar on top, the schedule down the left, the
+ * Preview and Live panes side by side with their output monitors under
+ * them, and the resources (songs, Bible, media, themes, and the rest)
+ * as a tab strip across the bottom. Every divider is draggable. Light,
+ * dark and system themes.
  */
 
 type Tab = 'songs' | 'bible' | 'media' | 'themes' | 'backgrounds' | 'layouts' | 'songbook'
@@ -219,7 +218,10 @@ export function App() {
   const [themeMode, setThemeMode] = useState<ThemeMode>(
     () => (localStorage.getItem('tw-theme') as ThemeMode) || 'system',
   )
-  const [background, setBackground] = useState<BackgroundPreset | null>(null)
+  // Deep Rays is the default look; the Backgrounds tab changes it.
+  const [background, setBackground] = useState<BackgroundPreset | null>(
+    () => BACKGROUNDS.find((entry) => entry.id === 'deep-rays') ?? null,
+  )
   const [layoutId, setLayoutId] = useState('fullscreen')
   const [alert, setAlert] = useState<MarqueeAlert | null>(null)
   const [slideIndex, setSlideIndex] = useState(0)
@@ -300,6 +302,7 @@ export function App() {
       textColor: theme.textColor,
       fontSize: theme.fontSize,
       fontFamily: theme.fontFamily,
+      bold: theme.bold,
     })
   }
 
@@ -312,25 +315,39 @@ export function App() {
     showPreview({ title: song.title, slides: song.verses.map((verse) => verse.lines) })
   }
 
-  // Send the previewed item live, starting at the given slide. Double-
-  // clicking a slide in the Preview pane uses this to go live on that
-  // slide straight away.
-  const goLiveSlide = (index: number) => {
-    const lines = preview.slides[index] ?? []
-    setLive({ title: preview.title, lines })
-    setLiveSlides(preview.slides)
-    setLiveSlideLabels(slideLabels)
+  // Send an item live, starting at the given slide. Double-clicking a
+  // slide in the Preview pane, or a row in the Scriptures table, uses
+  // this to go live straight away.
+  const goLiveWith = (target: Preview, labels: string[], index: number) => {
+    const lines = target.slides[index] ?? []
+    setLive({ title: target.title, lines })
+    setLiveSlides(target.slides)
+    setLiveSlideLabels(labels)
     setLiveSlideIndex(index)
     setBlack(false)
     setLogo(false)
     clearedLiveRef.current = null
     window.electronAPI?.openLiveWindow(loadDisplaySettings())
-    sendLive(preview.title, lines)
+    sendLive(target.title, lines)
+  }
+
+  const goLiveSlide = (index: number) => goLiveWith(preview, slideLabels, index)
+
+  const goLiveSong = (song: Song) => {
+    const next = { title: song.title, slides: song.verses.map((verse) => verse.lines) }
+    showPreview(next)
+    goLiveWith(next, song.verses.map((verse) => verse.label), 0)
+  }
+
+  const goLiveScripture = (reference: string, text: string) => {
+    const next = { title: reference, slides: [[text]] }
+    showPreview(next)
+    goLiveWith(next, ['Slide 1'], 0)
   }
 
   const handleGoLive = () => goLiveSlide(slideIndex)
 
-  // EasyWorship's Black and Logo are toggles, not one-way buttons:
+  // Black and Logo are toggles, not one-way buttons:
   // pressing again returns to whatever was live.
   const toggleBlack = () => {
     if (black) {
@@ -365,7 +382,7 @@ export function App() {
     sendLive('', [])
   }
 
-  // Ctrl + C in EasyWorship toggles the live text on and off. The
+  // Ctrl + C toggles the live text on and off. The
   // second press brings back exactly what the first press cleared.
   const toggleText = () => {
     if (live) {
@@ -486,7 +503,7 @@ export function App() {
     setSlideIndex(0)
   }
 
-  // Keyboard shortcuts, EasyWorship's own. The effect mounts once and
+  // Keyboard shortcuts. The effect mounts once and
   // reads every action through a ref, so the handlers are always the
   // current render's and the listener never goes stale.
   const actionsRef = useRef({
@@ -807,7 +824,7 @@ export function App() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".tworship,.ews,.ewsx,.xml,.txt,.db,.sqlite,.sqlite3,.zip"
+          accept=".twp,.tworship,.ews,.ewsx,.xml,.txt,.db,.sqlite,.sqlite3,.zip"
           multiple
           className="hidden"
           onChange={(event) => {
@@ -982,13 +999,16 @@ export function App() {
             ))}
           </div>
           <div className="min-h-0 flex-1 rounded-b-md rounded-tr-md border border-slate-300 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
-            {tab === 'songs' && <SongLibrary songs={songs} onOpen={openSong} />}
+            {tab === 'songs' && (
+              <SongLibrary songs={songs} onOpen={openSong} onGoLive={goLiveSong} />
+            )}
             {tab === 'bible' && (
               <BibleLookup
                 passages={demoPassage}
                 onOpen={(reference, text) =>
                   showPreview({ title: reference, slides: [[text]] })
                 }
+                onGoLive={goLiveScripture}
               />
             )}
             {tab === 'media' && <MediaLibrary />}
@@ -997,6 +1017,11 @@ export function App() {
                 themes={themes}
                 activeId={themeId}
                 onPick={setThemeId}
+                onBoldChange={(id, bold) =>
+                  setThemes((current) =>
+                    current.map((entry) => (entry.id === id ? { ...entry, bold } : entry)),
+                  )
+                }
                 onFontChange={(id, fontFamily) =>
                   setThemes((current) =>
                     current.map((entry) =>

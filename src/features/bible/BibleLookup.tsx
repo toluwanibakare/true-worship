@@ -3,10 +3,9 @@ import { ResourceView } from '../../shared/components/ResourceView'
 
 /**
  * Feature: bible.
- * Owns scripture lookup. Laid out the way EasyWorship's Scriptures
- * tab is: search and the SCRIPTURES source list on the left, a table
+ * Owns scripture lookup. Laid out as a resource tab: search and the SCRIPTURES source list on the left, a table
  * of Translation, Reference and Scripture on the right, a count along
- * the bottom. Click a row to preview it; typing a reference such as
+ * the bottom. Click a row to preview it, double-click to go live; typing a reference such as
  * John 3:16 narrows the table to it. The demo library holds one
  * passage (KJV); the real version reads from bundled translations
  * (KJV, WEB) and downloadable eBible / SWORD packs held in SQLite.
@@ -14,9 +13,11 @@ import { ResourceView } from '../../shared/components/ResourceView'
 export function BibleLookup({
   passages,
   onOpen,
+  onGoLive,
 }: {
   passages: Record<string, string>
   onOpen: (reference: string, text: string) => void
+  onGoLive: (reference: string, text: string) => void
 }) {
   const [query, setQuery] = useState('')
   const [pickedRef, setPickedRef] = useState<string | null>(null)
@@ -52,6 +53,8 @@ export function BibleLookup({
                 setPickedRef(ref)
                 onOpen(ref, text)
               }}
+              onDoubleClick={() => onGoLive(ref, text)}
+              title="Double-click to go live"
               className={`cursor-pointer border-t border-slate-200 dark:border-slate-800 ${
                 ref === pickedRef
                   ? 'bg-slate-300 dark:bg-slate-700'

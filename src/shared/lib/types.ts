@@ -37,8 +37,10 @@ export type Theme = {
   background: string
   textColor: string
   fontSize: number
-  /** Slide font stack. EasyWorship's default song theme font is Calibri. */
+  /** Slide font stack. Calibri first, with open fallbacks. */
   fontFamily: string
+  /** Slide text is bold by default, as worship slides usually are. */
+  bold: boolean
 }
 
 export type LiveState = {

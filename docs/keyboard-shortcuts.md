@@ -1,9 +1,9 @@
 # Keyboard Shortcuts
 
-True Worship uses EasyWorship 7's shortcuts exactly, taken from
-EasyWorship's own support article "Shortcut Keys For EasyWorship 7"
-(support.easyworship.com). The article groups them into Editor Keys,
-Schedule Keys and Show Control Keys. Press `?` in the app (or Help →
+True Worship's shortcuts follow the key set worship operators already
+know, so people moving over from other tools keep their muscle memory.
+They are grouped into Editor Keys, Schedule Keys and Show Control Keys.
+Press `?` in the app (or Help →
 Keyboard Shortcuts) for the same list inside the app.
 
 ## File
@@ -52,8 +52,7 @@ the preview; Page Down sends it live.
 
 ## Also active by default
 
-From EasyWorship's own default hotkey set (Hotkeys2.ini, quoted in
-their support article on reverting hotkeys):
+Extra keys that step through slides:
 
 | Keys | Does |
 | --- | --- |
@@ -76,10 +75,9 @@ their support article on reverting hotkeys):
   window is a separate window.
 - **Ctrl + Drag** between songs: drag and drop between items is not
   built yet.
-- **Foldback alerts** (Ctrl + F in EasyWorship opens the Foldback
-  tab): True Worship has no foldback screen yet, so Ctrl + F opens
-  the Alerts tab.
-- **Black and Logo are toggles** here, as in EasyWorship: pressing
+- **Foldback alerts** (Ctrl + F): True Worship has no foldback
+  screen yet, so Ctrl + F opens the Alerts dialog.
+- **Black and Logo are toggles**: pressing
   again returns to whatever was live.
 
 ## Safety rules in the implementation
@@ -89,5 +87,4 @@ their support article on reverting hotkeys):
 - While the shortcut list dialog is open, only Esc fires.
 - The jump-to-slide buffer clears after 2 seconds without a key, on
   Esc, or on any other key.
-- Menu items show their shortcut on the right, the way EasyWorship's
-  menus do.
+- Menu items show their shortcut on the right.

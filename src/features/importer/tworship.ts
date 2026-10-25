@@ -2,11 +2,12 @@ import JSZip from 'jszip'
 import type { ScheduleItem, Song, Theme } from '../../shared/lib/types'
 
 /**
- * True Worship's own file format: .tworship
+ * True Worship's own file format: .twp ("True Worship Package")
  *
- * Why a new format: .trw is already taken (TrailerWIN vehicle data, and
- * Trimble RealWorks), and a search found no existing .tworship format,
- * so .tworship is free to claim. The file is a ZIP archive, the same
+ * Why .twp: .trw is already taken (TrailerWIN vehicle data, and Trimble
+ * RealWorks), and so are .tws (TextPad), .twf (Casio, ESRI) and .twx
+ * (IBM, ThingWorx); a search found nothing using .twp. Files saved by
+ * earlier versions use .tworship, which is still read. The file is a ZIP archive, the same
  * shape as .ews and .osz, so any unzip tool can look inside it:
  *
  *   manifest.json   { format: "true-worship", version: 1, kind, title,
@@ -22,7 +23,9 @@ import type { ScheduleItem, Song, Theme } from '../../shared/lib/types'
 
 export const TWORSHIP_FORMAT = 'true-worship'
 export const TWORSHIP_VERSION = 1
-export const TWORSHIP_EXTENSION = '.tworship'
+export const TWORSHIP_EXTENSION = '.twp'
+/** The extension earlier versions wrote; still accepted on import. */
+export const TWORSHIP_LEGACY_EXTENSION = '.tworship'
 
 export type TworshipKind = 'schedule' | 'song' | 'library'
 
@@ -126,7 +129,7 @@ export async function parseTworshipFile(
   const zip = await JSZip.loadAsync(data)
   const manifestText = await zip.file('manifest.json')?.async('text')
   if (!manifestText) {
-    throw new Error('This is not a .tworship file: manifest.json is missing.')
+    throw new Error('This is not a True Worship (.twp) file: manifest.json is missing.')
   }
   const manifest = JSON.parse(manifestText) as {
     format?: string
@@ -144,7 +147,7 @@ export async function parseTworshipFile(
   }
   const contentText = await zip.file('content.json')?.async('text')
   if (!contentText) {
-    throw new Error('This .tworship file has no content.json.')
+    throw new Error('This True Worship (.twp) file has no content.json.')
   }
   const content = JSON.parse(contentText) as {
     songs?: unknown[]

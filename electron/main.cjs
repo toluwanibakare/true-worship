@@ -1,13 +1,36 @@
-const { app, BrowserWindow, Menu, ipcMain, screen, shell } = require('electron')
+const {
+  app,
+  BrowserWindow,
+  Menu,
+  dialog,
+  ipcMain,
+  net,
+  protocol,
+  screen,
+  shell,
+} = require('electron')
+const fs = require('node:fs')
 const path = require('node:path')
+const { pathToFileURL } = require('node:url')
 const ndi = require('./ndi.cjs')
 
 const isDev = process.env.TW_DEV === '1'
 
 let operatorWindow = null
 let liveWindow = null
-/** Display id the live window is currently on, for display-removed handling. */
-let liveDisplayId = null
+/** The display settings the live window was last given, re-applied when screens change. */
+let liveSettings = { displayId: 'auto', fullscreen: true, alwaysOnTop: false }
+/** True while the live window is a normal window because no projector is connected. */
+let liveWindowed = false
+
+// Backgrounds the user adds live in userData and are served to both
+// windows through this scheme, so a path never has to leave the folder.
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'tw-media',
+    privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true },
+  },
+])
 
 function loadOperator(window) {
   if (isDev) {
@@ -54,18 +77,51 @@ function resolveDisplay(displayId) {
   return displays.find((display) => display.id !== primary.id) ?? primary
 }
 
+/**
+ * With no projector connected the only screen is the operator's own,
+ * and filling it would cover the app. So unless the user picked this
+ * exact display on purpose, a live output that would land on the
+ * primary screen opens as a normal window instead.
+ */
+function shouldBeWindowed(settings) {
+  const primary = screen.getPrimaryDisplay()
+  const display = resolveDisplay(settings.displayId)
+  return display.id === primary.id && settings.displayId !== primary.id
+}
+
 function applyToLiveWindow(settings) {
   if (!liveWindow || liveWindow.isDestroyed()) return
-  const display = resolveDisplay(settings.displayId)
-  liveDisplayId = display.id
+  liveSettings = { ...liveSettings, ...settings }
+  const display = resolveDisplay(liveSettings.displayId)
+
+  if (shouldBeWindowed(liveSettings)) {
+    liveWindow.setAlwaysOnTop(false)
+    liveWindow.setFullScreen(false)
+    // Place it once; after that the operator can move and resize it.
+    if (!liveWindowed) {
+      const area = display.workArea
+      const width = 960
+      const height = 540
+      liveWindow.setBounds({
+        x: Math.round(area.x + (area.width - width) / 2),
+        y: Math.round(area.y + (area.height - height) / 2),
+        width,
+        height,
+      })
+    }
+    liveWindowed = true
+    return
+  }
+
+  liveWindowed = false
   liveWindow.setBounds({
     x: display.bounds.x,
     y: display.bounds.y,
     width: display.bounds.width,
     height: display.bounds.height,
   })
-  liveWindow.setFullScreen(Boolean(settings.fullscreen))
-  liveWindow.setAlwaysOnTop(Boolean(settings.alwaysOnTop), 'screen-saver')
+  liveWindow.setFullScreen(Boolean(liveSettings.fullscreen))
+  liveWindow.setAlwaysOnTop(Boolean(liveSettings.alwaysOnTop), 'screen-saver')
 }
 
 const appIcon = path.join(__dirname, '..', 'assets', 'logo', 'object-logo.png')
@@ -150,25 +206,26 @@ function createOperatorWindow() {
 }
 
 function createLiveWindow(settings = {}) {
-  if (liveWindow && !liveWindow.isDestroyed()) {
-    liveWindow.focus()
-    applyToLiveWindow({
-      displayId: settings.displayId ?? 'auto',
-      fullscreen: settings.fullscreen ?? true,
-      alwaysOnTop: settings.alwaysOnTop ?? false,
-    })
-    return liveWindow
-  }
-  const display = resolveDisplay(settings.displayId ?? 'auto')
-  liveDisplayId = display.id
-  liveWindow = new BrowserWindow({
-    x: display.bounds.x,
-    y: display.bounds.y,
-    width: display.bounds.width,
-    height: display.bounds.height,
-    title: 'True Worship — Live Output',
+  const wanted = {
+    displayId: settings.displayId ?? 'auto',
     fullscreen: settings.fullscreen ?? true,
     alwaysOnTop: settings.alwaysOnTop ?? false,
+  }
+  if (liveWindow && !liveWindow.isDestroyed()) {
+    applyToLiveWindow(wanted)
+    // Bring it forward without taking the keyboard from the operator.
+    if (liveWindow.isMinimized()) liveWindow.restore()
+    liveWindow.showInactive()
+    return liveWindow
+  }
+  liveSettings = wanted
+  liveWindowed = false
+  liveWindow = new BrowserWindow({
+    width: 960,
+    height: 540,
+    show: false,
+    backgroundColor: '#000000',
+    title: 'True Worship — Live Output',
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -176,9 +233,14 @@ function createLiveWindow(settings = {}) {
     },
   })
   loadLive(liveWindow)
+  liveWindow.once('ready-to-show', () => {
+    applyToLiveWindow(wanted)
+    // Showing it must not steal focus, or the operator's shortcuts stop working.
+    liveWindow.showInactive()
+  })
   liveWindow.on('closed', () => {
     liveWindow = null
-    liveDisplayId = null
+    liveWindowed = false
   })
   return liveWindow
 }
@@ -212,6 +274,60 @@ ipcMain.on('window-close', (event) => {
   BrowserWindow.fromWebContents(event.sender)?.close()
 })
 
+const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
+const VIDEO_EXTENSIONS = ['mp4', 'webm', 'm4v', 'mov']
+
+function backgroundsDir() {
+  const dir = path.join(app.getPath('userData'), 'backgrounds')
+  fs.mkdirSync(dir, { recursive: true })
+  return dir
+}
+
+function describeBackground(file) {
+  const extension = path.extname(file).slice(1).toLowerCase()
+  return {
+    file,
+    // Stored as <time>-<n>-<original name>; show the original name.
+    name: path.basename(file, path.extname(file)).replace(/^\d+-\d+-/, ''),
+    kind: VIDEO_EXTENSIONS.includes(extension) ? 'video' : 'still',
+    url: `tw-media://bg/${encodeURIComponent(file)}`,
+  }
+}
+
+ipcMain.handle('backgrounds-list', () =>
+  fs
+    .readdirSync(backgroundsDir())
+    .filter((file) =>
+      [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS].includes(path.extname(file).slice(1).toLowerCase()),
+    )
+    .sort()
+    .map(describeBackground),
+)
+
+ipcMain.handle('backgrounds-import', async (event) => {
+  const window = BrowserWindow.fromWebContents(event.sender)
+  const result = await dialog.showOpenDialog(window, {
+    title: 'Add backgrounds',
+    properties: ['openFile', 'multiSelect'],
+    filters: [
+      { name: 'Images and videos', extensions: [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS] },
+    ],
+  })
+  if (result.canceled) return []
+  const stamp = Date.now()
+  return result.filePaths.map((source, index) => {
+    const safeName = path.basename(source).replace(/[^\w.\- ]+/g, '_')
+    const file = `${stamp}-${index}-${safeName}`
+    fs.copyFileSync(source, path.join(backgroundsDir(), file))
+    return describeBackground(file)
+  })
+})
+
+ipcMain.handle('backgrounds-remove', (_event, file) => {
+  const target = path.join(backgroundsDir(), path.basename(String(file)))
+  if (fs.existsSync(target)) fs.unlinkSync(target)
+})
+
 ipcMain.handle('get-displays', () => listDisplays())
 ipcMain.handle('ndi-status', () => ndi.getStatus())
 ipcMain.handle('ndi-set', (_event, options) =>
@@ -224,19 +340,19 @@ app.whenReady().then(() => {
   // needs for the Edit shortcuts.
   if (process.platform !== 'darwin') Menu.setApplicationMenu(null)
 
-  // If the projector is unplugged, move the live window back to the main
-  // display instead of leaving it on a screen that no longer exists. The
+  // Re-place the live window when a screen is plugged in or removed: a
+  // projector that appears takes the output, and one that disappears
+  // drops it back to a window instead of covering the operator. The
   // screen module can only be used once the app is ready.
-  screen.on('display-removed', () => {
-    if (!liveWindow || liveWindow.isDestroyed()) return
-    const stillThere = screen
-      .getAllDisplays()
-      .some((display) => display.id === liveDisplayId)
-    if (!stillThere) {
-      const primary = screen.getPrimaryDisplay()
-      liveDisplayId = primary.id
-      liveWindow.setBounds({ ...primary.bounds })
-    }
+  screen.on('display-added', () => applyToLiveWindow(liveSettings))
+  screen.on('display-removed', () => applyToLiveWindow(liveSettings))
+
+  // Serve user-added backgrounds from userData (see backgroundsDir).
+  protocol.handle('tw-media', (request) => {
+    const file = path.basename(decodeURIComponent(new URL(request.url).pathname))
+    return net.fetch(pathToFileURL(path.join(backgroundsDir(), file)).toString(), {
+      headers: request.headers,
+    })
   })
 
   createOperatorWindow()

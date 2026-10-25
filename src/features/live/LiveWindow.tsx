@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { LiveUpdatePayload } from '../../electron'
-import { layoutById } from '../../shared/lib/layouts'
-import { Marquee } from '../../shared/components/Marquee'
+import type { Theme } from '../../shared/lib/types'
+import { SlideView } from '../../shared/components/SlideView'
 
 /**
  * Feature: live — the second window.
@@ -26,45 +26,30 @@ export function LiveWindow() {
     )
   }
 
-  const layout = layoutById(slide.layout)
+  // The projector draws with the same renderer as the operator's
+  // monitors, scaled to fit the screen, so what the room sees is exactly
+  // what the operator previewed.
+  const theme: Theme = {
+    id: 'live',
+    name: 'Live',
+    background: slide.background,
+    textColor: slide.textColor,
+    fontSize: slide.fontSize,
+    fontFamily: slide.fontFamily,
+    bold: slide.bold,
+  }
 
   return (
-    <div
-      className="relative h-full overflow-hidden"
-      style={{ background: slide.backgroundCss ?? slide.background, color: slide.textColor, fontFamily: slide.fontFamily }}
-    >
-      {slide.backgroundVideo && (
-        <video
-          src={slide.backgroundVideo}
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      )}
-      {slide.alert && (
-        <div className="absolute inset-x-0 top-0 z-20">
-          <Marquee alert={slide.alert} />
-        </div>
-      )}
-      <div className={`relative z-10 ${layout.wrapper}`}>
-        {layout.band ? (
-          <div className={layout.band}>
-            {slide.lines.map((line) => (
-              <p key={line} className="leading-snug" style={{ fontSize: slide.fontSize }}>
-                {line}
-              </p>
-            ))}
-          </div>
-        ) : (
-          slide.lines.map((line) => (
-            <p key={line} className="leading-snug" style={{ fontSize: slide.fontSize }}>
-              {line}
-            </p>
-          ))
-        )}
-      </div>
+    <div className="flex h-full items-center justify-center bg-black">
+      <SlideView
+        lines={slide.lines}
+        theme={theme}
+        backgroundCss={slide.backgroundCss}
+        backgroundVideo={slide.backgroundVideo}
+        layoutId={slide.layout}
+        alert={slide.alert ?? null}
+        className="w-[min(100vw,calc(100vh*16/9))]"
+      />
     </div>
   )
 }

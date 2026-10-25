@@ -1,40 +1,69 @@
 # Backgrounds in True Worship
 
-## Pre-installed stills
+Pick a look in the Backgrounds tab. It shows small thumbnail grids in
+four groups, and the operator preview, the live monitor and the
+projector always match.
 
-Eight still looks ship inside the app as pure CSS (gradients and conic
-rays), so they work on every machine with no files to lose: Deep Rays,
-Midnight, Golden Hour, Forest Calm, Ember, Ocean Depth, Purple Dawn,
-and Charcoal Stage. Pick one in the Backgrounds tab; the operator
-preview and the projector always match.
+## Photos
 
-## Motion backgrounds
+Eight 1920x1080 stills drawn by `assets/backgrounds/generate.py`:
+Sunrise Peaks, Ocean Dusk, Clouds and Light, Night Sky, Calvary
+Sunset, Golden Bokeh, Violet Waves and Forest Mist.
 
-Three looping videos: Rays Drift (deep blue rays turning slowly, a
-seamless loop), Golden Zoom (a slow zoom over a warm gradient), and
-Ember Rise (soft embers drifting upward, also seamless). They live in
-`public/backgrounds/` as `.mp4` files and are referenced by relative
-paths, so they work both from the Vite dev server and from the
-packaged app loading over `file://`.
+## Motion
 
-## Generating the videos
+Nine short looping videos (VP9 WebM, 1280x720): Drifting Clouds,
+Aurora, Rising Lights, Light Shafts, Violet Flow, Starfield, Rays
+Drift, Golden Glow and Embers. Every motion is periodic over the loop,
+so the last frame flows back into the first with no jump. Each one has
+a poster still, which is what the thumbnail shows.
 
-Video and still files are not stored in git by the GitHub connector
-used here (it only takes text files), so they are generated, not
-committed. The generator and its stills are the source of truth:
+## Classic
+
+Eight stills that are pure CSS (gradients and conic rays), so they work
+on every machine with no files: Deep Rays, Midnight, Golden Hour,
+Forest Calm, Ember, Ocean Depth, Purple Dawn and Charcoal Stage. Deep
+Rays is the default look.
+
+## My Backgrounds
+
+"Add photos or videos…" copies your own files (JPG, PNG, WebP, MP4,
+WebM, M4V, MOV) into the app's data folder. The desktop app serves them
+to both windows through a private `tw-media://` address, so a file never
+has to stay where you picked it from. Hover a thumbnail and press x to
+remove it. In a plain browser the files only last until the page closes.
+
+Only add photos and videos you have the right to use in church. Free
+sources that allow this include Pexels, Pixabay and Unsplash; check the
+licence on each file.
+
+## Readable text on any background
+
+Over a photo, video, gradient or your own file, slide text is forced to
+white, a soft dark scrim sits between the background and the words, and
+the words carry a shadow. Plain theme colours keep the theme's own text
+colour. The Themes tab has a Bold switch; bold is on by default and adds
+a hairline stroke so words are heavier than the font's own bold.
+
+## Generating the files
+
+The generator draws everything itself (gradients, noise, silhouettes,
+light), so every file is original work with no third-party licence. The
+output is not committed, so run it once after a fresh clone:
 
 ```sh
-python3 assets/backgrounds/generate.py
+npm run backgrounds                           # everything
+python3 assets/backgrounds/generate.py stills # photos only
+python3 assets/backgrounds/generate.py motion # videos only
 ```
 
-It draws the stills with Pillow, renders the animation frames, and
-encodes the loops with ffmpeg (H.264, 1280x720). It writes into
-`public/backgrounds/`, which Vite serves automatically. Run it once
-after a fresh clone and the motion presets light up.
+It needs Python 3 with Pillow and NumPy, and ffmpeg with the VP9
+encoder (libvpx-vp9; H.264 is not needed). Files go to
+`public/backgrounds/`, which Vite serves automatically. The motion loops
+take a few minutes to render.
 
 ## Missing files
 
-If a motion video is missing, its preset falls back to its CSS still
-look instead of showing a broken slide. That is deliberate: a fresh
-clone never breaks a service, it just looks still until the videos are
-generated.
+If a photo or video is missing, its preset falls back to a CSS gradient
+of the same colours instead of showing a broken slide, so a fresh clone
+never breaks a service.

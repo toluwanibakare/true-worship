@@ -10,9 +10,8 @@ body,
   height: 100%;
 }
 
-/* EasyWorship is a Windows app, so its interface is drawn in Segoe
-   UI; the stack below matches it on Windows and falls back to the
-   system UI font everywhere else. */
+/* Segoe UI on Windows, falling back to the system UI font everywhere
+   else. */
 body {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
