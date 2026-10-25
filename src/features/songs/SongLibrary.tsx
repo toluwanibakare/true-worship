@@ -5,7 +5,9 @@ import { Panel, SearchInput } from '../../shared/components/ui'
 /**
  * Feature: songs.
  * Owns the song library: search, list, and opening a song into the
- * preview pane. Song storage moves to SQLite; this panel only renders
+ * preview pane. The list is a table the way EasyWorship's resource
+ * lists are: Title, Author, Source, one row per song, click a row to
+ * preview it. Song storage moves to SQLite; this panel only renders
  * whatever the app hands it.
  */
 export function SongLibrary({
@@ -33,25 +35,31 @@ export function SongLibrary({
         onChange={setQuery}
         placeholder="Search title, author, or lyric..."
       />
-      <ul className="mt-3 space-y-1">
-        {visible.map((song) => (
-          <li key={song.id}>
-            <button
-              type="button"
+      <table className="mt-3 w-full border-collapse text-sm">
+        <thead>
+          <tr className="bg-slate-200 text-left dark:bg-slate-800">
+            <th className="px-2 py-1.5 font-semibold">Title</th>
+            <th className="px-2 py-1.5 font-semibold">Author</th>
+            <th className="px-2 py-1.5 font-semibold">Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map((song) => (
+            <tr
+              key={song.id}
               onClick={() => onOpen(song)}
-              className="w-full rounded-md px-2 py-2 text-left text-sm text-slate-800 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-800"
+              className="cursor-pointer border-t border-slate-200 hover:bg-slate-200 dark:border-slate-800 dark:hover:bg-slate-800"
             >
-              <span className="block font-medium">{song.title}</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                {song.author} · {song.source}
-              </span>
-            </button>
-          </li>
-        ))}
-        {visible.length === 0 && (
-          <li className="px-2 py-4 text-sm text-slate-500">No songs match.</li>
-        )}
-      </ul>
+              <td className="px-2 py-1.5 font-medium">{song.title}</td>
+              <td className="px-2 py-1.5">{song.author}</td>
+              <td className="px-2 py-1.5 text-slate-500">{song.source}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {visible.length === 0 && (
+        <p className="px-2 py-4 text-sm text-slate-500">No songs match.</p>
+      )}
     </Panel>
   )
 }

@@ -51,14 +51,17 @@ export function SchedulePanel({
 
   return (
     <Panel title="Schedule" className="h-full">
-      <div className="mb-2 flex flex-wrap items-center gap-1">
+      <div className="mb-2 flex items-center gap-1">
         <Button onClick={onAdd}>Add item</Button>
-        <Button onClick={onMoveUp}>↑</Button>
-        <Button onClick={onMoveDown}>↓</Button>
-        <Button onClick={onRemove}>Remove</Button>
-        <span className="ml-auto text-xs text-slate-500">
-          {items.length} {items.length === 1 ? 'item' : 'items'}
-        </span>
+        <Button title="Move selected up" disabled={!selectedId} onClick={onMoveUp}>
+          ↑
+        </Button>
+        <Button title="Move selected down" disabled={!selectedId} onClick={onMoveDown}>
+          ↓
+        </Button>
+        <Button disabled={!selectedId} onClick={onRemove}>
+          Remove
+        </Button>
       </div>
       {items.length === 0 ? (
         <p className="text-sm text-slate-500">
@@ -137,6 +140,9 @@ export function SchedulePanel({
         </ul>
       )}
       <p className="mt-3 text-xs text-slate-500">
+        {items.length} {items.length === 1 ? 'item' : 'items'} in this schedule.
+      </p>
+      <p className="mt-1 text-xs text-slate-500">
         Saving and loading schedules to disk comes with the SQLite store.
       </p>
     </Panel>

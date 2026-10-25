@@ -24,20 +24,30 @@ export function Button({
   onClick,
   primary = false,
   active = false,
+  disabled = false,
+  title,
 }: {
   children: ReactNode
   onClick: () => void
   primary?: boolean
   active?: boolean
+  disabled?: boolean
+  title?: string
 }) {
-  const base = 'rounded-md px-3 py-1.5 text-sm font-medium transition-colors'
+  const base = 'whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors'
   const style = primary
     ? 'bg-blue-600 text-white hover:bg-blue-500'
     : active
       ? 'bg-blue-500 text-white'
       : 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-700'
   return (
-    <button type="button" className={`${base} ${style}`} onClick={onClick}>
+    <button
+      type="button"
+      disabled={disabled}
+      title={title}
+      className={`${base} ${style}${disabled ? ' cursor-not-allowed opacity-50' : ''}`}
+      onClick={onClick}
+    >
       {children}
     </button>
   )

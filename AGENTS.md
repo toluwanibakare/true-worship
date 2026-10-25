@@ -88,6 +88,11 @@ src/
    are thumbnail + title + italic notes line, with expandable song
    slides and double-click to go live. The toolbar splits left
    (file) and right (live controls), icon above label.
+10. **Resource lists are tables.** Songs: Title, Author, Source.
+    Scripture: Translation, Reference, Scripture. Click a row to
+    preview it. The live column header names the live item and its
+    current slide, Prev/Next steppers sit under the live controls,
+    and live slide rows show label plus first line.
 6. **Demo data is clearly marked.** Anything in `shared/lib/demo.ts` is
    placeholder content (public domain only: KJV text, Amazing Grace).
    Demo data never ships as if it were a real library.

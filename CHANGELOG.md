@@ -3,6 +3,25 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
+## [0.5.0] - 2026-10-25
+
+### Changed
+
+- Schedule controls tidied into one toolbar row: Add item, move
+  up, move down, Remove, with the arrows and Remove greyed out
+  when nothing is selected, and the item count moved to the panel
+  footer. Buttons no longer wrap their labels.
+- Song list and Bible list are tables now, the way EasyWorship's
+  resource lists are: songs show Title, Author, Source; scripture
+  shows Translation, Reference, Scripture. Click a row to preview
+  it; the search box filters the table, and Bible keeps its Show
+  button for an exact reference.
+- Live column arranged: the header names the live item and its
+  current slide, Prev slide and Next slide buttons sit under the
+  Go Live, Logo, Black and Clear row (greyed out at the ends or
+  when nothing is live), and each slide in the live list shows its
+  label plus its first line.
+
 ## [0.4.0] - 2026-10-25
 
 ### Changed

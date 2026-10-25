@@ -50,7 +50,10 @@ export function LivePanel({
               Not live
             </span>
           )}
-          <span className="truncate text-sm font-medium">{title}</span>
+          <span className="truncate text-sm font-medium">
+            {title}
+            {live && slideLabels[liveSlideIndex] ? ` · ${slideLabels[liveSlideIndex]}` : ''}
+          </span>
         </div>
         <div
           className="flex aspect-video w-full shrink-0 flex-col items-center justify-center overflow-hidden rounded-md p-4 text-center"
@@ -70,6 +73,20 @@ export function LivePanel({
           <Button onClick={onBlack}>Black</Button>
           <Button onClick={onClear}>Clear</Button>
         </div>
+        <div className="flex shrink-0 gap-2">
+          <Button
+            disabled={!live || liveSlideIndex <= 0}
+            onClick={() => onSelectLiveSlide(liveSlideIndex - 1)}
+          >
+            ◀ Prev slide
+          </Button>
+          <Button
+            disabled={!live || liveSlideIndex >= slides.length - 1}
+            onClick={() => onSelectLiveSlide(liveSlideIndex + 1)}
+          >
+            Next slide ▶
+          </Button>
+        </div>
         <div className="min-h-0 flex-1 overflow-auto">
           {live && slides.length > 1 ? (
             <div className="space-y-1">
@@ -84,7 +101,10 @@ export function LivePanel({
                       : 'text-slate-800 hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >
-                  {label}
+                  <span className="block font-medium">{label}</span>
+                  <span className="block truncate text-xs opacity-70">
+                    {slides[index]?.[0] ?? ''}
+                  </span>
                 </button>
               ))}
             </div>

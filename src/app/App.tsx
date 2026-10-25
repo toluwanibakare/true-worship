@@ -892,7 +892,7 @@ export function App() {
       </main>
 
       <footer className="flex items-center justify-between border-t border-slate-300 px-4 py-1.5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-        <span>True Worship 0.4.0 · GPL-3.0 · {schedule.length} items in schedule</span>
+        <span>True Worship 0.5.0 · GPL-3.0 · {schedule.length} items in schedule</span>
         <span>
           Theme: {themeMode} · {live ? 'LIVE' : 'Not live'}
         </span>
