@@ -49,6 +49,8 @@ export type UserMedia = {
 export type ElectronAPI = {
   isElectron: true
   openLiveWindow: (settings?: DisplaySettings) => void
+  /** Shows the live output window, or hides it again when there is no projector. Resolves to whether it is visible. */
+  toggleLiveWindow: (settings?: DisplaySettings) => Promise<boolean>
   applyDisplaySettings: (settings: DisplaySettings) => void
   minimizeWindow: () => void
   toggleMaximizeWindow: () => void

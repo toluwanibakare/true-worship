@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ResourceView } from '../../shared/components/ResourceView'
 import { ResourceTable, type Column } from '../../shared/components/ResourceTable'
 import { Modal } from '../../shared/components/Modal'
@@ -7,8 +7,10 @@ import {
   BOOK_ORDER,
   PACKS,
   bookKey,
+  displayBook,
   downloadPack,
   listPackIds,
+  matchesBook,
   readPack,
   savePack,
   type PackInfo,
@@ -27,10 +29,24 @@ type Row = {
   hay: string
   /** Canonical position: book, chapter and verse folded into one number. */
   order: number
+  /** The book, reduced to letters and digits for matching ("1john"). */
+  book: string
+  chapter: number
+  verse: number
 }
 
 const INSTALLED_KEY = 'tw-bible-versions'
 const MORE_AVAILABLE = 'More Available…'
+const POSITION_KEY = 'tw-bible-position'
+
+/** Where the search box opens: the last verse selected, or the very beginning. */
+function loadPosition(): string {
+  try {
+    return localStorage.getItem(POSITION_KEY) || 'Genesis 1:1'
+  } catch {
+    return 'Genesis 1:1'
+  }
+}
 
 /** KJV is in the side panel to begin with; every other version is added by the user. */
 const DEFAULT_INSTALLED: Installed[] = [{ id: 'kjv', name: 'King James Version' }]
@@ -51,10 +67,22 @@ function loadInstalled(): Installed[] {
   return DEFAULT_INSTALLED
 }
 
+/** "John 3:16" into the Book, Chapter and Verse fields. */
+function splitReference(reference: string) {
+  const parts = /^(.*)\s+(\d+):(\d+)$/.exec(reference.trim())
+  return parts
+    ? { book: parts[1], chapter: parts[2], verse: parts[3] }
+    : { book: reference.trim() || 'Genesis', chapter: '1', verse: '1' }
+}
+
 const abbrOf = (id: string) => PACKS.find((pack) => pack.id === id)?.abbr ?? id.toUpperCase()
 
 function makeRow(translationId: string, reference: string, text: string, order: number): Row {
+  const parts = /^(.*)\s+(\d+):(\d+)$/.exec(reference)
   return {
+    book: parts ? bookKey(parts[1]) : '',
+    chapter: parts ? Number(parts[2]) : 0,
+    verse: parts ? Number(parts[3]) : 0,
     key: `${translationId}:${reference.toLowerCase()}`,
     translationId,
     reference,
@@ -73,17 +101,24 @@ function orderOfReference(reference: string): number {
   return index < 0 ? 0 : index * 1e6 + Number(match[2]) * 1e3 + Number(match[3])
 }
 
-/** "John 3", "John 3:16" or "1 Cor 13:4-7": a book, a chapter, maybe verses. */
+/**
+ * A book, chapter and verse as people type them: "john 3 16", "jn3:16",
+ * "1 cor 13 4-7", "gen", "psalm 23". The book is a prefix ("joh" finds
+ * John and 1 John); the chapter and verses are optional.
+ */
 function parseReference(text: string) {
-  const match = /^((?:[1-3]\s*)?[a-z][a-z .]*?)\s*(\d+)(?::(\d+)(?:\s*-\s*(\d+))?)?$/i.exec(text.trim())
+  const match =
+    /^((?:[1-3]\s*)?[a-z][a-z .]*?)(?:\s*(\d+)(?:\s*[:.,\s]\s*(\d+)(?:\s*-\s*(\d+))?)?)?$/i.exec(text.trim())
   if (!match) return null
   return {
     book: match[1].trim(),
-    chapter: Number(match[2]),
+    chapter: match[2] ? Number(match[2]) : null,
     from: match[3] ? Number(match[3]) : null,
     to: match[4] ? Number(match[4]) : null,
   }
 }
+
+const BCV = 'Book Chapter Verse'
 
 type Download = { id: string; progress: number | null; error: string | null }
 
@@ -107,8 +142,24 @@ export function BibleLookup({
   passages,
   onOpen,
   onGoLive,
+  registerStepper,
+  registerSelection,
 }: {
   passages: Record<string, string>
+  /**
+   * Hands the app a function that puts the previous (-1) or next (1) verse
+   * live, after a verse from this table went live. It returns false when
+   * there is no live verse here to step from. The app calls it from the
+   * Up and Down arrow keys.
+   */
+  registerStepper: (step: ((direction: -1 | 1) => boolean) | null) => void
+  /**
+   * Hands the app a function that reads the verse highlighted in the table (or
+   * the verses an Enter just previewed), for the "+" and play buttons.
+   */
+  registerSelection: (
+    read: (() => { reference: string; slides: string[][]; version: string } | null) | null,
+  ) => void
   /** `version` is the short name, for example KJV, shown under the verse. */
   onOpen: (reference: string, slides: string[][], version: string) => void
   onGoLive: (reference: string, slides: string[][], version: string) => void
@@ -128,8 +179,21 @@ export function BibleLookup({
   const [download, setDownload] = useState<Download | null>(null)
   const [showMore, setShowMore] = useState(false)
   const [catalogue, setCatalogue] = useState<BibleVersion[] | null>(null)
+  // Text search (Scripture, Any Field).
   const [query, setQuery] = useState('')
-  const [field, setField] = useState('Any Field')
+  // Book, Chapter and Verse: three fields; they open on the last verse used.
+  const [book, setBook] = useState(() => splitReference(loadPosition()).book)
+  const [chapter, setChapter] = useState(() => splitReference(loadPosition()).chapter)
+  const [verse, setVerse] = useState(() => splitReference(loadPosition()).verse)
+  const setFields = (reference: string) => {
+    const parts = splitReference(reference)
+    setBook(parts.book)
+    setChapter(parts.chapter)
+    setVerse(parts.verse)
+  }
+  /** The three fields as one reference, empty chapter and verse counting as 1. */
+  const bcvQuery = `${book.trim()} ${chapter || '1'}:${verse || '1'}`
+  const [field, setField] = useState(BCV)
   const [pickedKey, setPickedKey] = useState<string | null>(null)
   const [scrollKey, setScrollKey] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -168,12 +232,12 @@ export function BibleLookup({
     readPack(selected.id)
       .then((stored) => {
         if (!current || !stored) return
-        setPackBooks(stored.books)
+        setPackBooks(stored.books.map(displayBook))
         setPackRows(
           stored.rows.map(([book, chapter, verse, text]) =>
             makeRow(
               stored.id,
-              `${stored.books[book]} ${chapter}:${verse}`,
+              `${displayBook(stored.books[book])} ${chapter}:${verse}`,
               text,
               book * 1e6 + chapter * 1e3 + verse,
             ),
@@ -203,23 +267,121 @@ export function BibleLookup({
     () => packRows ?? entries.filter((entry) => entry.translationId === selected.id),
     [packRows, entries, selected.id],
   )
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  /** True when the typed text names a book that is in these rows: a place to go to, not words to find. */
+  function isReferenceIn(rows: Row[], text: string) {
+    const reference = parseReference(text)
+    const wanted = reference ? bookKey(reference.book) : ''
+    return Boolean(reference && wanted && rows.some((row) => matchesBook(row.book, wanted)))
+  }
+
+  /** The first verse a reference points at: the start of the book, chapter or verse typed. */
+  function firstVerseOf(rows: Row[], text: string): Row | undefined {
+    const reference = parseReference(text)
+    if (!reference) return undefined
+    const wanted = bookKey(reference.book)
+    return rows.find(
+      (row) =>
+        matchesBook(row.book, wanted) &&
+        (reference.chapter === null || row.chapter === reference.chapter) &&
+        (reference.from === null || row.verse >= reference.from),
+    )
+  }
+
+  // In Book Chapter Verse the box is a place to go to, not words to find; but
+  // if the Book field holds something that is not a book ("love"), those words
+  // search the text instead.
+  const searchText = field === BCV ? book : query
+  const words = searchText.toLowerCase().split(/\s+/).filter(Boolean)
   const visible = useMemo(() => {
     if (words.length === 0) return allRows
+    if (field === BCV && isReferenceIn(allRows, bcvQuery)) return allRows
     return allRows.filter((row) => {
       const haystack =
-        field === 'Reference'
-          ? row.reference.toLowerCase()
-          : field === 'Scripture'
+        field === 'Scripture'
             ? row.text.toLowerCase()
             : row.hay
       return words.every((word) => haystack.includes(word))
     })
     // `words` follows from `query`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allRows, query, field])
+  }, [allRows, query, book, bcvQuery, field])
+
+  // The verse from this table that is on the screen, if any.
+  const liveKey = useRef<string | null>(null)
+  // Every verse of the chosen version in Bible order, for stepping.
+  const inBibleOrder = useMemo(
+    () => [...allRows].sort((a, b) => a.order - b.order),
+    [allRows],
+  )
+
+  // What the last Enter previewed, so a second Enter on the same verse goes live.
+  const enterPreview = useRef<{ key: string; label: string; slides: string[][]; version: string } | null>(null)
+
+  const goLiveRow = (row: Row) => {
+    liveKey.current = row.key
+    onGoLive(row.reference, [[row.text]], abbrOf(row.translationId))
+  }
+
+  const stepLiveVerse = (direction: -1 | 1) => {
+    if (!liveKey.current) return false
+    const at = inBibleOrder.findIndex((row) => row.key === liveKey.current)
+    if (at < 0) return false
+    const next = inBibleOrder[at + direction]
+    // Past the first or last verse there is nowhere to go; the key is still ours.
+    if (!next) return true
+    setPickedKey(next.key)
+    setScrollKey(next.key)
+    goLiveRow(next)
+    return true
+  }
+  // Re-registered every render so the app always calls the current version.
+  useEffect(() => {
+    registerStepper(stepLiveVerse)
+    return () => registerStepper(null)
+  })
+  useEffect(() => {
+    registerSelection(() => {
+      const previewed = enterPreview.current
+      if (previewed && previewed.key === pickedKey) {
+        return { reference: previewed.label, slides: previewed.slides, version: previewed.version }
+      }
+      const row = allRows.find((entry) => entry.key === pickedKey)
+      return row
+        ? { reference: row.reference, slides: [[row.text]], version: abbrOf(row.translationId) }
+        : null
+    })
+    return () => registerSelection(null)
+  })
+
+  // Book, chapter, verse: the table shows the whole Bible and the box takes it
+  // to what was typed, highlighting the first verse there. It opens on the last
+  // verse used (Genesis 1:1 the first time).
+  useEffect(() => {
+    if (field !== BCV) return
+    const target = firstVerseOf(allRows, bcvQuery)
+    if (target) {
+      setPickedKey(target.key)
+      setScrollKey(target.key)
+      remember(target.reference)
+    }
+    // firstVerseOf and remember only read their arguments.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bcvQuery, field, allRows])
+
+  const remember = (reference: string) => {
+    try {
+      localStorage.setItem(POSITION_KEY, reference)
+    } catch {
+      // Storage unavailable: the box opens on Genesis 1:1 next time.
+    }
+  }
 
   const select = (row: Row) => {
+    // Picking a verse puts its reference in the box, so the box shows where you are.
+    if (field === BCV) {
+      setFields(row.reference)
+      remember(row.reference)
+    }
     setPickedKey(row.key)
     onOpen(row.reference, [[row.text]], abbrOf(row.translationId))
   }
@@ -227,32 +389,34 @@ export function BibleLookup({
   /** Jump to a reference in a downloaded Bible, without going online. */
   function jumpInPack(reference: NonNullable<ReturnType<typeof parseReference>>) {
     const wanted = bookKey(reference.book)
-    const bookIndex = wanted.length < 2 ? -1 : packBooks.findIndex((book) => bookKey(book).startsWith(wanted))
+    const bookIndex = wanted.length < 2 ? -1 : packBooks.findIndex((book) => matchesBook(bookKey(book), wanted))
     if (bookIndex < 0) {
       setError(`${selected.name} has no book called "${reference.book}".`)
       return
     }
-    const base = bookIndex * 1e6 + reference.chapter * 1e3
+    const chapter = reference.chapter ?? 1
+    const base = bookIndex * 1e6 + chapter * 1e3
     const low = base + (reference.from ?? 0)
     const high = base + (reference.to ?? reference.from ?? 999)
     const found = (packRows ?? []).filter((row) => row.order >= low && row.order <= high)
     if (found.length === 0) {
-      setError(`${packBooks[bookIndex]} ${reference.chapter}${reference.from ? `:${reference.from}` : ''} is not in ${selected.name}.`)
+      setError(`${packBooks[bookIndex]} ${chapter}${reference.from ? `:${reference.from}` : ''} is not in ${selected.name}.`)
       return
     }
     setError(null)
-    setQuery('')
+    setFields(found[0].reference)
+    remember(found[0].reference)
     setPickedKey(found[0].key)
     setScrollKey(found[0].key)
     // A chapter alone jumps to its first verse; verses are shown together.
     const shown = reference.from === null ? found.slice(0, 1) : found
-    onOpen(
+    const label =
       shown.length > 1
-        ? `${packBooks[bookIndex]} ${reference.chapter}:${reference.from}-${shown[shown.length - 1].reference.split(':')[1]}`
-        : shown[0].reference,
-      shown.map((row) => [row.text]),
-      abbrOf(selected.id),
-    )
+        ? `${packBooks[bookIndex]} ${chapter}:${reference.from}-${shown[shown.length - 1].reference.split(':')[1]}`
+        : shown[0].reference
+    const slides = shown.map((row) => [row.text])
+    onOpen(label, slides, abbrOf(selected.id))
+    enterPreview.current = { key: found[0].key, label, slides, version: abbrOf(selected.id) }
   }
 
   async function lookupOnline(reference: string) {
@@ -275,8 +439,9 @@ export function BibleLookup({
       ])
       setPickedKey(rows[0].key)
       setScrollKey(rows[0].key)
-      // The reference has done its job; clear the box so the new rows show.
-      setQuery('')
+      // The fields show the verse the lookup landed on.
+      setFields(rows[0].reference)
+      remember(rows[0].reference)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Lookup failed.')
     } finally {
@@ -284,11 +449,36 @@ export function BibleLookup({
     }
   }
 
+  // Enter once previews the verse; Enter again, with nothing changed, puts it live.
   function submitSearch() {
-    const reference = parseReference(query)
+    if (field !== BCV) return
+    const reference = parseReference(bcvQuery)
     if (!reference) return
+    const target = firstVerseOf(allRows, bcvQuery)
+    const previewed = enterPreview.current
+    if (previewed && target && previewed.key === target.key) {
+      liveKey.current = previewed.key
+      onGoLive(previewed.label, previewed.slides, previewed.version)
+      enterPreview.current = null
+      return
+    }
     if (isPacked && packRows) jumpInPack(reference)
-    else void lookupOnline(query)
+    else void lookupOnline(bcvQuery)
+  }
+
+  /** The full name of the book a typed start belongs to, for completing as you type. */
+  const completeBook = (typed: string): string | null => {
+    const names = packBooks.length > 0 ? packBooks : BOOK_ORDER
+    const lower = typed.toLowerCase()
+    return names.find((name) => name.toLowerCase().startsWith(lower)) ?? null
+  }
+
+  /** On leaving Book, a typed "joh" becomes the full name of the book it found. */
+  function finishBook() {
+    const wanted = bookKey(book)
+    const names = packBooks.length > 0 ? packBooks : BOOK_ORDER
+    const found = names.find((name) => matchesBook(bookKey(name), wanted))
+    if (wanted && found) setBook(found)
   }
 
   async function downloadVersion(pack: PackInfo) {
@@ -353,10 +543,37 @@ export function BibleLookup({
         query={query}
         onQuery={setQuery}
         placeholder={`Search ${field}`}
-        searchFields={['Any Field', 'Reference', 'Scripture']}
+        searchFields={[BCV, 'Scripture', 'Any Field']}
         searchField={field}
-        onSearchField={setField}
+        onSearchField={(next) => {
+          setField(next)
+          setQuery('')
+        }}
         onSearchSubmit={submitSearch}
+        searchSlot={
+          field === BCV ? (
+            <ReferenceBox
+              fields={[BCV, 'Scripture', 'Any Field']}
+              field={field}
+              onField={(next) => {
+                setField(next)
+                setQuery('')
+              }}
+              book={book}
+              chapter={chapter}
+              verse={verse}
+              onChange={(nextBook, nextChapter, nextVerse) => {
+                setBook(nextBook)
+                setChapter(nextChapter)
+                setVerse(nextVerse)
+              }}
+              onBookDone={finishBook}
+              isBook={(text) => allRows.some((row) => matchesBook(row.book, bookKey(text)))}
+              complete={completeBook}
+              onSubmit={submitSearch}
+            />
+          ) : undefined
+        }
         sourcesTitle="Scriptures"
         sources={sources}
         activeSource={selected.name}
@@ -368,7 +585,7 @@ export function BibleLookup({
           const version = installed.find((item) => item.name === source)
           if (version) {
             setSelectedId(version.id)
-            setQuery('')
+            if (field !== BCV) setQuery('')
             setError(null)
           }
         }}
@@ -416,7 +633,7 @@ export function BibleLookup({
               rowKey={(row) => row.key}
               selectedKey={pickedKey}
               onSelect={select}
-              onActivate={(row) => onGoLive(row.reference, [[row.text]], abbrOf(row.translationId))}
+              onActivate={goLiveRow}
               scrollToKey={scrollKey}
               empty={
                 isPacked
@@ -560,5 +777,232 @@ export function BibleLookup({
         </Modal>
       )}
     </>
+  )
+}
+
+/**
+ * The Book Chapter Verse search: one box that reads like a reference,
+ * "Genesis 1:1". Click the book, the chapter or the verse and just that
+ * part is highlighted, so typing replaces it, and the table follows as you
+ * type, and a book fills itself in as you type it. Right and Left (or Tab
+ * and Shift+Tab) move between the three parts; in the chapter and verse, Up
+ * and Down add or take one. Enter previews the verses, and Enter again,
+ * with nothing changed, puts them live.
+ */
+function ReferenceBox({
+  fields,
+  field,
+  onField,
+  book,
+  chapter,
+  verse,
+  onChange,
+  onBookDone,
+  isBook,
+  complete,
+  onSubmit,
+}: {
+  fields: string[]
+  field: string
+  onField: (field: string) => void
+  book: string
+  chapter: string
+  verse: string
+  onChange: (book: string, chapter: string, verse: string) => void
+  onBookDone: () => void
+  /** True when the text is, or starts, the name of a book of this Bible. */
+  isBook: (text: string) => boolean
+  /** The full book name a typed start belongs to, or null. */
+  complete: (typed: string) => string | null
+  onSubmit: () => void
+}) {
+  const input = useRef<HTMLInputElement>(null)
+  const byMouse = useRef(false)
+  // Where to put the caret after the next render: React resets it when it
+  // rewrites the text (for example when a new chapter sends the verse back to 1).
+  const caretAfter = useRef<[number, number] | null>(null)
+  // Re-renders even when the text did not change (a completed book equal to the old one), so the selection below is applied.
+  const [, rerender] = useState(0)
+  const text = `${book} ${chapter}:${verse}`
+
+  /** The character range of each part: Book, Chapter, Verse. */
+  const ranges = (): [number, number][] => [
+    [0, book.length],
+    [book.length + 1, book.length + 1 + chapter.length],
+    [book.length + chapter.length + 2, text.length],
+  ]
+  const partAt = (position: number) =>
+    position <= book.length ? 0 : position <= book.length + 1 + chapter.length ? 1 : 2
+
+  useLayoutEffect(() => {
+    if (caretAfter.current !== null && input.current) {
+      input.current.setSelectionRange(caretAfter.current[0], caretAfter.current[1])
+      caretAfter.current = null
+    }
+  })
+
+  const selectPart = (part: number) => {
+    const [from, to] = ranges()[part]
+    input.current?.setSelectionRange(from, to)
+  }
+
+  const typed = (raw: string, caret: number, deleting: boolean) => {
+    let nextBook: string
+    let nextChapter: string
+    let nextVerse: string
+    // One space separates the book from the chapter; any further space belongs to the book ("1 cor").
+    const exact = raw.includes(':') ? /^(.*)\s(\d*):(\d*)$/.exec(raw) : null
+    if (exact) {
+      ;[, nextBook, nextChapter, nextVerse] = exact
+    } else {
+      // A whole reference typed or pasted without the colon: "john 3 16".
+      const loose = parseReference(raw)
+      nextBook = loose ? loose.book : raw
+      nextChapter = loose?.chapter == null ? '' : String(loose.chapter)
+      nextVerse = loose?.from == null ? '' : String(loose.from)
+    }
+    // Digits typed straight after a complete book name are the chapter: "john3".
+    const trailing = /^(.*[a-z.])\s*(\d+)$/i.exec(nextBook)
+    if (trailing && isBook(trailing[1])) {
+      nextBook = trailing[1].trimEnd()
+      nextChapter = trailing[2]
+      nextVerse = '1'
+    }
+    const changed = nextBook !== book ? 0 : nextChapter !== chapter ? 1 : nextVerse !== verse ? 2 : -1
+    const part = changed < 0 ? 0 : changed
+    // A new book starts at its first verse, and a new chapter at its first
+    // verse, unless the whole reference was typed in one go.
+    if (part === 0 && nextChapter === chapter && nextVerse === verse) {
+      nextChapter = '1'
+      nextVerse = '1'
+    } else if (part === 1 && nextVerse === verse) {
+      nextVerse = '1'
+    }
+    // Typing a book: show the book it looks like, with the rest of its name
+    // highlighted so the next keystroke replaces it (not while deleting).
+    let selectFrom: number | null = null
+    if (part === 0 && changed === 0 && !deleting && !trailing && nextBook.trim() !== '') {
+      const full = complete(nextBook)
+      if (full && full.toLowerCase().startsWith(nextBook.toLowerCase()) && full.length > nextBook.length) {
+        selectFrom = nextBook.length
+        nextBook = full
+      }
+    }
+    const end =
+      changed < 0
+        ? Math.min(caret, raw.length)
+        : part === 0
+          ? nextBook.length
+          : part === 1
+            ? nextBook.length + 1 + nextChapter.length
+            : nextBook.length + nextChapter.length + 2 + nextVerse.length
+    caretAfter.current = selectFrom !== null ? [selectFrom, nextBook.length] : [end, end]
+    onChange(nextBook, nextChapter, nextVerse)
+    rerender((tick) => tick + 1)
+  }
+
+  const nudge = (part: number, delta: number) => {
+    const value = Math.max(1, (Number(part === 1 ? chapter : verse) || 1) + delta)
+    const nextChapter = part === 1 ? String(value) : chapter
+    const nextVerse = part === 1 ? '1' : String(value)
+    const end =
+      part === 1
+        ? book.length + 1 + nextChapter.length
+        : book.length + nextChapter.length + 2 + nextVerse.length
+    caretAfter.current = [end, end]
+    onChange(book, nextChapter, nextVerse)
+    rerender((tick) => tick + 1)
+  }
+
+  return (
+    <div className="flex items-center rounded-md border border-slate-300 bg-slate-200 pl-1.5 focus-within:border-blue-500 dark:border-slate-700 dark:bg-slate-800">
+      <span
+        className="relative flex shrink-0 items-center gap-0.5 text-slate-500 dark:text-slate-400"
+        title={`Search field: ${field}`}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M20 20l-4-4" />
+        </svg>
+        <span className="text-[8px]">▼</span>
+        <select
+          aria-label="Search field"
+          value={field}
+          onChange={(event) => onField(event.target.value)}
+          className="absolute inset-0 w-full cursor-pointer opacity-0"
+        >
+          {fields.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </span>
+      <input
+        ref={input}
+        type="text"
+        aria-label="Book, chapter and verse"
+        spellCheck={false}
+        autoComplete="off"
+        value={text}
+        onChange={(event) =>
+          typed(
+            event.target.value,
+            event.target.selectionStart ?? event.target.value.length,
+            String((event.nativeEvent as InputEvent).inputType ?? '').startsWith('delete'),
+          )
+        }
+        onMouseDown={() => {
+          byMouse.current = true
+        }}
+        onMouseUp={(event) => {
+          byMouse.current = false
+          const box = event.currentTarget
+          // Dragging out a selection of your own is left alone.
+          if (box.selectionStart !== box.selectionEnd) return
+          selectPart(partAt(box.selectionStart ?? 0))
+        }}
+        onFocus={() => {
+          // Tabbing in (not clicking) starts on the book.
+          if (!byMouse.current) selectPart(0)
+        }}
+        onBlur={onBookDone}
+        onKeyDown={(event) => {
+          const box = event.currentTarget
+          const part = partAt(box.selectionStart ?? 0)
+          // A space or colon at the end of a complete book, or of the chapter, moves
+          // on to the next part, so "john 3 16" can be typed straight through.
+          const atPartEnd = box.selectionEnd === ranges()[part][1]
+          if (
+            (event.key === ' ' || event.key === ':') &&
+            atPartEnd &&
+            ((part === 0 && /[a-z]/i.test(book) && isBook(book)) || (part === 1 && chapter !== ''))
+          ) {
+            event.preventDefault()
+            selectPart(part + 1)
+          } else if (event.key === 'ArrowRight' && part < 2) {
+            // Right goes on to the chapter, then the verse; Left comes back.
+            event.preventDefault()
+            selectPart(part + 1)
+          } else if (event.key === 'ArrowLeft' && part > 0) {
+            event.preventDefault()
+            selectPart(part - 1)
+          } else if (event.key === 'Enter') {
+            onSubmit()
+          } else if (event.key === 'Tab') {
+            const next = part + (event.shiftKey ? -1 : 1)
+            if (next >= 0 && next <= 2) {
+              event.preventDefault()
+              selectPart(next)
+            }
+          } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+            event.preventDefault()
+            // Up adds one and Down takes one, like any number field.
+            if (part > 0) nudge(part, event.key === 'ArrowUp' ? 1 : -1)
+          }
+        }}
+        className="min-w-0 flex-1 bg-transparent px-1.5 py-1.5 text-sm text-slate-900 outline-none dark:text-slate-100"
+      />
+    </div>
   )
 }

@@ -57,7 +57,7 @@ export function SongLibrary({
   const [onlineError, setOnlineError] = useState<string | null>(null)
   const [addedIds, setAddedIds] = useState<string[]>([])
 
-  const [field, setField] = useState('Any Field')
+  const [field, setField] = useState('Title')
   const lower = query.toLowerCase()
   const inTitle = (song: Song) => song.title.toLowerCase().includes(lower)
   const inAuthor = (song: Song) => song.author.toLowerCase().includes(lower)
@@ -92,7 +92,7 @@ export function SongLibrary({
       query={query}
       onQuery={setQuery}
       placeholder={`Search ${field}`}
-      searchFields={['Any Field', 'Title', 'Author', 'Lyrics']}
+      searchFields={['Title', 'Author', 'Lyrics', 'Any Field']}
       searchField={field}
       onSearchField={setField}
       sourcesTitle="Songs"

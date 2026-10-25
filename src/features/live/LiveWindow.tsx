@@ -16,8 +16,8 @@ import { SlideView } from '../../shared/components/SlideView'
  * Changes fade instead of cutting. When the background (or layout or
  * font) changes, the new slide is laid over the old one and fades in,
  * which also gives a fade to Black or Logo and a fade in from nothing.
- * When only the words change, the words fade out and the new ones fade
- * in on the same background, so a moving background carries on without
+ * When only the words change, the new ones appear at once and fade up
+ * on the same background, so a moving background carries on without
  * restarting, and Clear fades the words away. How long the fade takes
  * comes with each update (transitionMs); 0 is a straight cut.
  */
@@ -32,6 +32,8 @@ export function LiveWindow() {
   const [layers, setLayers] = useState<Layer[]>([])
   // True while the words on the top layer are faded out between two slides.
   const [wordsHidden, setWordsHidden] = useState(false)
+  // Bumped for each new set of words, so they fade in from nothing at once.
+  const [wordsKey, setWordsKey] = useState(0)
   // The latest picture of the web browser, while it is being shown.
   const [webFrame, setWebFrame] = useState<string | null>(null)
   const shown = useRef<LiveUpdatePayload | null>(null)
@@ -92,12 +94,19 @@ export function LiveWindow() {
         setWordsHidden(false)
         return
       }
-      // Same look, new words: fade the words out, swap them, fade them in.
-      setWordsHidden(true)
-      later(() => {
-        replaceTop(payload)
-        setWordsHidden(false)
-      }, ms / 2)
+      // Same look, new words. Clearing fades the words out. Anything else shows
+      // the new words at once and fades them up, so switching feels immediate.
+      if (payload.lines.length === 0) {
+        setWordsHidden(true)
+        later(() => {
+          replaceTop(payload)
+          setWordsHidden(false)
+        }, ms / 2)
+        return
+      }
+      setWordsHidden(false)
+      replaceTop(payload)
+      setWordsKey((key) => key + 1)
     }
 
     // Words, Black or Logo replace the web page.
@@ -165,6 +174,8 @@ export function LiveWindow() {
               alert={slide.alert ?? null}
               textOpacity={index === layers.length - 1 && wordsHidden ? 0 : 1}
               textFadeMs={ms / 2}
+              wordsKey={index === layers.length - 1 ? wordsKey : 0}
+              wordsFadeInMs={index === layers.length - 1 && wordsKey > 0 ? ms / 2 : undefined}
               className="w-[min(100vw,calc(100vh*16/9))]"
             />
           </div>

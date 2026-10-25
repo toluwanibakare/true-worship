@@ -18,6 +18,7 @@ export function ResourceView({
   searchField,
   onSearchField,
   onSearchSubmit,
+  searchSlot,
   sourcesTitle,
   sources,
   activeSource,
@@ -35,6 +36,8 @@ export function ResourceView({
   onSearchField?: (field: string) => void
   /** Called when Enter is pressed in the search box. */
   onSearchSubmit?: () => void
+  /** Replaces the search box entirely (Scriptures uses separate Book, Chapter and Verse fields). */
+  searchSlot?: ReactNode
   sourcesTitle: string
   /** The sources on offer; the first is the one in use unless activeSource says otherwise. */
   sources: string[]
@@ -51,7 +54,9 @@ export function ResourceView({
     <div className="grid h-full min-h-0 grid-cols-[200px_minmax(0,1fr)] overflow-hidden rounded-md border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900">
       <div className="flex min-h-0 flex-col border-r border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-950">
         <div className="p-2">
-          {searchFields && onSearchField ? (
+          {searchSlot ? (
+            searchSlot
+          ) : searchFields && onSearchField ? (
             <div className="flex items-center rounded-md border border-slate-300 bg-slate-200 pl-1.5 dark:border-slate-700 dark:bg-slate-800">
               <span className="relative flex shrink-0 items-center gap-0.5 text-slate-500 dark:text-slate-400" title={`Search field: ${searchField ?? searchFields[0]}`}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">

@@ -60,27 +60,49 @@ export function ResourceTable<T>({
     })
   }, [rows, columns, sort])
 
+  // Scroll the wanted row into view. A table on a hidden tab has no size and
+  // cannot scroll, so the request is kept and carried out when it is shown.
+  const pendingScroll = useRef<string | null>(null)
+  const applyScroll = () => {
+    const element = scroller.current
+    const key = pendingScroll.current
+    if (!element || !key || element.clientHeight === 0) return
+    const index = sortedRef.current.findIndex((row) => rowKey(row) === key)
+    if (index < 0) return
+    const top = index * ROW_HEIGHT
+    // Leave the row a few lines below the top, not hard against the header.
+    if (top < element.scrollTop || top > element.scrollTop + element.clientHeight - 2 * ROW_HEIGHT) {
+      element.scrollTop = Math.max(0, top - 3 * ROW_HEIGHT)
+    }
+    pendingScroll.current = null
+  }
+  const sortedRef = useRef(sorted)
+  sortedRef.current = sorted
+  const applyScrollRef = useRef(applyScroll)
+  applyScrollRef.current = applyScroll
+
   useEffect(() => {
     const element = scroller.current
     if (!element) return
-    const update = () => setViewHeight(element.clientHeight)
+    const update = () => {
+      setViewHeight(element.clientHeight)
+      applyScrollRef.current()
+    }
     update()
     const observer = new ResizeObserver(update)
     observer.observe(element)
     return () => observer.disconnect()
   }, [])
 
+  // A new set of rows (a search, a different version) starts at the top.
   useEffect(() => {
-    if (!scrollToKey || !scroller.current) return
-    const index = sorted.findIndex((row) => rowKey(row) === scrollToKey)
-    if (index < 0) return
-    const top = index * ROW_HEIGHT
-    const element = scroller.current
-    // Leave the row a few lines below the top, not hard against the header.
-    if (top < element.scrollTop || top > element.scrollTop + element.clientHeight - 2 * ROW_HEIGHT) {
-      element.scrollTop = Math.max(0, top - 3 * ROW_HEIGHT)
-    }
-    // Only when the target changes, not on every re-sort.
+    if (scroller.current) scroller.current.scrollTop = 0
+  }, [rows])
+
+  useEffect(() => {
+    pendingScroll.current = scrollToKey ?? null
+    applyScroll()
+    // Only when the target or the rows change, not on every re-sort.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scrollToKey, sorted.length])
 

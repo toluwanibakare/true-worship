@@ -67,6 +67,8 @@ export function SlideView({
   alert = null,
   textOpacity,
   textFadeMs,
+  wordsKey,
+  wordsFadeInMs,
   className = 'w-full',
 }: {
   lines: string[]
@@ -81,6 +83,9 @@ export function SlideView({
   textOpacity?: number
   /** How long the words take to fade when textOpacity changes. */
   textFadeMs?: number
+  /** Changing this replays a fade-in of the words (new words appear at once, then fade up). */
+  wordsKey?: number
+  wordsFadeInMs?: number
   className?: string
 }) {
   const frame = useRef<HTMLDivElement>(null)
@@ -188,10 +193,12 @@ export function SlideView({
           </div>
         )}
         <div
+          key={wordsKey ?? 0}
           className={`relative z-10 ${layout.wrapper}`}
           style={{
             opacity: textOpacity ?? 1,
             transition: textFadeMs ? `opacity ${textFadeMs}ms ease` : undefined,
+            animation: wordsFadeInMs ? `tw-fade-in ${wordsFadeInMs}ms ease-out both` : undefined,
           }}
         >
           {layout.band ? (

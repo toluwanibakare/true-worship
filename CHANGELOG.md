@@ -12,6 +12,79 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
   over from other tools, the Community Songbook, content licensing,
   and run instructions. Screenshots are embedded in `index.html`.
 
+### Changed
+
+- `web/` redesigned: a dark, premium look in the app's blue, with a
+  serif for the headings, rounded-full buttons and no box shadows. An
+  animated hero with a tilting app window, a glass navigation bar that
+  lights the section you are in, a scrolling ticker, cards with a
+  spotlight that follows the cursor and Solar icons that turn from
+  outline to bold on hover, a screenshot gallery with tabs and a
+  crossfade, a copyable code block, an animated FAQ, a closing call to
+  action with a turning border, and a mobile menu. Everything rises into
+  place as it scrolls into view, and motion is skipped for visitors who
+  ask for reduced motion. The page works without JavaScript.
+- The screenshots are now WebP files in `web/assets/shots/` (390 KB
+  against 1.1 MB embedded) and show the current app, with the new
+  Scriptures box. Content updated for downloadable Bibles, the web
+  browser, transitions and subtitle layouts. Solar icons are credited in
+  the footer (CC BY 4.0).
+
+## [0.17.0] - 2026-10-25
+
+### Added
+
+- A "+" button and a play button at the right of the resource tab
+  strip. On the Songs and Scriptures tabs, "+" puts the selected song or
+  highlighted verse into the schedule (after the selected item), and
+  play sends it live. A verse added this way keeps its own text and
+  version, so it opens from the schedule exactly as it was.
+
+### Changed
+
+- Switching verses and slides is near instant: the new words reach the
+  live output in about 6 milliseconds, down from about 155. New words
+  appear at once and fade up, instead of waiting for the old words to
+  fade out first; Clear still fades the words away.
+- The live output no longer shows itself on your screen when there is no
+  projector. It runs in the background through Go Live and stepping, and
+  the Live button in the toolbar shows it or hides it. Closing it
+  hides it rather than ending it. With a projector connected it is
+  shown on the projector as before.
+- Songs search by Title by default.
+
+## [0.16.0] - 2026-10-25
+
+### Added
+
+- Up and Down arrows step through verses: once a verse from the
+  Scriptures table is live, Down puts the next verse in the Bible on the
+  screen and Up the previous one, running on across chapters and books.
+  It keeps working from any tab. A song or other item going live gives
+  the arrows back to its slides.
+
+### Changed
+
+- The Scriptures search box is one box that reads like a reference,
+  "Genesis 1:1", and opens on the last verse you used (Genesis 1:1 the
+  first time). Click the book, the chapter or the verse and just that
+  part is highlighted, so typing replaces it: a book fills itself in as
+  you type ("ro" shows Romans, with the rest highlighted), a new book or
+  chapter starts at its first verse, and the table, which always lists
+  the whole Bible, follows every keystroke and highlights the verse.
+  Right and Left (or Tab and Shift+Tab) move between the book, chapter
+  and verse; Up and Down in the chapter or verse add or take one; a
+  space or colon after a complete book or a chapter moves on, so
+  "john 3 16" can be typed straight through. Enter previews the
+  verse and Enter again puts it live. Short forms (jn, mt, ps, 1 cor)
+  work, and words that are not a book name search the text instead.
+  The other two fields (Scripture and Any Field) filter the table as
+  before.
+- Numbered books read "1 Corinthians", not "I Corinthians", whatever
+  the source calls them.
+- The Scriptures tab stays loaded when you switch tabs, so the verse
+  list and your place in it are still there when you come back.
+
 ## [0.15.0] - 2026-10-25
 
 ### Added

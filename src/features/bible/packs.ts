@@ -167,5 +167,31 @@ export const BOOK_ORDER = [
   '1 Peter', '2 Peter', '1 John', '2 John', '3 John', 'Jude', 'Revelation',
 ]
 
-/** A book name as typed ("1 Cor", "jn.") reduced to letters and digits, for matching. */
-export const bookKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '')
+const ROMAN: Record<string, string> = { i: '1', ii: '2', iii: '3' }
+
+/** "I Corinthians" as "1 Corinthians": some sources number books with roman numerals. */
+export const displayBook = (name: string) =>
+  name.replace(/^(iii|ii|i)\s+/i, (match) => `${ROMAN[match.trim().toLowerCase()]} `)
+
+/** A book name as typed ("1 Cor", "jn.", "I Corinthians") reduced to letters and digits, for matching. */
+export const bookKey = (name: string) => displayBook(name.trim()).toLowerCase().replace(/[^a-z0-9]/g, '')
+
+/** Common short forms that are not the start of the book's name. */
+const ALIASES: Record<string, string> = {
+  gn: 'genesis', ex: 'exodus', lv: 'leviticus', nm: 'numbers', dt: 'deuteronomy',
+  jos: 'joshua', jdg: 'judges', jg: 'judges', rt: 'ruth', ps: 'psalms', pss: 'psalms',
+  prv: 'proverbs', pr: 'proverbs', ec: 'ecclesiastes', sos: 'songofsolomon',
+  song: 'songofsolomon', is: 'isaiah', jer: 'jeremiah', eze: 'ezekiel', dn: 'daniel',
+  mt: 'matthew', mk: 'mark', mr: 'mark', lk: 'luke', jn: 'john', jhn: 'john',
+  act: 'acts', rm: 'romans', ro: 'romans', gal: 'galatians', eph: 'ephesians',
+  php: 'philippians', phil: 'philippians', col: 'colossians', tit: 'titus',
+  phm: 'philemon', heb: 'hebrews', jas: 'james', jm: 'james', jud: 'jude', rev: 'revelation',
+  '1jn': '1john', '2jn': '2john', '3jn': '3john', '1pt': '1peter', '2pt': '2peter',
+  '1sm': '1samuel', '2sm': '2samuel', '1kgs': '1kings', '2kgs': '2kings',
+  '1chr': '1chronicles', '2chr': '2chronicles', '1th': '1thessalonians', '2th': '2thessalonians',
+  '1tm': '1timothy', '2tm': '2timothy', '1co': '1corinthians', '2co': '2corinthians',
+}
+
+/** True when a book (as a bookKey) is the one the typed text names: a prefix or a short form. */
+export const matchesBook = (book: string, typed: string) =>
+  typed.length > 0 && (book.startsWith(typed) || (ALIASES[typed] !== undefined && book.startsWith(ALIASES[typed])))

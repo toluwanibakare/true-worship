@@ -8,6 +8,7 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('electronAPI', {
   isElectron: true,
   openLiveWindow: (settings) => ipcRenderer.send('open-live-window', settings),
+  toggleLiveWindow: (settings) => ipcRenderer.invoke('toggle-live-window', settings),
   applyDisplaySettings: (settings) =>
     ipcRenderer.send('apply-display-settings', settings),
   minimizeWindow: () => ipcRenderer.send('window-minimize'),

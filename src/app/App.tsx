@@ -285,6 +285,14 @@ function previewForSchedule(item: ScheduleItem | undefined, songs: Song[]): Prev
     }
   }
   if (item.type === 'scripture') {
+    // Added from the Scriptures table: it carries its own verses and version.
+    if (item.slides) {
+      return {
+        title: item.ref,
+        slides: item.slides,
+        reference: `${item.ref} (${item.version ?? SCRIPTURE_VERSION})`,
+      }
+    }
     const text = demoPassage[item.ref]
     return {
       title: item.ref,
@@ -449,6 +457,7 @@ export function App() {
   }
 
   const openSong = (song: Song) => {
+    pickedSong.current = song
     showPreview({
       title: song.title,
       slides: song.verses.map((verse) => verse.lines),
@@ -460,6 +469,7 @@ export function App() {
   // slide in the Preview pane, or a row in the Scriptures table, uses
   // this to go live straight away.
   const goLiveWith = (target: Preview, labels: string[], index: number) => {
+    liveFromScriptures.current = false
     const lines = target.slides[index] ?? []
     setLive({ title: target.title, lines })
     setLiveMedia(target.media ?? null)
@@ -492,7 +502,66 @@ export function App() {
     goLiveWith(next, ['Slide 1'], 0)
   }
 
+  // What the "+" and play buttons in the resource strip act on: the song last
+  // picked, and the verse highlighted in the Scriptures table (it reports itself).
+  const pickedSong = useRef<Song | null>(null)
+  const scriptureSelection = useRef<
+    (() => { reference: string; slides: string[][]; version: string } | null) | null
+  >(null)
+
+  const goLiveScripture = (reference: string, slides: string[][], version: string) => {
+    const next = { title: reference, slides, reference: `${reference} (${version})` }
+    showPreview(next)
+    goLiveWith(
+      next,
+      slides.map((_, index) => `Slide ${index + 1}`),
+      0,
+    )
+    liveFromScriptures.current = true
+  }
+
+  /** "+" in the resource strip: put the picked song or verse into the schedule. */
+  const addPickedToSchedule = () => {
+    let item: ScheduleItem | null = null
+    const id = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
+    if (tab === 'songs' && pickedSong.current && songs.some((song) => song.id === pickedSong.current?.id)) {
+      item = { id, type: 'song', title: pickedSong.current.title, ref: pickedSong.current.id }
+    } else if (tab === 'bible') {
+      const verse = scriptureSelection.current?.()
+      if (verse) {
+        item = {
+          id,
+          type: 'scripture',
+          title: verse.reference,
+          ref: verse.reference,
+          slides: verse.slides,
+          version: verse.version,
+        }
+      }
+    }
+    if (!item) return
+    const added = item
+    // It goes in after the selected item, or at the end.
+    setSchedule((current) => {
+      const at = current.findIndex((entry) => entry.id === selectedId)
+      return at < 0 ? [...current, added] : [...current.slice(0, at + 1), added, ...current.slice(at + 1)]
+    })
+    setSelectedId(added.id)
+    setCustomPreview(null)
+    setSlideIndex(0)
+  }
+
+  /** The play button in the resource strip: the picked song or verse goes live. */
+  const goLivePicked = () => {
+    if (tab === 'songs' && pickedSong.current) goLiveSong(pickedSong.current)
+    else if (tab === 'bible') {
+      const verse = scriptureSelection.current?.()
+      if (verse) goLiveScripture(verse.reference, verse.slides, verse.version)
+    }
+  }
+
   const goLiveSong = (song: Song) => {
+    pickedSong.current = song
     const next = {
       title: song.title,
       slides: song.verses.map((verse) => verse.lines),
@@ -692,7 +761,7 @@ export function App() {
       const song = songs.find((entry) => entry.id === item.ref)
       return song ? song.verses.map((verse) => verse.label) : []
     }
-    return ['Slide 1']
+    return item.slides ? item.slides.map((_, index) => `Slide ${index + 1}`) : ['Slide 1']
   }
 
   // Double-clicking a schedule row sends that item live from its
@@ -730,6 +799,14 @@ export function App() {
   // While something is live, the left and right arrows step through its
   // verses on the screen; with nothing live they move through the schedule.
   const liveActive = live !== null && liveSlides !== null
+  // A verse put live from the Scriptures table: Up and Down then move to the
+  // previous and next verse in the Bible. The table registers how to do it.
+  const liveFromScriptures = useRef(false)
+  const scriptureStepper = useRef<((direction: -1 | 1) => boolean) | null>(null)
+  const stepScripture = (direction: -1 | 1) =>
+    liveFromScriptures.current && live !== null && scriptureStepper.current
+      ? scriptureStepper.current(direction)
+      : false
   const stepLive = (direction: -1 | 1) => {
     if (!live || !liveSlides) return
     const next = liveSlideIndex + direction
@@ -757,6 +834,7 @@ export function App() {
     toggleText,
     stepSlide,
     stepLive,
+    stepScripture,
     liveActive,
     goToSlide,
     nextItem: () => stepSchedule(1),
@@ -781,6 +859,7 @@ export function App() {
     toggleText,
     stepSlide,
     stepLive,
+    stepScripture,
     liveActive,
     goToSlide,
     nextItem: () => stepSchedule(1),
@@ -897,6 +976,8 @@ export function App() {
         case 'n':
         case 'N':
           event.preventDefault()
+          // A scripture live from the table: the next verse, not the next slide.
+          if (key === 'ArrowDown' && a.stepScripture(1)) break
           a.stepSlide(1)
           break
         case 'ArrowUp':
@@ -904,6 +985,7 @@ export function App() {
         case 'P':
         case 'Backspace':
           event.preventDefault()
+          if (key === 'ArrowUp' && a.stepScripture(-1)) break
           a.stepSlide(-1)
           break
         case 'ArrowRight':
@@ -1075,8 +1157,8 @@ export function App() {
               label="Live"
               icon={IconLiveOutput}
               blinking={onAir}
-              title="Open the live output window"
-              onClick={() => window.electronAPI?.openLiveWindow(loadDisplaySettings())}
+              title="Show or hide the live output window"
+              onClick={() => void window.electronAPI?.toggleLiveWindow(loadDisplaySettings())}
             />
           </div>
         </div>
@@ -1262,7 +1344,8 @@ export function App() {
         />
 
         <div className="flex shrink-0 flex-col px-3 pb-2" style={{ height: stripHeight }}>
-          <div className="flex shrink-0 items-end gap-0.5 overflow-x-auto" role="tablist">
+          <div className="flex shrink-0 items-end justify-between gap-2">
+          <div className="flex min-w-0 items-end gap-0.5 overflow-x-auto" role="tablist">
             {tabs.map((entry) => (
               <button
                 key={entry.id}
@@ -1279,6 +1362,33 @@ export function App() {
                 {entry.label}
               </button>
             ))}
+          </div>
+            <div className="flex shrink-0 items-center gap-1 pb-1">
+              <button
+                type="button"
+                onClick={addPickedToSchedule}
+                disabled={tab !== 'songs' && tab !== 'bible'}
+                title={
+                  tab === 'songs' || tab === 'bible'
+                    ? 'Add the selected item to the schedule'
+                    : 'Pick a song or a scripture to add it to the schedule'
+                }
+                aria-label="Add to schedule"
+                className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-200 text-lg font-bold leading-none text-slate-800 hover:bg-slate-300 disabled:opacity-40 disabled:hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:hover:bg-slate-800"
+              >
+                +
+              </button>
+              <button
+                type="button"
+                onClick={goLivePicked}
+                disabled={tab !== 'songs' && tab !== 'bible'}
+                title="Go live with the selected item"
+                aria-label="Go live with the selected item"
+                className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-200 text-xs leading-none text-slate-800 hover:bg-slate-300 disabled:opacity-40 disabled:hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:hover:bg-slate-800"
+              >
+                ▶
+              </button>
+            </div>
           </div>
           <div className="min-h-0 flex-1 rounded-b-md rounded-tr-md border border-slate-300 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
             {tab === 'songs' && (
@@ -1298,23 +1408,23 @@ export function App() {
                 }
               />
             )}
-            {tab === 'bible' && (
+            {/* Kept mounted (hidden on other tabs) so its verses and the live
+                verse survive a tab switch and the arrow keys keep stepping. */}
+            <div className={tab === 'bible' ? 'h-full' : 'hidden'}>
               <BibleLookup
                 passages={demoPassage}
+                registerStepper={(step) => {
+                  scriptureStepper.current = step
+                }}
                 onOpen={(reference, slides, version) =>
                   showPreview({ title: reference, slides, reference: `${reference} (${version})` })
                 }
-                onGoLive={(reference, slides, version) => {
-                  const next = { title: reference, slides, reference: `${reference} (${version})` }
-                  showPreview(next)
-                  goLiveWith(
-                    next,
-                    slides.map((_, index) => `Slide ${index + 1}`),
-                    0,
-                  )
+                onGoLive={goLiveScripture}
+                registerSelection={(read) => {
+                  scriptureSelection.current = read
                 }}
               />
-            )}
+            </div>
             {tab === 'media' && <MediaLibrary onPreview={previewMedia} onGoLive={goLiveMedia} />}
             {tab === 'themes' && (
               <ThemePicker

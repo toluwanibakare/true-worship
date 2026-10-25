@@ -29,6 +29,10 @@ export type ScheduleItem = {
   title: string
   /** Id of the song, passage reference, or media file behind this item. */
   ref: string
+  /** A scripture added from the Scriptures table carries its own verses (one slide each)... */
+  slides?: string[][]
+  /** ...and the version they were read from, e.g. KJV. */
+  version?: string
 }
 
 export type Theme = {

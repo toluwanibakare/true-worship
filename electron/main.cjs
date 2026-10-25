@@ -23,6 +23,10 @@ let liveWindow = null
 let liveSettings = { displayId: 'auto', fullscreen: true, alwaysOnTop: false }
 /** True while the live window is a normal window because no projector is connected. */
 let liveWindowed = false
+/** True once the live window has loaded and been placed. */
+let liveReady = false
+/** Set when the app is quitting, so closing the live window really closes it. */
+let quitting = false
 
 // The built-in web browser is a <webview> in the operator window. Pages
 // get a locked-down web preferences set: no Node, no preload, http(s)
@@ -184,6 +188,8 @@ function applyToLiveWindow(settings) {
   })
   liveWindow.setFullScreen(Boolean(liveSettings.fullscreen))
   liveWindow.setAlwaysOnTop(Boolean(liveSettings.alwaysOnTop), 'screen-saver')
+  // A projector is there to be seen: show the output on it (without taking focus).
+  if (!liveWindow.isVisible()) liveWindow.showInactive()
 }
 
 const appIcon = path.join(__dirname, '..', 'assets', 'logo', 'object-logo.png')
@@ -278,9 +284,9 @@ function createLiveWindow(settings = {}) {
     // Every Go Live calls this. Moving, resizing and fullscreen are slow
     // on some systems, so only redo them when the settings really changed.
     if (JSON.stringify(wanted) !== JSON.stringify(liveSettings)) applyToLiveWindow(wanted)
-    if (liveWindow.isMinimized()) liveWindow.restore()
-    // Bring it forward without taking the keyboard from the operator.
-    if (!liveWindow.isVisible()) liveWindow.showInactive()
+    // With a projector the output is shown on it. With none it stays out of
+    // sight, running in the background, until the operator asks to see it.
+    if (!liveWindowed && !liveWindow.isVisible()) liveWindow.showInactive()
     return liveWindow
   }
   liveSettings = wanted
@@ -295,20 +301,60 @@ function createLiveWindow(settings = {}) {
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
+      // The output runs in the background while hidden: keep it fully live
+      // so slides and video are current the moment it is shown.
+      backgroundThrottling: false,
     },
   })
   loadLive(liveWindow)
+  liveReady = false
   liveWindow.once('ready-to-show', () => {
+    liveReady = true
+    // applyToLiveWindow shows it on a projector; with none it stays hidden.
     applyToLiveWindow(wanted)
-    // Showing it must not steal focus, or the operator's shortcuts stop working.
-    liveWindow.showInactive()
+  })
+  // Closing the window while it is only a window hides it: the output keeps
+  // running in the background, ready to be shown again.
+  liveWindow.on('close', (event) => {
+    if (!quitting && liveWindowed) {
+      event.preventDefault()
+      liveWindow.hide()
+    }
   })
   liveWindow.on('closed', () => {
     liveWindow = null
     liveWindowed = false
+    liveReady = false
   })
   return liveWindow
 }
+
+/**
+ * The toolbar's Live button: show the live output window, or hide it again.
+ * Only a window with no projector can be hidden this way; a projector's
+ * fullscreen output is simply brought up. Returns whether it is now visible.
+ */
+function toggleLiveWindow(settings) {
+  const window = createLiveWindow(settings)
+  if (!liveWindowed) {
+    if (!window.isVisible()) window.showInactive()
+    return true
+  }
+  if (window.isVisible()) {
+    window.hide()
+    return false
+  }
+  const reveal = () => {
+    if (window.isDestroyed()) return
+    if (window.isMinimized()) window.restore()
+    window.show()
+  }
+  if (liveReady) reveal()
+  else window.once('ready-to-show', () => setImmediate(reveal))
+  return true
+}
+
+ipcMain.handle('toggle-live-window', (_event, settings) => toggleLiveWindow(settings ?? {}))
 
 ipcMain.on('open-live-window', (_event, settings) => {
   createLiveWindow(settings ?? {})
@@ -462,6 +508,7 @@ app.whenReady().then(() => {
 })
 
 app.on('before-quit', () => {
+  quitting = true
   void ndi.destroyAll()
 })
 
