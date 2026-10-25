@@ -43,3 +43,36 @@ export type LiveState = {
   black: boolean
   logo: boolean
 }
+
+export type DisplayInfo = {
+  id: number
+  label: string
+  x: number
+  y: number
+  width: number
+  height: number
+  scaleFactor: number
+  primary: boolean
+}
+
+export type DisplaySettings = {
+  /** 'auto' = the external display when one exists, else the primary. */
+  displayId: number | 'auto'
+  fullscreen: boolean
+  alwaysOnTop: boolean
+}
+
+export type NdiStatus = {
+  available: boolean
+  reason?: string
+  version?: string
+  sending: boolean
+  sourceName: string
+}
+
+export type NdiOptions = {
+  enabled: boolean
+  sourceName: string
+  /** Frames per second for the capture loop. */
+  fps: number
+}

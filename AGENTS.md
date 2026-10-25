@@ -32,6 +32,8 @@ src/
     live/         What the congregation sees: output, Go Live,
                   Logo, Black, Clear.
     alerts/       Short messages over the live output.
+    display/      Output monitor choice, fullscreen, always-on-top.
+    ndi/          NDI output: source name, switch, status.
     songbook/     The community songbook: shared lyrics, versions,
                   review, sync.
     importer/     Moving churches in: .ews schedules, Songs.db,
@@ -75,6 +77,10 @@ src/
   projector window). Features never touch Electron APIs directly; they
   go through the typed bridge in `electron/preload.cjs`, declared in
   `src/electron.d.ts`, so the UI also runs in a plain browser.
+- NDI sending lives in `electron/ndi.cjs` in the main process only, via
+  Grandi (NDI 6 SDK bindings). Grandi stays a production dependency with
+  its optional platform packages kept, and outside any ASAR archive when
+  packaging. See `docs/ndi-setup.md`.
 - `npm run dev` runs the same frontend in a browser for UI work; the
   projector window only exists in the Electron build.
 

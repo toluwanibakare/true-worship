@@ -1,3 +1,10 @@
+import type {
+  DisplayInfo,
+  DisplaySettings,
+  NdiOptions,
+  NdiStatus,
+} from './shared/lib/types'
+
 export type LiveUpdatePayload = {
   title: string
   lines: string[]
@@ -8,9 +15,13 @@ export type LiveUpdatePayload = {
 
 export type ElectronAPI = {
   isElectron: true
-  openLiveWindow: () => void
+  openLiveWindow: (settings?: DisplaySettings) => void
+  applyDisplaySettings: (settings: DisplaySettings) => void
+  getDisplays: () => Promise<DisplayInfo[]>
   sendLiveUpdate: (payload: LiveUpdatePayload) => void
   onLiveUpdate: (callback: (payload: LiveUpdatePayload) => void) => void
+  ndiStatus: () => Promise<NdiStatus>
+  setNdi: (options: NdiOptions) => Promise<NdiStatus>
 }
 
 declare global {

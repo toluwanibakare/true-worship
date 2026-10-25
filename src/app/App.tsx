@@ -9,11 +9,14 @@ import { LiveWindow } from '../features/live/LiveWindow'
 import { AlertBar } from '../features/alerts/AlertBar'
 import { SongbookPanel } from '../features/songbook/SongbookPanel'
 import { ImporterPanel } from '../features/importer/ImporterPanel'
+import { DisplayPanel } from '../features/display/DisplayPanel'
+import { loadDisplaySettings } from '../features/display/displaySettings'
+import { NdiPanel } from '../features/ndi/NdiPanel'
 import { Button, Panel } from '../shared/components/ui'
 import { demoPassage, demoSchedule, demoSongs, demoThemes } from '../shared/lib/demo'
 import type { ScheduleItem, Song } from '../shared/lib/types'
 
-type Tab = 'songs' | 'bible' | 'media' | 'themes' | 'songbook' | 'import' | 'alerts'
+type Tab = 'songs' | 'bible' | 'media' | 'themes' | 'songbook' | 'import' | 'alerts' | 'display' | 'ndi'
 
 type Preview = {
   title: string
@@ -90,6 +93,8 @@ export function App() {
     { id: 'songbook', label: 'Songbook' },
     { id: 'import', label: 'Import' },
     { id: 'alerts', label: 'Alerts' },
+    { id: 'display', label: 'Display' },
+    { id: 'ndi', label: 'NDI' },
   ]
 
   if (isLiveWindow) {
@@ -162,7 +167,7 @@ export function App() {
               setLive({ title: preview.title, lines: slide })
               setBlack(false)
               setLogo(false)
-              window.electronAPI?.openLiveWindow()
+              window.electronAPI?.openLiveWindow(loadDisplaySettings())
               sendLive(preview.title, slide)
             }}
             onBlack={() => {
@@ -207,6 +212,8 @@ export function App() {
             {tab === 'songbook' && <SongbookPanel songs={demoSongs} />}
             {tab === 'import' && <ImporterPanel />}
             {tab === 'alerts' && <AlertBar />}
+            {tab === 'display' && <DisplayPanel />}
+            {tab === 'ndi' && <NdiPanel />}
           </div>
         </div>
       </main>

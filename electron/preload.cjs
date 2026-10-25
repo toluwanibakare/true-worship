@@ -7,8 +7,13 @@ const { contextBridge, ipcRenderer } = require('electron')
  */
 contextBridge.exposeInMainWorld('electronAPI', {
   isElectron: true,
-  openLiveWindow: () => ipcRenderer.send('open-live-window'),
+  openLiveWindow: (settings) => ipcRenderer.send('open-live-window', settings),
+  applyDisplaySettings: (settings) =>
+    ipcRenderer.send('apply-display-settings', settings),
+  getDisplays: () => ipcRenderer.invoke('get-displays'),
   sendLiveUpdate: (payload) => ipcRenderer.send('live-update', payload),
   onLiveUpdate: (callback) =>
     ipcRenderer.on('live-update', (_event, payload) => callback(payload)),
+  ndiStatus: () => ipcRenderer.invoke('ndi-status'),
+  setNdi: (options) => ipcRenderer.invoke('ndi-set', options),
 })

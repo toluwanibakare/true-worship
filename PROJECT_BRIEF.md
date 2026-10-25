@@ -40,7 +40,16 @@ own design, nothing lifted from EasyWorship.
 ## Later features
 
 PowerPoint import, Bible translations manager, stage display, remote app
-for phones, NDI and streaming output, multi-language interface.
+for phones, multi-language interface.
+
+## Already in the scaffold
+
+- **Display settings** — choose the output monitor, fullscreen and
+  always-on-top, with automatic fallback to the main display if the
+  projector is unplugged.
+- **NDI output** — publish the live output as a named NDI source for
+  OBS, vMix and Studio Monitor, via Grandi (NDI 6 SDK bindings) in the
+  main process.
 
 ## Content plan
 

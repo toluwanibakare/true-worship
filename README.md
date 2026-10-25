@@ -17,6 +17,11 @@ workflow, own code, own design.
   with version history, review and sync (sync service arrives in Phase 3).
 - **Import** — move churches off EasyWorship (.ews schedules, Songs.db
   library), OpenSong and OpenLP.
+- **Display** — pick the output monitor (auto picks the projector when
+  connected), fullscreen and always-on-top. If the projector is
+  unplugged mid-service, the live window moves back to the main display.
+- **NDI** — publish the live output as a named NDI source for OBS,
+  vMix or Studio Monitor. See `docs/ndi-setup.md`.
 
 See `PROJECT_BRIEF.md` for the full plan, including the content and
 licensing approach for Bibles and songs.
