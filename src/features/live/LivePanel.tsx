@@ -1,4 +1,4 @@
-import type { Theme } from '../../shared/lib/types'
+import type { SlideStyle, Theme } from '../../shared/lib/types'
 import { Panel } from '../../shared/components/ui'
 import { SlideView } from '../../shared/components/SlideView'
 
@@ -16,6 +16,7 @@ export function LivePanel({
   title,
   theme,
   slides,
+  styles,
   slideLabels,
   liveSlideIndex,
   live,
@@ -27,6 +28,8 @@ export function LivePanel({
   title: string
   theme: Theme
   slides: string[][]
+  /** How each slide's words are arranged, when the operator changed it. */
+  styles?: (SlideStyle | undefined)[]
   slideLabels: string[]
   liveSlideIndex: number
   live: boolean
@@ -57,6 +60,7 @@ export function LivePanel({
                   backgroundCss={backgroundCss}
                   layoutId={layoutId}
                   reference={reference}
+                  style={styles?.[index]}
                 />
                 <span className="block truncate bg-blue-600 px-2 py-0.5 text-xs text-white">
                   {index + 1} · {label}

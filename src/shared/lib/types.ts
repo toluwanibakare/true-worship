@@ -1,6 +1,27 @@
+/**
+ * How one slide's words are arranged and formatted, set by clicking the
+ * text in the Preview Output. Anything left out follows the theme and
+ * layout. The box is in the 1280 x 720 slide.
+ */
+export type SlideStyle = {
+  /** Where the words sit and how much room they have; when set, the layout's own placement is replaced. */
+  box?: { x: number; y: number; width: number; height: number }
+  align?: 'left' | 'center' | 'right'
+  valign?: 'top' | 'middle' | 'bottom'
+  fontFamily?: string
+  /** Font size in slide pixels; the words are fitted automatically when absent. */
+  fontSize?: number
+  color?: string
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+}
+
 export type Verse = {
   label: string
   lines: string[]
+  /** How this slide's words are arranged, when the operator changed it. */
+  style?: SlideStyle
 }
 
 export type Song = {
@@ -34,6 +55,8 @@ export type ScheduleItem = {
   slides?: string[][]
   /** ...and the version they were read from, e.g. KJV. */
   version?: string
+  /** How each of those slides is arranged, by slide number, when the operator changed it. */
+  slideStyles?: (SlideStyle | null)[]
 }
 
 export type Theme = {

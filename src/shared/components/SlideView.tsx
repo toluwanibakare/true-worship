@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import type { Theme } from '../lib/types'
-import { layoutById } from '../lib/layouts'
+import type { SlideStyle, Theme } from '../lib/types'
+import { defaultTextBox, layoutById } from '../lib/layouts'
 import { Marquee, type MarqueeAlert } from './Marquee'
 
 /**
@@ -92,6 +92,57 @@ function isLight(colour: string) {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55
 }
 
+/**
+ * How the words of a slide are drawn: the font size, colour and the box
+ * they sit in. Shared by the slide itself and by the preview's text
+ * editor, so a text box sits exactly over the words it edits.
+ */
+export function textMetrics({
+  lines,
+  theme,
+  layoutId,
+  reference,
+  hasBackdrop,
+  style,
+}: {
+  lines: string[]
+  theme: Theme
+  layoutId?: string
+  reference?: string
+  hasBackdrop: boolean
+  style?: SlideStyle
+}) {
+  const layout = layoutById(layoutId)
+  const caption = layout.subtitle !== undefined
+  // Subtitle layouts size and place their own words; a slide's style does not apply there.
+  const custom = caption ? undefined : style
+  const box = custom?.box ?? defaultTextBox(layout)
+  const fontSize = caption
+    ? captionFontSize(
+        lines,
+        theme.fontSize * (layout.fontScale ?? 1),
+        lines.filter((line) => line.trim() !== '').length > 1 ? 2 : 3,
+      )
+    : (custom?.fontSize ??
+      fitFontSize(
+        lines,
+        theme.fontSize * (layout.fontScale ?? 1),
+        box,
+        // A scripture (it has a reference) grows when it is short.
+        Boolean(reference),
+        Boolean(reference),
+      ))
+  return {
+    caption,
+    custom,
+    box,
+    fontSize,
+    colour: custom?.color ?? (hasBackdrop ? '#ffffff' : theme.textColor),
+    bold: custom?.bold ?? theme.bold,
+    fontFamily: custom?.fontFamily ?? theme.fontFamily,
+  }
+}
+
 export function SlideView({
   lines,
   theme,
@@ -104,6 +155,8 @@ export function SlideView({
   textFadeMs,
   wordsKey,
   wordsFadeInMs,
+  style,
+  hideWords = false,
   className = 'w-full',
 }: {
   lines: string[]
@@ -121,6 +174,10 @@ export function SlideView({
   /** Changing this replays a fade-in of the words (new words appear at once, then fade up). */
   wordsKey?: number
   wordsFadeInMs?: number
+  /** How this slide's words are arranged, when the operator changed it. */
+  style?: SlideStyle
+  /** Hides the words, while a text editor is drawn over them. */
+  hideWords?: boolean
   className?: string
 }) {
   const frame = useRef<HTMLDivElement>(null)
@@ -140,32 +197,24 @@ export function SlideView({
   // A picked photo, video or gradient (anything other than the theme's own colour).
   const hasBackdrop =
     Boolean(backgroundVideo) || (backgroundCss !== undefined && backgroundCss !== theme.background)
-  const textColour = hasBackdrop ? '#ffffff' : theme.textColor
-  const lightText = hasBackdrop || isLight(theme.textColor)
-  const caption = layout.subtitle !== undefined
-  // A caption slide is two song lines, or one long passage that may take three.
-  const fontSize = caption
-    ? captionFontSize(
-        lines,
-        theme.fontSize * (layout.fontScale ?? 1),
-        lines.filter((line) => line.trim() !== '').length > 1 ? 2 : 3,
-      )
-    : fitFontSize(
-        lines,
-        theme.fontSize * (layout.fontScale ?? 1),
-        layout.box ?? { width: 1160, height: 620 },
-        // A scripture (it has a reference) grows when it is short.
-        Boolean(reference),
-        Boolean(reference),
-      )
+  const metrics = textMetrics({ lines, theme, layoutId, reference, hasBackdrop, style })
+  const { caption, custom, fontSize, bold } = metrics
+  const textColour = metrics.colour
+  const lightText = hasBackdrop || isLight(textColour)
+  // Words moved or resized by the operator sit in their own box, not the layout's.
+  const freeBox = custom?.box
   const words = lines.map((line, index) => (
     <p
       key={index}
       className="leading-tight"
       style={{
         fontSize,
+        fontFamily: custom?.fontFamily,
+        fontStyle: custom?.italic ? 'italic' : undefined,
+        textDecoration: custom?.underline ? 'underline' : undefined,
+        fontWeight: bold ? 700 : 400,
         // Bold plus a hairline stroke makes the words heavier than the font's own bold.
-        WebkitTextStroke: theme.bold ? '0.02em currentColor' : undefined,
+        WebkitTextStroke: bold ? '0.02em currentColor' : undefined,
         textShadow: lightText
           ? caption
             ? '0 0 6px rgba(0,0,0,0.95), 0 2px 4px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,1)'
@@ -236,14 +285,25 @@ export function SlideView({
         )}
         <div
           key={wordsKey ?? 0}
-          className={`relative z-10 ${layout.wrapper}`}
+          className={freeBox ? 'absolute z-10 flex flex-col' : `relative z-10 ${layout.wrapper}`}
           style={{
-            opacity: textOpacity ?? 1,
+            ...(freeBox
+              ? {
+                  left: freeBox.x,
+                  top: freeBox.y,
+                  width: freeBox.width,
+                  height: freeBox.height,
+                  textAlign: custom?.align ?? 'center',
+                  justifyContent:
+                    custom?.valign === 'top' ? 'flex-start' : custom?.valign === 'bottom' ? 'flex-end' : 'center',
+                }
+              : {}),
+            opacity: hideWords ? 0 : (textOpacity ?? 1),
             transition: textFadeMs ? `opacity ${textFadeMs}ms ease` : undefined,
             animation: wordsFadeInMs ? `tw-fade-in ${wordsFadeInMs}ms ease-out both` : undefined,
           }}
         >
-          {layout.band ? (
+          {layout.band && !freeBox ? (
             <div className={layout.band}>
               {words}
               {referenceLine}

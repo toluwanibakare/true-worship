@@ -170,6 +170,7 @@ export function LiveWindow() {
               backgroundCss={slide.backgroundCss}
               backgroundVideo={slide.backgroundVideo}
               layoutId={slide.layout}
+              style={slide.style}
               reference={slide.reference}
               alert={slide.alert ?? null}
               textOpacity={index === layers.length - 1 && wordsHidden ? 0 : 1}

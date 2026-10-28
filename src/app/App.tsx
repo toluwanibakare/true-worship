@@ -46,7 +46,8 @@ import {
   demoSongs,
   demoThemes,
 } from '../shared/lib/demo'
-import type { ScheduleItem, Song, Verse } from '../shared/lib/types'
+import type { ScheduleItem, SlideStyle, Song, Verse } from '../shared/lib/types'
+import { SlideEditor } from '../features/slideedit/SlideEditor'
 
 /**
  * Toolbar button: an icon above a short label. The toolbar splits
@@ -272,6 +273,21 @@ type Preview = {
   reference?: string
   /** Set when the previewed item is a media file rather than words. */
   media?: MediaLook
+  /** How each slide's words are arranged (by slide number), when the operator changed it. */
+  styles?: (SlideStyle | undefined)[]
+  /** The library song these slides belong to, so editing them edits the song. */
+  songId?: string
+}
+
+/** A song's slides as a preview, with the arrangement saved on each verse. */
+function songPreview(song: Song): Preview & { labels: string[] } {
+  return {
+    title: song.title,
+    slides: song.verses.map((verse) => verse.lines),
+    labels: song.verses.map((verse) => verse.label),
+    styles: song.verses.map((verse) => verse.style),
+    songId: song.id,
+  }
 }
 
 const clamp = (value: number, min: number, max: number) =>
@@ -282,10 +298,7 @@ function previewForSchedule(item: ScheduleItem | undefined, songs: Song[]): Prev
   if (item.type === 'song') {
     const song = songs.find((entry) => entry.id === item.ref)
     if (!song) return { title: item.title, slides: [['Song not found.']] }
-    return {
-      title: song.title,
-      slides: song.verses.map((verse) => verse.lines),
-    }
+    return songPreview(song)
   }
   if (item.type === 'scripture') {
     // Added from the Scriptures table: it carries its own verses and version.
@@ -294,6 +307,7 @@ function previewForSchedule(item: ScheduleItem | undefined, songs: Song[]): Prev
         title: item.ref,
         slides: item.slides,
         reference: `${item.ref} (${item.version ?? SCRIPTURE_VERSION})`,
+        styles: (item.slideStyles ?? []).map((entry) => entry ?? undefined),
       }
     }
     const text = demoPassage[item.ref]
@@ -310,6 +324,7 @@ function previewForSchedule(item: ScheduleItem | undefined, songs: Song[]): Prev
       title: item.title,
       slides: item.slides,
       labels: item.slides.map((lines, index) => lines[0] ?? `Slide ${index + 1}`),
+      styles: (item.slideStyles ?? []).map((entry) => entry ?? undefined),
     }
   }
   return { title: item.title, slides: [[item.title]] }
@@ -353,6 +368,8 @@ export function App() {
   const [customPreview, setCustomPreview] = useState<Preview | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [dialog, setDialog] = useState<Dialog | null>(null)
+  // The Preview Output's title bar, where the slide text formatting bar is drawn.
+  const [toolbarHost, setToolbarHost] = useState<HTMLElement | null>(null)
   const [itemEditor, setItemEditor] = useState<ScheduleItem | null>(null)
   const [songEditor, setSongEditor] = useState<{ song: Song | null } | null>(null)
   // The built-in web browser replaces the preview and live panes while open.
@@ -377,6 +394,15 @@ export function App() {
   const setLiveReference = (next: string | null) => {
     liveReferenceRef.current = next
     setLiveReferenceState(next)
+  }
+  // How each live slide's words are arranged, and the one on the screen, kept the same way.
+  const [liveStyles, setLiveStylesState] = useState<(SlideStyle | undefined)[]>([])
+  const liveStylesRef = useRef<(SlideStyle | undefined)[]>([])
+  const liveStyleRef = useRef<SlideStyle | undefined>(undefined)
+  const setLiveStyles = (next: (SlideStyle | undefined)[], index: number) => {
+    liveStylesRef.current = next
+    liveStyleRef.current = next[index]
+    setLiveStylesState(next)
   }
   const setLiveMedia = (next: MediaLook | null) => {
     liveMediaRef.current = next
@@ -480,6 +506,7 @@ export function App() {
       // The reference goes only with words: not on Black, Logo or a cleared screen.
       reference: forcedBackground || lines.length === 0 ? undefined : (liveReferenceRef.current ?? undefined),
       layout: layoutId,
+      style: forcedBackground ? undefined : liveStyleRef.current,
       alert: alertArg !== undefined ? alertArg : alert,
       textColor: theme.textColor,
       fontSize: theme.fontSize,
@@ -496,11 +523,7 @@ export function App() {
 
   const openSong = (song: Song) => {
     pickedSong.current = song
-    showPreview({
-      title: song.title,
-      slides: song.verses.map((verse) => verse.lines),
-      labels: song.verses.map((verse) => verse.label),
-    })
+    showPreview(songPreview(song))
   }
 
   // Send an item live, starting at the given slide. Double-clicking a
@@ -515,6 +538,7 @@ export function App() {
     setLiveSlides(target.slides)
     setLiveSlideLabels(labels)
     setLiveSlideIndex(index)
+    setLiveStyles(target.styles ?? [], index)
     setBlack(false)
     setLogo(false)
     clearedLiveRef.current = null
@@ -620,14 +644,74 @@ export function App() {
 
   const goLiveSong = (song: Song) => {
     pickedSong.current = song
-    const next = {
-      title: song.title,
-      slides: song.verses.map((verse) => verse.lines),
-      labels: song.verses.map((verse) => verse.label),
-    }
+    const next = songPreview(song)
     showPreview(next)
     const split = fitForLayout(next.slides, next.labels)
     goLiveWith({ ...next, slides: split.slides }, split.labels, 0)
+  }
+
+  /**
+   * Saves how a slide's words are arranged (null resets it; `all` gives every
+   * slide the same look). The arrangement belongs to what is in the Preview: a
+   * library song keeps it on its verse, a schedule item on its slide, and
+   * anything else only for as long as it is previewed. If that slide is on the
+   * screen, the room sees the change.
+   */
+  const setSlideStyle = (index: number, next: SlideStyle | null, all = false) => {
+    const style = next ?? undefined
+    const spread = (count: number, current: (SlideStyle | undefined)[]) =>
+      Array.from({ length: count }, (_, i) => (all || i === index ? style : current[i]))
+    if (basePreview.songId) {
+      const songId = basePreview.songId
+      setSongs((current) =>
+        current.map((song) =>
+          song.id === songId
+            ? { ...song, verses: song.verses.map((verse, i) => (all || i === index ? { ...verse, style } : verse)) }
+            : song,
+        ),
+      )
+    } else if (customPreview) {
+      setCustomPreview({ ...customPreview, styles: spread(customPreview.slides.length, customPreview.styles ?? []) })
+    } else if (selected) {
+      const count = basePreview.slides.length
+      setSchedule((current) =>
+        current.map((item) =>
+          item.id === selected.id
+            ? { ...item, slideStyles: spread(count, (item.slideStyles ?? []).map((entry) => entry ?? undefined)).map((entry) => entry ?? null) }
+            : item,
+        ),
+      )
+    }
+    if (live && live.title === basePreview.title && liveSlides?.length === basePreview.slides.length) {
+      setLiveStyles(spread(liveSlides.length, liveStylesRef.current), liveSlideIndex)
+      if ((all || index === liveSlideIndex) && !black && !logo) sendLive(live.title, live.lines)
+    }
+  }
+
+  /** Saves words typed into the slide in the Preview Output, in the same place as its arrangement. */
+  const setSlideLines = (index: number, lines: string[]) => {
+    if (basePreview.songId) {
+      const songId = basePreview.songId
+      setSongs((current) =>
+        current.map((song) =>
+          song.id === songId
+            ? { ...song, verses: song.verses.map((verse, i) => (i === index ? { ...verse, lines } : verse)) }
+            : song,
+        ),
+      )
+    } else if (customPreview) {
+      setCustomPreview({ ...customPreview, slides: customPreview.slides.map((entry, i) => (i === index ? lines : entry)) })
+    } else if (selected) {
+      const slides = basePreview.slides.map((entry, i) => (i === index ? lines : entry))
+      setSchedule((current) => current.map((item) => (item.id === selected.id ? { ...item, slides } : item)))
+    }
+    if (live && live.title === basePreview.title && liveSlides?.length === basePreview.slides.length) {
+      setLiveSlides(liveSlides.map((entry, i) => (i === index ? lines : entry)))
+      if (index === liveSlideIndex) {
+        setLive({ title: live.title, lines })
+        if (!black && !logo) sendLive(live.title, lines)
+      }
+    }
   }
 
   const handleGoLive = () => goLiveSlide(slideIndex)
@@ -695,6 +779,7 @@ export function App() {
     if (!live || !liveSlides) return
     const lines = liveSlides[index] ?? []
     setLiveSlideIndex(index)
+    liveStyleRef.current = liveStylesRef.current[index]
     setLive({ title: live.title, lines })
     setBlack(false)
     setLogo(false)
@@ -885,6 +970,7 @@ export function App() {
     setLiveSlides(itemFit.slides)
     setLiveSlideLabels(itemFit.labels)
     setLiveSlideIndex(0)
+    setLiveStyles(itemPreview.styles ?? [], 0)
     setBlack(false)
     setLogo(false)
     clearedLiveRef.current = null
@@ -1359,13 +1445,14 @@ export function App() {
               <div className="shrink-0" style={{ height: previewOutputHeight }}>
                 <OutputPanel
                   title="Preview Output"
+                  actions={<div ref={setToolbarHost} className="min-w-0" />}
                   counter={`Slide ${Math.min(slideIndex, preview.slides.length - 1) + 1} of ${preview.slides.length}`}
                   canPrev={slideIndex > 0}
                   canNext={slideIndex < preview.slides.length - 1}
                   onPrev={() => stepSlide(-1)}
                   onNext={() => stepSlide(1)}
                 >
-                  <SlideView
+                  <SlideEditor
                     lines={slide}
                     theme={theme}
                     backgroundCss={preview.media?.css ?? background?.css}
@@ -1373,7 +1460,11 @@ export function App() {
                     layoutId={layoutId}
                     reference={preview.reference}
                     alert={alert}
-                    className="h-full max-w-full"
+                    style={preview.styles?.[Math.min(slideIndex, preview.slides.length - 1)]}
+                    toolbarHost={toolbarHost}
+                    canEdit={!preview.media && slide.some((line) => line.trim() !== '')}
+                    onStyle={(next, all) => setSlideStyle(Math.min(slideIndex, preview.slides.length - 1), next, all)}
+                    onLines={(lines) => setSlideLines(Math.min(slideIndex, preview.slides.length - 1), lines)}
                   />
                 </OutputPanel>
               </div>
@@ -1397,6 +1488,7 @@ export function App() {
                   title={liveTitle}
                   theme={theme}
                   slides={liveSlides ?? []}
+                  styles={liveStyles}
                   slideLabels={liveSlideLabels}
                   liveSlideIndex={liveSlideIndex}
                   live={live !== null && !black && !logo}
@@ -1438,6 +1530,7 @@ export function App() {
                     }
                     layoutId={layoutId}
                     reference={live !== null && !black && !logo ? (liveReference ?? undefined) : undefined}
+                    style={live !== null && !black && !logo ? liveStyles[liveSlideIndex] : undefined}
                     alert={live !== null && !black && !logo ? alert : null}
                     className="h-full max-w-full"
                   />

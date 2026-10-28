@@ -3,6 +3,23 @@
 All notable changes to True Worship are recorded here. The format follows
 Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
+## [Unreleased]
+
+### Added
+
+- Edit a slide's words where they sit. Click the words in the Preview
+  Output and a box appears around them: drag it to move, drag a handle to
+  resize, use the arrow keys to nudge (Shift for bigger steps), and
+  double-click to type in it. A formatting bar in the Preview Output's
+  title bar sets the font, size, colour, bold, italic, underline, left,
+  centre or right alignment and top, middle or bottom alignment, gives
+  every slide the same look, or resets it. The arrangement is saved with
+  the song's verse (so it follows the song everywhere), with a schedule
+  item's slide, or only for the current preview, and it shows in the
+  schedule thumbnails, the Live pane and the projector, updating live if
+  that slide is on the screen. Formatting applies to the whole text box.
+  Subtitle layouts place their own words, so the editor is off there.
+
 ## [0.19.0] - 2026-10-25
 
 ### Added

@@ -79,3 +79,14 @@ export const LAYOUTS: LayoutPreset[] = [
 export function layoutById(id: string | undefined): LayoutPreset {
   return LAYOUTS.find((layout) => layout.id === id) ?? LAYOUTS[0]
 }
+
+/**
+ * Where the words sit by default in the 1280 x 720 slide: the box a
+ * layout gives them. Clicking the text in the preview starts from this
+ * box when the operator moves or resizes it.
+ */
+export function defaultTextBox(layout: LayoutPreset) {
+  const box = layout.box ?? { width: 1160, height: 620 }
+  if (layout.id === 'left-panel') return { x: 43, y: 60, ...box }
+  return { x: Math.round((1280 - box.width) / 2), y: Math.round((720 - box.height) / 2), ...box }
+}

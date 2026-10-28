@@ -1,5 +1,6 @@
 import type {
   DisplayInfo,
+  SlideStyle,
   DisplaySettings,
   NdiOptions,
   NdiStatus,
@@ -16,6 +17,8 @@ export type LiveUpdatePayload = {
   backgroundVideo?: string
   /** Layout id from features/layouts, default fullscreen. */
   layout?: string
+  /** How this slide's words are arranged, when the operator changed it. */
+  style?: SlideStyle
   /** Book, chapter, verse and version shown under a scripture, e.g. "John 3:16 (KJV)". */
   reference?: string
   /** Scrolling alert at the top of the output, or null. */

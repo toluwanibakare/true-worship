@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ScheduleItem, Theme } from '../../shared/lib/types'
+import type { ScheduleItem, SlideStyle, Theme } from '../../shared/lib/types'
 import { Panel } from '../../shared/components/ui'
 import { SlideView } from '../../shared/components/SlideView'
 import { RESOURCE_MIME, decodeResource, type ResourceDrag } from '../../shared/lib/resourceDrag'
@@ -64,7 +64,7 @@ export function SchedulePanel({
   onDropResource: (resource: ResourceDrag, insertIndex: number) => void
   slideLabelsFor: (item: ScheduleItem) => string[]
   /** The slides an item will show, and its scripture reference if it has one. */
-  previewFor: (item: ScheduleItem) => { slides: string[][]; reference?: string }
+  previewFor: (item: ScheduleItem) => { slides: string[][]; reference?: string; styles?: (SlideStyle | undefined)[] }
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -249,6 +249,7 @@ export function SchedulePanel({
                         backgroundCss={backgroundCss}
                         layoutId={layoutId}
                         reference={preview.reference}
+                        style={preview.styles?.[0]}
                         className="w-16 shrink-0 rounded border border-black/10"
                       />
                       <span className="min-w-0">
@@ -281,6 +282,7 @@ export function SchedulePanel({
                                 backgroundCss={backgroundCss}
                                 layoutId={layoutId}
                                 reference={preview.reference}
+                                style={preview.styles?.[index]}
                                 className="w-20 shrink-0 rounded-sm"
                               />
                               <span className="flex min-w-0 flex-1 items-center bg-blue-600 px-2 text-xs text-white">

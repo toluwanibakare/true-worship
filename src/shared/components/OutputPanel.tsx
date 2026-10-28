@@ -14,6 +14,7 @@ export function OutputPanel({
   canNext,
   onPrev,
   onNext,
+  actions,
   children,
 }: {
   title: string
@@ -22,13 +23,15 @@ export function OutputPanel({
   canNext: boolean
   onPrev: () => void
   onNext: () => void
+  /** Controls shown in the title bar, such as a formatting bar. */
+  actions?: ReactNode
   /** The monitor itself, normally a SlideView. */
   children: ReactNode
 }) {
   const step =
     'rounded-md bg-slate-200 px-3 py-0.5 text-sm text-slate-800 hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700'
   return (
-    <Panel title={title} className="h-full">
+    <Panel title={title} className="h-full" actions={actions}>
       <div className="flex h-full flex-col items-center gap-2">
         <div className="flex min-h-0 w-full flex-1 items-center justify-center">
           {children}

@@ -44,7 +44,7 @@ export function parseWords(text: string): Verse[] {
     .filter((verse) => verse.lines.length > 0)
 }
 
-type Block = { key: number; label: string; text: string }
+type Block = { key: number; label: string; text: string; style?: Verse['style'] }
 
 const MASTERS = ['Verse', 'Chorus', 'Pre-Chorus', 'Bridge', 'Tag', 'Intro', 'Ending']
 
@@ -52,7 +52,7 @@ let nextKey = 1
 
 function blocksOf(song: Song | null): Block[] {
   if (!song || song.verses.length === 0) return [{ key: nextKey++, label: 'Verse 1', text: '' }]
-  return song.verses.map((verse) => ({ key: nextKey++, label: verse.label, text: verse.lines.join('\n') }))
+  return song.verses.map((verse) => ({ key: nextKey++, label: verse.label, text: verse.lines.join('\n'), style: verse.style }))
 }
 
 /** The next free name for a master, such as "Verse 3" or "Chorus". */
@@ -105,7 +105,7 @@ export function SongEditor({
       .map((line) => line.trim())
       .filter(Boolean)
   const verses: Verse[] = blocks
-    .map((block, index) => ({ label: block.label.trim() || `Verse ${index + 1}`, lines: linesOf(block) }))
+    .map((block, index) => ({ label: block.label.trim() || `Verse ${index + 1}`, lines: linesOf(block), style: block.style }))
     .filter((verse) => verse.lines.length > 0)
   const ready = title.trim() !== '' && verses.length > 0
   const current = blocks.find((block) => block.key === selected) ?? blocks[0]
