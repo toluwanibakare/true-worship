@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ScheduleItem, Theme } from '../../shared/lib/types'
 import { Panel } from '../../shared/components/ui'
 import { SlideView } from '../../shared/components/SlideView'
@@ -35,6 +35,8 @@ export function SchedulePanel({
   onMoveUp,
   onMoveDown,
   onRemove,
+  onEditItem,
+  onDuplicateItem,
   onReorder,
   onDropResource,
   slideLabelsFor,
@@ -53,6 +55,9 @@ export function SchedulePanel({
   onMoveUp: () => void
   onMoveDown: () => void
   onRemove: () => void
+  /** Edit an item: a song opens the song editor, anything else the item editor. */
+  onEditItem: (id: string) => void
+  onDuplicateItem: (id: string) => void
   /** Move an item (by id) to sit before the item at insertIndex. */
   onReorder: (id: string, insertIndex: number) => void
   /** A song or verse dropped from the library, to go in before the item at insertIndex. */
@@ -63,6 +68,18 @@ export function SchedulePanel({
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  // The right-click menu: where it opens and which item it is for.
+  const [context, setContext] = useState<{ x: number; y: number; id: string } | null>(null)
+  useEffect(() => {
+    if (!context) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setContext(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [context])
+  const contextAt = context ? items.findIndex((item) => item.id === context.id) : -1
+  const contextItem = contextAt >= 0 ? items[contextAt] : null
   // Drag and drop: the item being dragged (null for something from the library)
   // and the gap it would drop into (0 = before the first item, items.length =
   // after the last).
@@ -168,6 +185,11 @@ export function SchedulePanel({
                 <li
                   key={item.id}
                   draggable
+                  onContextMenu={(event) => {
+                    event.preventDefault()
+                    onSelect(item.id)
+                    setContext({ x: event.clientX, y: event.clientY, id: item.id })
+                  }}
                   onDragStart={(event) => {
                     event.dataTransfer.effectAllowed = 'move'
                     event.dataTransfer.setData('text/plain', item.id)
@@ -281,6 +303,44 @@ export function SchedulePanel({
           {items.length} {items.length === 1 ? 'item' : 'items'} in this schedule.
         </p>
       </div>
+      {context && contextItem && (
+        <>
+          <button
+            type="button"
+            aria-label="Close menu"
+            className="fixed inset-0 z-40 cursor-default"
+            onClick={() => setContext(null)}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              setContext(null)
+            }}
+          />
+          <div
+            role="menu"
+            style={{ left: Math.min(context.x, window.innerWidth - 190), top: Math.min(context.y, window.innerHeight - 230) }}
+            className="fixed z-50 w-44 rounded-md border border-slate-300 bg-white py-1 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          >
+            <button type="button" className={menuItem} onClick={() => { setContext(null); onGoLiveItem(contextItem.id) }}>
+              Go Live
+            </button>
+            <button type="button" className={menuItem} onClick={() => { setContext(null); onEditItem(contextItem.id) }}>
+              Edit…
+            </button>
+            <button type="button" className={menuItem} onClick={() => { setContext(null); onDuplicateItem(contextItem.id) }}>
+              Duplicate
+            </button>
+            <button type="button" className={menuItem} disabled={contextAt === 0} onClick={() => { setContext(null); onMoveUp() }}>
+              Move Up
+            </button>
+            <button type="button" className={menuItem} disabled={contextAt === items.length - 1} onClick={() => { setContext(null); onMoveDown() }}>
+              Move Down
+            </button>
+            <button type="button" className={menuItem} onClick={() => { setContext(null); onRemove() }}>
+              Remove
+            </button>
+          </div>
+        </>
+      )}
     </Panel>
   )
 }

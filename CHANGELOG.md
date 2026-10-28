@@ -7,6 +7,9 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
 ### Added
 
+- Right-clicking a schedule item opens a menu: Go Live, Edit…, Duplicate,
+  Move Up, Move Down and Remove. Edit opens the song editor for a song and
+  a small item editor (title and slides) for a scripture or custom item.
 - `web/`: a static website for True Worship in its own theme, with
   features, screenshots of the real app, how a service runs, moving
   over from other tools, the Community Songbook, content licensing,

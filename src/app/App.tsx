@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { SchedulePanel } from '../features/schedule/SchedulePanel'
 import { SongLibrary } from '../features/songs/SongLibrary'
 import { loadSongs, saveSongs } from '../shared/lib/songStore'
+import { ItemEditor } from '../features/schedule/ItemEditor'
 import { SongEditor } from '../features/songs/SongEditor'
 import { BibleLookup } from '../features/bible/BibleLookup'
 import { MediaLibrary } from '../features/media/MediaLibrary'
@@ -352,6 +353,7 @@ export function App() {
   const [customPreview, setCustomPreview] = useState<Preview | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [dialog, setDialog] = useState<Dialog | null>(null)
+  const [itemEditor, setItemEditor] = useState<ScheduleItem | null>(null)
   const [songEditor, setSongEditor] = useState<{ song: Song | null } | null>(null)
   // The built-in web browser replaces the preview and live panes while open.
   const [showWeb, setShowWeb] = useState(false)
@@ -801,6 +803,21 @@ export function App() {
     })
   }
 
+  /** Right-click Edit: a song opens the song editor, anything else the item editor. */
+  const editScheduleItem = (id: string) => {
+    const item = schedule.find((entry) => entry.id === id)
+    if (!item) return
+    const song = item.type === 'song' ? songs.find((entry) => entry.id === item.ref) : undefined
+    if (song) setSongEditor({ song })
+    else setItemEditor(item)
+  }
+
+  const duplicateScheduleItem = (id: string) => {
+    const at = schedule.findIndex((entry) => entry.id === id)
+    if (at < 0) return
+    insertScheduleItem({ ...schedule[at], id: newItemId() }, at + 1)
+  }
+
   const removeSelected = () => {
     if (!selectedId) return
     setSchedule((current) => {
@@ -935,8 +952,8 @@ export function App() {
     showAlerts: () => setDialog('alerts'),
     setShowShortcuts,
     showShortcuts,
-    dialogOpen: dialog !== null || songEditor !== null,
-    closeDialog: () => (songEditor ? setSongEditor(null) : setDialog(null)),
+    dialogOpen: dialog !== null || songEditor !== null || itemEditor !== null,
+    closeDialog: () => (itemEditor ? setItemEditor(null) : songEditor ? setSongEditor(null) : setDialog(null)),
     labels: slideLabels,
     slideCount: preview.slides.length,
   })
@@ -960,8 +977,8 @@ export function App() {
     showAlerts: () => setDialog('alerts'),
     setShowShortcuts,
     showShortcuts,
-    dialogOpen: dialog !== null || songEditor !== null,
-    closeDialog: () => (songEditor ? setSongEditor(null) : setDialog(null)),
+    dialogOpen: dialog !== null || songEditor !== null || itemEditor !== null,
+    closeDialog: () => (itemEditor ? setItemEditor(null) : songEditor ? setSongEditor(null) : setDialog(null)),
     labels: slideLabels,
     slideCount: preview.slides.length,
   }
@@ -1300,6 +1317,8 @@ export function App() {
               onMoveUp={() => moveSelected(-1)}
               onMoveDown={() => moveSelected(1)}
               onRemove={removeSelected}
+              onEditItem={editScheduleItem}
+              onDuplicateItem={duplicateScheduleItem}
               onReorder={reorderSchedule}
               slideLabelsFor={slideLabelsForItem}
             />
@@ -1628,6 +1647,21 @@ export function App() {
             onScheduleImported={mergeSchedule}
           />
         </Modal>
+      )}
+      {itemEditor && (
+        <ItemEditor
+          key={itemEditor.id}
+          item={itemEditor}
+          slides={previewForSchedule(itemEditor, songs).slides}
+          onSave={(title, slides) => {
+            setSchedule((current) =>
+              current.map((entry) => (entry.id === itemEditor.id ? { ...entry, title, slides } : entry)),
+            )
+            setCustomPreview(null)
+            setItemEditor(null)
+          }}
+          onClose={() => setItemEditor(null)}
+        />
       )}
       {songEditor && (
         <SongEditor
