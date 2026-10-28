@@ -72,6 +72,15 @@
   }
 
   /* Videos play only while on screen, and not at all for reduced motion. */
+  /* Pick a file this browser can play: WebM where it can, MP4 (H.264) otherwise. */
+  const webm = document.createElement('video').canPlayType('video/webm; codecs="vp9"') !== ''
+  const pick = (video) => {
+    if (video.currentSrc || video.src) return
+    const file = webm ? video.dataset.webm : video.dataset.mp4
+    if (file) video.src = file
+  }
+  /* If a browser blocks autoplay, show the controls so the visitor can press play. */
+  const play = (video) => video.play().catch(() => video.setAttribute('controls', ''))
   const videos = $$('video[data-lazy]')
   if (reduce) {
     videos.forEach((video) => video.removeAttribute('autoplay'))
@@ -80,8 +89,8 @@
       entries.forEach((entry) => {
         const video = entry.target
         if (entry.isIntersecting) {
-          if (!video.src && video.dataset.src) video.src = video.dataset.src
-          video.play().catch(() => {})
+          pick(video)
+          play(video)
         } else {
           video.pause()
         }
@@ -90,8 +99,8 @@
     videos.forEach((video) => watcher.observe(video))
   } else {
     videos.forEach((video) => {
-      if (video.dataset.src) video.src = video.dataset.src
-      video.play().catch(() => {})
+      pick(video)
+      play(video)
     })
   }
   /* The walkthrough pauses on click. */
@@ -105,7 +114,7 @@
     if (!dialog || !dialog.showModal) return
     const video = $('video', dialog)
     button.addEventListener('click', () => {
-      if (!video.src && video.dataset.src) video.src = video.dataset.src
+      pick(video)
       dialog.showModal()
       video.currentTime = 0
       video.play().catch(() => {})
