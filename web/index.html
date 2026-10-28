@@ -39,10 +39,10 @@
         <h1 class="reveal">Worship presentation software that costs nothing.</h1>
       </div>
       <div class="hero-side reveal">
-        <p class="lead">Build the whole service in one place: songs, scriptures, media and slides. Preview every slide, then send it live to the projector. Free forever, open source.</p>
+        <p class="lead">Build the whole service in one place: songs, scriptures, media and slides. Preview every slide, then send it live to the projector. Free and open source.</p>
         <div class="cta">
           <a class="btn" href="#download">Get True Worship<svg class="ico" aria-hidden="true"><use href="#i-arrow-o"/></svg></a>
-          <a class="btn ghost" href="#running">See it run</a>
+          <button class="btn ghost" type="button" data-video="#walkthrough"><svg class="ico" aria-hidden="true"><use href="#i-play-b"/></svg>See it run</button>
         </div>
         <ul class="facts"><li><svg class="ico" aria-hidden="true"><use href="#i-check-b"/></svg>Windows, Linux, macOS</li><li><svg class="ico" aria-hidden="true"><use href="#i-check-b"/></svg>GPL-3.0</li><li><svg class="ico" aria-hidden="true"><use href="#i-check-b"/></svg>Works offline</li></ul>
       </div>
@@ -195,7 +195,7 @@
   <section id="faq">
     <div class="wrap faq">
       <div class="faq-head"><span class="kicker reveal">FAQ</span><h2 class="reveal">Questions churches ask.</h2></div>
-      <details class="reveal"><summary>Is True Worship really free?</summary><p>Yes. It is free forever and open source under GPL-3.0. There is no subscription, no trial and no paid tier.</p></details><details class="reveal"><summary>Which platforms does it run on?</summary><p>Windows, Linux and macOS, from one codebase. The operator window runs on the laptop and the live output window goes to the projector.</p></details><details class="reveal"><summary>Does it work without internet?</summary><p>Yes. Songs, Bibles, schedules and themes live on disk. Bibles you download keep working offline. Online lookups and songbook sync are extras, never requirements for a service.</p></details><details class="reveal"><summary>Can we move from EasyWorship?</summary><p>That is the plan. Import covers .ews schedules, song databases, OpenSong and OpenLyrics files, with full fidelity library import being finished against real sample files. Everything also exports to open files.</p></details><details class="reveal"><summary>What about copyrighted songs and Bibles?</summary><p>Only public domain, owned or licensed content is bundled, and every item is labelled with its source. Modern songs need permission or a CCLI SongSelect licence, and copyrighted Bible versions are never bundled.</p></details><details class="reveal"><summary>Will it have Nigerian language Bibles?</summary><p>Yes, through downloadable eBible.org packs including Yoruba, Hausa, Igbo, Nigerian Pidgin and Fulfulde, each with its own licence note.</p></details><details class="reveal"><summary>When do installers arrive?</summary><p>Installers for Windows, Linux and macOS are the final release phase, along with docs and the first public launch to Nigerian churches. Until then, run from source with the commands above.</p></details>
+      <details class="reveal"><summary>Is True Worship really free?</summary><p>Yes. It is free and open source under GPL-3.0. There is no subscription, no trial and no paid tier today.</p></details><details class="reveal"><summary>Which platforms does it run on?</summary><p>Windows, Linux and macOS, from one codebase. The operator window runs on the laptop and the live output window goes to the projector.</p></details><details class="reveal"><summary>Does it work without internet?</summary><p>Yes. Songs, Bibles, schedules and themes live on disk. Bibles you download keep working offline. Online lookups and songbook sync are extras, never requirements for a service.</p></details><details class="reveal"><summary>Can we move from EasyWorship?</summary><p>That is the plan. Import covers .ews schedules, song databases, OpenSong and OpenLyrics files, with full fidelity library import being finished against real sample files. Everything also exports to open files.</p></details><details class="reveal"><summary>What about copyrighted songs and Bibles?</summary><p>Only public domain, owned or licensed content is bundled, and every item is labelled with its source. Modern songs need permission or a CCLI SongSelect licence, and copyrighted Bible versions are never bundled.</p></details><details class="reveal"><summary>Will it have Nigerian language Bibles?</summary><p>Yes, through downloadable eBible.org packs including Yoruba, Hausa, Igbo, Nigerian Pidgin and Fulfulde, each with its own licence note.</p></details><details class="reveal"><summary>When do installers arrive?</summary><p>Installers for Windows, Linux and macOS are the final release phase, along with docs and the first public launch to Nigerian churches. Until then, run from source with the commands above.</p></details>
     </div>
   </section>
 
@@ -203,7 +203,7 @@
     <video muted loop playsinline preload="none" data-lazy data-src="assets/media/aurora-flow.webm" poster="assets/media/aurora-flow.webp" aria-hidden="true"></video>
     <div class="wrap">
       <h2 class="reveal">Ready to run your next service on it?</h2>
-      <p class="reveal">Free forever, open source, on Windows, Linux and macOS. Get the source and run it from the commands above.</p>
+      <p class="reveal">Free and open source, on Windows, Linux and macOS. Get the source and run it from the commands above.</p>
       <div class="cta reveal"><a class="btn light" href="https://github.com/toluwanibakare/true-worship">True Worship on GitHub<svg class="ico" aria-hidden="true"><use href="#i-arrow-o"/></svg></a><a class="btn line-light" href="#download">Run it</a></div>
     </div>
   </section>
@@ -237,6 +237,11 @@
     </div>
   </div>
 </footer>
+
+<dialog class="video-dialog" id="walkthrough" aria-label="True Worship walkthrough">
+  <button class="video-close" type="button" aria-label="Close video" data-close>&times;</button>
+  <video controls playsinline preload="none" data-src="assets/media/demo.webm" poster="assets/media/demo-poster.jpg"></video>
+</dialog>
 
 <a class="to-top" href="#top" aria-label="Back to top" title="Back to top"><svg class="ico" aria-hidden="true"><use href="#i-arrow-o"/></svg></a>
 

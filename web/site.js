@@ -99,6 +99,23 @@
     video.addEventListener('click', () => (video.paused ? video.play() : video.pause())),
   )
 
+  /* "See it run" opens the walkthrough in a dialog; Esc, the x or a click outside closes it. */
+  $$('[data-video]').forEach((button) => {
+    const dialog = $(button.dataset.video)
+    if (!dialog || !dialog.showModal) return
+    const video = $('video', dialog)
+    button.addEventListener('click', () => {
+      if (!video.src && video.dataset.src) video.src = video.dataset.src
+      dialog.showModal()
+      video.currentTime = 0
+      video.play().catch(() => {})
+    })
+    dialog.addEventListener('close', () => video.pause())
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog || event.target.hasAttribute('data-close')) dialog.close()
+    })
+  })
+
   /* Copy the commands. */
   $$('[data-copy]').forEach((button) => {
     button.addEventListener('click', async () => {
