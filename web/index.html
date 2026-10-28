@@ -32,25 +32,19 @@
 </header>
 
 <div class="hero" id="top">
-  <div class="wrap">
-    <div class="hero-top">
-      <div>
-        <p class="slogan reveal">And the truth shall set you free.</p>
-        <h1 class="reveal">Worship presentation software that costs nothing.</h1>
-      </div>
-      <div class="hero-side reveal">
-        <p class="lead">Build the whole service in one place: songs, scriptures, media and slides. Preview every slide, then send it live to the projector. Free and open source.</p>
-        <div class="cta">
-          <a class="btn" href="#download">Get True Worship<svg class="ico" aria-hidden="true"><use href="#i-arrow-o"/></svg></a>
-          <button class="btn ghost" type="button" data-video="#walkthrough"><svg class="ico" aria-hidden="true"><use href="#i-play-b"/></svg>See it run</button>
-        </div>
-        <ul class="facts"><li><svg class="ico" aria-hidden="true"><use href="#i-check-b"/></svg>Windows, Linux, macOS</li><li><svg class="ico" aria-hidden="true"><use href="#i-check-b"/></svg>GPL-3.0</li><li><svg class="ico" aria-hidden="true"><use href="#i-check-b"/></svg>Works offline</li></ul>
-      </div>
+  <div class="hero-scene" aria-hidden="true">
+    <img src="assets/media/concert.webp" srcset="assets/media/concert-small.webp 900w, assets/media/concert.webp 2000w" sizes="100vw" alt="" width="2000" height="917" fetchpriority="high">
+    <i class="sweep s1"></i><i class="sweep s2"></i>
+  </div>
+  <div class="wrap hero-inner">
+    <p class="slogan reveal">And the truth shall set you free.</p>
+    <h1 class="reveal">Worship presentation software that costs nothing.</h1>
+    <p class="lead reveal">Build the whole service in one place: songs, scriptures, media and slides. Preview every slide, then send it live to the projector. Free and open source.</p>
+    <div class="cta reveal">
+      <a class="btn light" href="#download">Get True Worship<svg class="ico" aria-hidden="true"><use href="#i-arrow-o"/></svg></a>
+      <button class="btn line-light" type="button" data-video="#walkthrough"><svg class="ico" aria-hidden="true"><use href="#i-play-b"/></svg>See it run</button>
     </div>
-    <figure class="frame hero-frame reveal">
-      <video muted loop playsinline autoplay data-lazy data-toggle poster="assets/media/demo-poster.jpg" width="1920" height="1050"><source src="assets/media/demo.webm" type="video/webm"><source src="assets/media/demo.mp4" type="video/mp4"></video>
-      <figcaption class="tag"><span class="rec"></span>Real app, version 0.18.0</figcaption>
-    </figure>
+    <ul class="facts reveal"><li><svg class="ico" aria-hidden="true"><use href="#i-check-b"/></svg>Windows, Linux, macOS</li><li><svg class="ico" aria-hidden="true"><use href="#i-check-b"/></svg>GPL-3.0</li><li><svg class="ico" aria-hidden="true"><use href="#i-check-b"/></svg>Works offline</li></ul>
   </div>
 </div>
 
@@ -240,7 +234,8 @@
 
 <dialog class="video-dialog" id="walkthrough" aria-label="True Worship walkthrough">
   <button class="video-close" type="button" aria-label="Close video" data-close>&times;</button>
-  <video controls playsinline preload="none" data-webm="assets/media/demo.webm" data-mp4="assets/media/demo.mp4" poster="assets/media/demo-poster.jpg"></video>
+  <a class="video-note" data-video-note href="assets/media/demo.mp4" target="_blank" rel="noopener" hidden>Video not playing? Open it in a new tab</a>
+  <video controls playsinline preload="metadata" poster="assets/media/demo-poster.jpg"><source src="assets/media/demo.webm" type="video/webm"><source src="assets/media/demo.mp4" type="video/mp4"></video>
 </dialog>
 
 <a class="to-top" href="#top" aria-label="Back to top" title="Back to top"><svg class="ico" aria-hidden="true"><use href="#i-arrow-o"/></svg></a>

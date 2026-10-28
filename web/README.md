@@ -28,6 +28,8 @@ then visit http://localhost:8000/.
   ask for reduced motion.
 - `assets/shots/`: WebP screenshots captured from the real app (version 0.18.0).
   Recapture them when the interface changes.
+- `assets/media/concert.webp`: the hero scene (an illustration made for this site, with
+  lyrics on the screens), in two sizes.
 - `assets/media/`: the real-app walkthrough (`demo.webm`), its poster, and the
   motion loops and photo stills copied from `public/backgrounds/`.
 - `assets/logo.svg`: the repo's SVG master.

@@ -77,32 +77,30 @@ h3 { font: 700 18px/1.3 var(--sans); letter-spacing: -.005em; }
 .lead { font-size: clamp(18px, 1.6vw, 21px); color: var(--muted); max-width: 40em; }
 em.blue { font-style: italic; color: var(--blue); }
 
-/* ---- hero ---- */
-.hero { position: relative; overflow: hidden; padding: 56px 0 28px; border-bottom: 1px solid var(--line); }
-.hero::before { /* one slow band of light, nothing more */
-  content: ''; position: absolute; inset: -20% -10%; z-index: 0; pointer-events: none;
-  background: linear-gradient(115deg, transparent 38%, rgba(6,182,212,.13) 46%, rgba(6,182,212,.05) 52%, transparent 60%);
-  animation: sweep 14s ease-in-out infinite alternate;
-}
-@keyframes sweep { from { transform: translateX(-9%); } to { transform: translateX(9%); } }
-.hero .wrap { position: relative; z-index: 1; }
-.hero-top { display: grid; grid-template-columns: 1.25fr .75fr; gap: 56px; align-items: end; margin-bottom: 44px; }
-.slogan { font: italic 500 clamp(20px, 2vw, 26px)/1.3 var(--serif); color: var(--blue); margin-bottom: 18px; }
-.hero h1 { margin-bottom: 0; }
-.hero-side .lead { margin-bottom: 26px; }
+/* ---- hero: a concert-hall scene with lyrics on the screens ---- */
+.hero { position: relative; overflow: hidden; background: #040a22; color: #fff; min-height: min(86vh, 760px); display: flex; align-items: center; padding: 96px 0 88px; }
+.hero-scene { position: absolute; inset: 0; z-index: 0; }
+.hero-scene img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 0% 50%; }
+.hero-scene::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(4,10,34,.95) 0%, rgba(4,10,34,.86) 34%, rgba(4,10,34,.25) 62%, rgba(4,10,34,0) 80%), linear-gradient(180deg, rgba(4,10,34,.5), transparent 24%, transparent 78%, rgba(4,10,34,.6)); }
+.sweep { position: absolute; top: -10%; width: 22%; height: 130%; mix-blend-mode: screen; pointer-events: none; opacity: .5; filter: blur(14px);
+  background: linear-gradient(180deg, rgba(6,182,212,.0), rgba(6,182,212,.35), rgba(6,182,212,0)); transform-origin: 50% 0; }
+.sweep.s1 { left: 45%; animation: swing 9s ease-in-out infinite alternate; }
+.sweep.s2 { left: 70%; animation: swing 12s ease-in-out -4s infinite alternate-reverse; background: linear-gradient(180deg, rgba(120,150,255,0), rgba(120,150,255,.3), rgba(120,150,255,0)); }
+@keyframes swing { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
+.hero-inner { position: relative; z-index: 1; max-width: var(--wrap); }
+.hero-inner > * { max-width: 36rem; }
+.hero-inner > h1 { max-width: 12em; }
+.slogan { font: italic 500 clamp(20px, 2vw, 26px)/1.3 var(--serif); color: #7ee8ff; margin-bottom: 18px; }
+.hero h1 { color: #fff; margin-bottom: 22px; font-size: clamp(40px, 5vw, 70px); max-width: 11em; }
+.hero .lead { color: rgba(255,255,255,.86); margin-bottom: 30px; }
 .cta { display: flex; flex-wrap: wrap; gap: 12px; }
-.facts { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 22px; font-size: 14px; color: var(--muted); }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 26px; font-size: 14px; color: rgba(255,255,255,.8); }
 .facts li { display: inline-flex; align-items: center; gap: 7px; }
 .facts .ico { color: var(--cyan); }
 
 /* ---- framed media ---- */
 .frame { position: relative; border: 1px solid var(--line); border-radius: 18px; background: #fff; overflow: hidden; }
 .frame img, .frame video { width: 100%; height: auto; }
-.hero-frame { border-radius: 22px; border: 2px solid var(--ink); }
-.hero-frame video { aspect-ratio: 1920/1050; object-fit: cover; background: var(--blue-wash); }
-.tag { position: absolute; left: 16px; bottom: 16px; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: rgba(14,26,56,.82); color: #fff; font: 600 13px/1 var(--sans); }
-.tag .rec { width: 8px; height: 8px; border-radius: 50%; background: var(--cyan); animation: pulse 1.8s infinite; }
-@keyframes pulse { 50% { opacity: .25; } }
 
 /* ---- marquee of what it does ---- */
 .strip { border-bottom: 1px solid var(--line); background: var(--blue); color: #fff; overflow: hidden; }
@@ -229,6 +227,8 @@ footer.site { padding: 72px 0 36px; background: var(--paper); border-top: 1px so
 .video-dialog { width: min(1100px, calc(100% - 24px)); padding: 0; border: 0; border-radius: 20px; background: var(--ink); overflow: hidden; }
 .video-dialog::backdrop { background: rgba(14,26,56,.82); }
 .video-dialog video { width: 100%; height: auto; max-height: 85vh; background: var(--ink); }
+.video-note { position: absolute; left: 12px; bottom: 56px; z-index: 2; padding: 8px 14px; border-radius: 999px; background: #fff; color: var(--blue); font: 600 13px/1 var(--sans); text-decoration: none; }
+.video-note[hidden] { display: none; }
 .video-close { position: absolute; top: 12px; right: 12px; z-index: 2; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.6); background: rgba(14,26,56,.7); color: #fff; font: 400 24px/1 var(--sans); cursor: pointer; transition: background .2s, color .2s; }
 .video-close:hover { background: var(--cyan); color: var(--ink); border-color: var(--cyan); }
 
@@ -245,13 +245,16 @@ footer.site { padding: 72px 0 36px; background: var(--paper); border-top: 1px so
 .js .frame.reveal.in { transform: none; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .hero::before, .strip-track, .tag .rec { animation: none; }
+  .sweep, .strip-track { animation: none; }
   .js .reveal { opacity: 1; transform: none; transition: none; }
 }
 
 /* ---- small screens ---- */
 @media (max-width: 960px) {
-  .hero-top, .chapter .copy, .rail { grid-template-columns: minmax(0, 1fr); }
+  .chapter .copy, .rail { grid-template-columns: minmax(0, 1fr); }
+  .hero { min-height: 0; padding: 72px 0 64px; }
+  .hero-scene img { object-position: 78% 50%; }
+  .hero-scene::after { background: linear-gradient(180deg, rgba(4,10,34,.88), rgba(4,10,34,.72) 60%, rgba(4,10,34,.9)); }
   .foot-top { grid-template-columns: 1fr 1fr; }
   .foot-brand { grid-column: 1 / -1; }
   .chapter .points { grid-template-columns: 1fr; }

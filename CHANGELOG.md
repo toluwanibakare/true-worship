@@ -5,6 +5,14 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
 ## [Unreleased]
 
+### Changed (website)
+
+- The hero is now a concert-hall scene: stage lights sweeping over a crowd
+  with raised hands and big screens showing lyrics, drawn from the app's own
+  backgrounds and public domain words. "See it run" opens the walkthrough in a
+  player that loads the file straight away, offers a direct link if nothing
+  plays within a few seconds, and still carries the MP4 fallback.
+
 ### Added
 
 - Edit a slide's words where they sit. Click the words in the Preview

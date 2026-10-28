@@ -113,13 +113,31 @@
     const dialog = $(button.dataset.video)
     if (!dialog || !dialog.showModal) return
     const video = $('video', dialog)
+    const note = $('[data-video-note]', dialog)
+    let stall
     button.addEventListener('click', () => {
-      pick(video)
+      video.preload = 'auto'
       dialog.showModal()
+      if (note) note.hidden = true
+      // If nothing is playing a few seconds on, offer the file itself.
+      clearTimeout(stall)
+      stall = setTimeout(() => {
+        if (note && (video.paused || video.readyState < 3)) note.hidden = false
+      }, 4000)
       video.currentTime = 0
-      video.play().catch(() => {})
+      video.play().catch(() => video.setAttribute('controls', ''))
     })
-    dialog.addEventListener('close', () => video.pause())
+    // When no source can be played, the last one reports the error.
+    const lastSource = $$('source', video).pop()
+    ;[video, lastSource].forEach((target) =>
+      target?.addEventListener('error', () => {
+        if (note) note.hidden = false
+      }),
+    )
+    dialog.addEventListener('close', () => {
+      clearTimeout(stall)
+      video.pause()
+    })
     dialog.addEventListener('click', (event) => {
       if (event.target === dialog || event.target.hasAttribute('data-close')) dialog.close()
     })
