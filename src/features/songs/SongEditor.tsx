@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Song, Theme, Verse } from '../../shared/lib/types'
 import { SlideView } from '../../shared/components/SlideView'
+import { SlideEditor } from '../../shared/components/SlideEditor'
 
 /**
  * Feature: songs — the song editor.
@@ -283,6 +284,7 @@ export function SongEditor({
                       theme={theme}
                       backgroundCss={backgroundCss}
                       layoutId={layoutId}
+                      style={block.style}
                       className="w-32 shrink-0 rounded-l"
                     />
                     <span className="flex min-w-0 flex-1 items-center bg-blue-600 px-2 text-xs font-semibold text-white">
@@ -345,12 +347,22 @@ export function SongEditor({
           <div className="flex min-w-0 flex-1 flex-col bg-slate-200 dark:bg-slate-950">
             <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">
               <div style={{ width: `${zoom}%` }} className="shrink-0">
-                <SlideView
+                <SlideEditor
+                  fill
                   lines={current ? linesOf(current) : []}
                   theme={theme}
                   backgroundCss={backgroundCss}
                   layoutId={layoutId}
-                  className="w-full rounded"
+                  style={current?.style}
+                  canEdit={Boolean(current) && current ? linesOf(current).length > 0 : false}
+                  onStyle={(next, all) =>
+                    setBlocks((all_) =>
+                      all_.map((block) =>
+                        all || block.key === current?.key ? { ...block, style: next ?? undefined } : block,
+                      ),
+                    )
+                  }
+                  onLines={(next) => current && update(current.key, { text: next.join('\n') })}
                 />
               </div>
             </div>

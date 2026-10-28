@@ -47,7 +47,7 @@ import {
   demoThemes,
 } from '../shared/lib/demo'
 import type { ScheduleItem, SlideStyle, Song, Verse } from '../shared/lib/types'
-import { SlideEditor } from '../features/slideedit/SlideEditor'
+import { SlideEditor } from '../shared/components/SlideEditor'
 
 /**
  * Toolbar button: an icon above a short label. The toolbar splits

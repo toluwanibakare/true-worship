@@ -19,6 +19,9 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
   schedule thumbnails, the Live pane and the projector, updating live if
   that slide is on the screen. Formatting applies to the whole text box.
   Subtitle layouts place their own words, so the editor is off there.
+- The same text editing now works in the song editor's preview, so a
+  song's arrangement can be set while writing it; OK saves it with the
+  song.
 
 ## [0.19.0] - 2026-10-25
 

@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { SlideStyle, Theme } from '../../shared/lib/types'
-import type { MarqueeAlert } from '../../shared/components/Marquee'
-import { SlideView, textMetrics } from '../../shared/components/SlideView'
-import { DISPLAY_FONTS } from '../../shared/lib/fonts'
+import type { SlideStyle, Theme } from '../lib/types'
+import type { MarqueeAlert } from './Marquee'
+import { SlideView, textMetrics } from './SlideView'
+import { DISPLAY_FONTS } from '../lib/fonts'
 
 /**
- * Feature: slideedit — edit a slide's words where they sit.
+ * Edit a slide's words where they sit (shared: the Preview Output and the song
+ * editor's preview both use it).
  * The Preview Output shows the selected slide. Click its words and a
  * box appears around them: drag the box to move it, drag a handle to
  * resize it, press the arrow keys to nudge it, double-click to type in
@@ -46,6 +47,7 @@ export function SlideEditor({
   style,
   canEdit,
   toolbarHost,
+  fill = false,
   onStyle,
   onLines,
 }: {
@@ -61,6 +63,8 @@ export function SlideEditor({
   canEdit: boolean
   /** Where the formatting bar is drawn (the Preview Output's title bar); above the slide when absent. */
   toolbarHost?: HTMLElement | null
+  /** Size by width (a slide as wide as its container) rather than by the height it is given. */
+  fill?: boolean
   /** A new style for this slide (null resets it); `all` applies it to every slide. */
   onStyle: (style: SlideStyle | null, all?: boolean) => void
   onLines: (lines: string[]) => void
@@ -296,11 +300,11 @@ export function SlideEditor({
   )
 
   return (
-    <div ref={root} className="flex h-full w-full flex-col items-center gap-1" tabIndex={-1} onKeyDown={nudge}>
+    <div ref={root} className={`flex w-full flex-col items-center gap-1 ${fill ? '' : 'h-full'}`} tabIndex={-1} onKeyDown={nudge}>
       {toolbarHost ? (active ? createPortal(toolbar, toolbarHost) : null) : active ? toolbar : null}
 
-      <div className="flex min-h-0 w-full flex-1 items-center justify-center">
-        <div ref={stage} className="relative aspect-video h-full max-w-full">
+      <div className={`flex w-full items-center justify-center ${fill ? '' : 'min-h-0 flex-1'}`}>
+        <div ref={stage} className={`relative aspect-video ${fill ? 'w-full' : 'h-full max-w-full'}`}>
           <SlideView
             lines={lines}
             theme={theme}
