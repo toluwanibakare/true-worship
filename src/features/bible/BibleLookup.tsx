@@ -5,6 +5,14 @@ import { Modal } from '../../shared/components/Modal'
 import { encodeResource } from '../../shared/lib/resourceDrag'
 import { FALLBACK_VERSIONS, fetchPassage, fetchVersions, type BibleVersion } from './api'
 import {
+  clearApiBible,
+  discoverLicensedVersions,
+  fetchLicensedPassage,
+  loadApiBibleKey,
+  saveApiBibleKey,
+  type LicensedVersion,
+} from './apiBible'
+import {
   BOOK_ORDER,
   PACKS,
   bookKey,
@@ -17,8 +25,16 @@ import {
   type PackInfo,
 } from './packs'
 
-/** A version the user has added to the side panel. */
-type Installed = { id: string; name: string }
+/** A version the user has added to the side panel. Licensed versions
+ *  carry their API.Bible details, so lookups know where to go. */
+type Installed = {
+  id: string
+  name: string
+  source?: 'apibible'
+  bibleId?: string
+  abbr?: string
+  copyright?: string
+}
 
 /** One verse in the table. */
 type Row = {
@@ -216,6 +232,19 @@ export function BibleLookup({
   const selected = installed.find((version) => version.id === selectedId) ?? installed[0]
   const selectedPack = PACKS.find((pack) => pack.id === selected.id)
   const isPacked = packedIds.includes(selected.id)
+  /** Short name for any version: a pack's, a licensed version's stored one, or the id itself. */
+  const abbrFor = (id: string) =>
+    installed.find((version) => version.id === id)?.abbr ?? abbrOf(id)
+
+  // Licensed versions (API.Bible): the user's key, what their account
+  // can use, and the copyright notice of the last licensed passage.
+  const [apiKeyInput, setApiKeyInput] = useState('')
+  const [hasApiKey, setHasApiKey] = useState(() => loadApiBibleKey().length > 0)
+  const [licensedFound, setLicensedFound] = useState<LicensedVersion[] | null>(null)
+  const [licensedMissing, setLicensedMissing] = useState<string[]>([])
+  const [licensedBusy, setLicensedBusy] = useState(false)
+  const [licensedError, setLicensedError] = useState<string | null>(null)
+  const [licensedNotice, setLicensedNotice] = useState('')
 
   useEffect(() => {
     try {
@@ -329,7 +358,7 @@ export function BibleLookup({
 
   const goLiveRow = (row: Row) => {
     liveKey.current = row.key
-    onGoLive(row.reference, [[row.text]], abbrOf(row.translationId))
+    onGoLive(row.reference, [[row.text]], abbrFor(row.translationId))
   }
 
   const stepLiveVerse = (direction: -1 | 1) => {
@@ -357,7 +386,7 @@ export function BibleLookup({
       }
       const row = allRows.find((entry) => entry.key === pickedKey)
       return row
-        ? { reference: row.reference, slides: [[row.text]], version: abbrOf(row.translationId) }
+        ? { reference: row.reference, slides: [[row.text]], version: abbrFor(row.translationId) }
         : null
     })
     return () => registerSelection(null)
@@ -370,7 +399,7 @@ export function BibleLookup({
     if (!focus) return
     pendingFocus.current = focus
     const wanted = installed.find(
-      (version) => version.id.toLowerCase() === focus.version?.toLowerCase() || abbrOf(version.id).toLowerCase() === focus.version?.toLowerCase(),
+      (version) => version.id.toLowerCase() === focus.version?.toLowerCase() || abbrFor(version.id).toLowerCase() === focus.version?.toLowerCase(),
     )
     if (wanted && wanted.id !== selectedId) setSelectedId(wanted.id)
     setField(BCV)
@@ -389,7 +418,7 @@ export function BibleLookup({
         entry.chapter === Number(parts[2]) &&
         entry.verse === Number(parts[3]) &&
         matchesBook(entry.book, wanted) &&
-        (!request.version || abbrOf(entry.translationId).toLowerCase() === request.version.toLowerCase() || entry.translationId.toLowerCase() === request.version.toLowerCase()),
+        (!request.version || abbrFor(entry.translationId).toLowerCase() === request.version.toLowerCase() || entry.translationId.toLowerCase() === request.version.toLowerCase()),
     )
     if (!row) return
     pendingFocus.current = null
@@ -432,7 +461,7 @@ export function BibleLookup({
       remember(row.reference)
     }
     setPickedKey(row.key)
-    onOpen(row.reference, [[row.text]], abbrOf(row.translationId))
+    onOpen(row.reference, [[row.text]], abbrFor(row.translationId))
   }
 
   /** Jump to a reference in a downloaded Bible, without going online. */
@@ -464,15 +493,40 @@ export function BibleLookup({
         ? `${packBooks[bookIndex]} ${chapter}:${reference.from}-${shown[shown.length - 1].reference.split(':')[1]}`
         : shown[0].reference
     const slides = shown.map((row) => [row.text])
-    onOpen(label, slides, abbrOf(selected.id))
-    enterPreview.current = { key: found[0].key, label, slides, version: abbrOf(selected.id) }
+    onOpen(label, slides, abbrFor(selected.id))
+    enterPreview.current = { key: found[0].key, label, slides, version: abbrFor(selected.id) }
   }
 
   async function lookupOnline(reference: string) {
     setBusy(true)
     setError(null)
     try {
-      const passage = await fetchPassage(reference, selected.id)
+      const bibleId = selected.bibleId
+      const passage =
+        selected.source === 'apibible' && bibleId
+          ? await (async () => {
+              const key = loadApiBibleKey()
+              if (!key) {
+                throw new Error(
+                  'Add your API.Bible key first: open "More Available…" and use the Licensed versions section.',
+                )
+              }
+              const licensed = await fetchLicensedPassage(
+                key,
+                {
+                  id: selected.id,
+                  bibleId,
+                  abbr: selected.abbr ?? '',
+                  name: selected.name,
+                  language: 'English',
+                  copyright: selected.copyright ?? '',
+                },
+                reference,
+              )
+              setLicensedNotice(licensed.copyright)
+              return licensed
+            })()
+          : await fetchPassage(reference, selected.id)
       const rows = passage.verses.map((verse) =>
         makeRow(
           selected.id,
@@ -565,6 +619,64 @@ export function BibleLookup({
     setShowMore(false)
   }
 
+  function saveKey() {
+    saveApiBibleKey(apiKeyInput)
+    setHasApiKey(loadApiBibleKey().length > 0)
+    setApiKeyInput('')
+    setLicensedFound(null)
+    setLicensedError(null)
+  }
+
+  function removeKey() {
+    clearApiBible()
+    setHasApiKey(false)
+    setLicensedFound(null)
+    setLicensedMissing([])
+    setLicensedNotice('')
+    setInstalled((current) => current.filter((item) => item.source !== 'apibible'))
+  }
+
+  async function checkLicensed() {
+    const key = loadApiBibleKey()
+    if (!key) return
+    setLicensedBusy(true)
+    setLicensedError(null)
+    try {
+      const { found, missing } = await discoverLicensedVersions(key)
+      setLicensedFound(found)
+      setLicensedMissing(missing)
+      if (found.length === 0) {
+        setLicensedError(
+          'None of the licensed versions are on this API.Bible account yet. On api.bible, choose your Bibles for this app, then check again.',
+        )
+      }
+    } catch (err) {
+      setLicensedError(err instanceof Error ? err.message : 'The check failed.')
+    } finally {
+      setLicensedBusy(false)
+    }
+  }
+
+  function addLicensed(version: LicensedVersion) {
+    setInstalled((current) =>
+      current.some((item) => item.id === version.id)
+        ? current
+        : [
+            ...current,
+            {
+              id: version.id,
+              name: version.name,
+              source: 'apibible' as const,
+              bibleId: version.bibleId,
+              abbr: version.abbr,
+              copyright: version.copyright,
+            },
+          ],
+    )
+    setSelectedId(version.id)
+    setShowMore(false)
+  }
+
   function addScripture() {
     const reference = addReference.trim()
     const text = addText.trim()
@@ -579,7 +691,7 @@ export function BibleLookup({
   }
 
   const columns: Column<Row>[] = [
-    { key: 'translation', label: 'Translation', width: '100px', value: (row) => abbrOf(row.translationId) },
+    { key: 'translation', label: 'Translation', width: '100px', value: (row) => abbrFor(row.translationId) },
     { key: 'reference', label: 'Reference', width: '170px', value: (row) => row.reference, sortValue: (row) => row.order, className: 'font-medium' },
     { key: 'text', label: 'Scripture', width: '1fr', value: (row) => row.text },
   ]
@@ -687,6 +799,11 @@ export function BibleLookup({
           {packLoading && <p className="shrink-0 px-3 py-2 text-sm text-slate-500">Opening {selected.name}…</p>}
           {busy && <p className="shrink-0 px-3 py-2 text-sm text-slate-500">Looking up the passage…</p>}
           {error && <p className="shrink-0 px-3 py-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {selected.source === 'apibible' && (licensedNotice || selected.copyright) && (
+            <p className="shrink-0 px-3 py-1 text-xs text-slate-500 dark:text-slate-400">
+              {licensedNotice || selected.copyright}
+            </p>
+          )}
           <div className="min-h-0 flex-1">
             <ResourceTable
               columns={columns}
@@ -700,7 +817,7 @@ export function BibleLookup({
                   kind: 'scripture',
                   reference: row.reference,
                   slides: [[row.text]],
-                  version: abbrOf(row.translationId),
+                  version: abbrFor(row.translationId),
                 })
               }
               scrollToKey={scrollKey}
@@ -864,6 +981,116 @@ export function BibleLookup({
                 )
               })}
             </ul>
+          )}
+          <h3 className="mb-1 mt-5 border-t border-slate-300 pt-4 text-sm font-semibold dark:border-slate-700">
+            Licensed versions online (API.Bible)
+          </h3>
+          <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+            The New Living Translation, New King James Version, Amplified Bible, The
+            Message, New International Version and Good News Translation are
+            copyrighted, so no downloadable copy of them can ever be offered here.
+            They can be looked up live through API.Bible under its licence, with
+            your own API.Bible account and key. Passages are fetched one at a time
+            and only kept on this computer for up to 14 days, as the licence
+            requires. On the free Starter account you choose 3 Bibles, and you must
+            accept API.Bible's terms yourself when you sign up.
+          </p>
+          {!hasApiKey ? (
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="password"
+                  value={apiKeyInput}
+                  onChange={(event) => setApiKeyInput(event.target.value)}
+                  placeholder="Your API.Bible key"
+                  autoComplete="off"
+                  className="min-w-52 flex-1 rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900"
+                />
+                <button
+                  type="button"
+                  disabled={!apiKeyInput.trim()}
+                  onClick={saveKey}
+                  className="rounded bg-slate-800 px-3 py-1 text-sm text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+                >
+                  Save key on this computer
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                No key yet? Create your free account at{' '}
+                <a
+                  href="https://api.bible/sign-up"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  api.bible/sign-up
+                </a>
+                , accept the terms there, choose your Bibles, and copy the key it
+                gives you. The key stays on this computer and is only ever sent to
+                API.Bible.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={licensedBusy}
+                  onClick={() => void checkLicensed()}
+                  className="rounded bg-slate-800 px-3 py-1 text-sm text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+                >
+                  {licensedBusy ? 'Checking…' : 'Check my access'}
+                </button>
+                <button
+                  type="button"
+                  onClick={removeKey}
+                  className="rounded bg-slate-200 px-3 py-1 text-sm text-slate-800 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  Remove key and licensed copies
+                </button>
+              </div>
+              {licensedError && (
+                <p className="text-sm text-red-600 dark:text-red-400">{licensedError}</p>
+              )}
+              {licensedFound && (
+                <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+                  {licensedFound.map((version) => {
+                    const added = installed.some((item) => item.id === version.id)
+                    return (
+                      <li
+                        key={version.id}
+                        className="flex items-center justify-between gap-3 py-2 text-sm"
+                      >
+                        <span>
+                          <span className="block font-medium">
+                            {version.name} ({version.abbr})
+                          </span>
+                          {version.copyright && (
+                            <span className="block text-xs text-slate-500 dark:text-slate-400">
+                              {version.copyright}
+                            </span>
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={added}
+                          onClick={() => addLicensed(version)}
+                          className="shrink-0 rounded bg-slate-800 px-3 py-1 text-sm text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+                        >
+                          {added ? 'Added' : 'Add'}
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+              {licensedMissing.length > 0 && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Not on this account: {licensedMissing.join(', ')}. Add them on
+                  api.bible if your plan allows, then check again.
+                </p>
+              )}
+            </div>
           )}
         </Modal>
       )}

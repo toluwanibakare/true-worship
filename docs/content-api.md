@@ -36,9 +36,40 @@ Rules the code follows:
 Not in this catalogue, and not pretended otherwise: Nigerian-language
 translations (Yoruba, Hausa, Igbo, Pidgin) and copyrighted
 translations (NIV, ESV, NKJV, NLT, NASB). Nigerian languages arrive
-as downloadable eBible / SWORD packs held in SQLite; copyrighted
-translations only ever arrive through a licensed route such as
-API.Bible with a key.
+as downloadable packs; copyrighted translations only ever arrive
+through the licensed API.Bible route below.
+
+## Bible: licensed versions online (API.Bible)
+
+The copyrighted translations people ask for most (NLT, NKJV, AMP,
+The Message, NIV, Good News Translation) cannot be downloaded or
+bundled, ever: every legal route is live-fetch only. True Worship
+therefore offers them through **API.Bible** (American Bible
+Society), under the user's own API.Bible account and key. Code:
+`src/features/bible/apiBible.ts`.
+
+Rules the code follows, from the API.Bible licence:
+
+- The key belongs to the user, is entered in "More Available…", is
+  kept only on that computer, and is only ever sent to
+  api.scripture.api.bible. It is never committed or shared.
+- The user accepts API.Bible's terms themselves when they sign up.
+  The free Starter account is non-commercial and covers 3 chosen
+  Bibles, so which of the six appear depends on the account; the
+  panel checks the account and only offers what it actually grants.
+- Passages are fetched one at a time on lookup, never in bulk, and
+  no whole Bible is downloaded. A fetched passage may be cached on
+  the computer for at most 14 days (the licence requires clearing
+  the cache at least every 14 days); the cache is dropped at once
+  if the API refuses the key, and removing the key removes every
+  cached licensed passage.
+- The copyright notice carried in every API response is shown with
+  the passage.
+- FUMS usage reporting (ABS's own script) is loaded before licensed
+  calls, as the licence requires.
+- AMPC, TPT and ERV are not offered: API.Bible's public lists do not
+  include them, and no other licensed route for them was found.
+  They would need direct written publisher permission.
 
 ## Lyrics: search
 

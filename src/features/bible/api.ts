@@ -14,12 +14,12 @@
  * and may go down, so every call falls back: the static version list
  * when /data fails, and the bundled demo passage when a lookup fails.
  *
- * What this is not, yet: Nigerian-language translations (Yoruba,
+ * What this is not: Nigerian-language translations (Yoruba,
  * Hausa, Igbo, Pidgin) are not in this catalogue. Those arrive as
- * downloadable eBible / SWORD packs held in SQLite, and copyrighted
- * translations (NIV, ESV, NKJV, NLT, NASB) only ever arrive through
- * a licensed route such as API.Bible with a key. See
- * docs/content-api.md.
+ * downloadable packs (see packs.ts), and copyrighted translations
+ * (NIV, NKJV, NLT and friends) only ever arrive through the licensed
+ * API.Bible route, with the user's own key (see apiBible.ts and
+ * docs/content-api.md).
  */
 
 export type BibleVersion = {

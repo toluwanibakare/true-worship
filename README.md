@@ -21,7 +21,10 @@ already know. Installers (free to download) are the final release phase.
   scripture by hand. 114 translations can also be downloaded whole
   from "More Available…" and kept offline: every one is public
   domain or freely licensed, and partial editions are labelled with
-  what they actually contain. See `docs/content-api.md`.
+  what they actually contain. Copyrighted favourites (NLT, NKJV,
+  NIV and friends) can be looked up live through API.Bible with
+  your own free account key; they are never downloaded. See
+  `docs/content-api.md`.
 - **Media** — your own images, videos and audio, filtered by kind;
   preview, go live, or play. See `docs/media.md`.
 - **Themes** — backgrounds, text colour and size for the output.
