@@ -9,6 +9,13 @@ import {
   searchLyrics,
   type LyricResult,
 } from './api'
+import {
+  hymnToSong,
+  loadHymnPack,
+  searchHymns,
+  type Hymn,
+  type HymnHit,
+} from './hymnArchive'
 
 /**
  * Feature: songs.
@@ -22,7 +29,9 @@ import {
  * Rows can be dragged onto the schedule. Song storage moves to SQLite;
  * this panel only renders
  * whatever the app hands it. The online section searches LRCLIB and
- * adds a found lyric to the library with source 'community'.
+ * adds a found lyric to the library with source 'community'. The hymn
+ * section searches the downloadable public domain hymn archive (see
+ * hymnArchive.ts) and adds a hymn with source 'public-domain'.
  */
 export function SongLibrary({
   songs,
@@ -79,6 +88,29 @@ export function SongLibrary({
   const [onlineBusy, setOnlineBusy] = useState(false)
   const [onlineError, setOnlineError] = useState<string | null>(null)
   const [addedIds, setAddedIds] = useState<string[]>([])
+
+  const [hymnsOpen, setHymnsOpen] = useState(false)
+  const [hymnPack, setHymnPack] = useState<Hymn[] | null>(null)
+  const [hymnProgress, setHymnProgress] = useState<number | null>(null)
+  const [hymnQuery, setHymnQuery] = useState('')
+  const [hymnHits, setHymnHits] = useState<HymnHit[]>([])
+  const [hymnError, setHymnError] = useState<string | null>(null)
+  const [hymnAddedIds, setHymnAddedIds] = useState<string[]>([])
+
+  async function openHymns() {
+    const next = !hymnsOpen
+    setHymnsOpen(next)
+    if (!next || hymnPack || hymnProgress !== null) return
+    setHymnProgress(0)
+    setHymnError(null)
+    try {
+      setHymnPack(await loadHymnPack(setHymnProgress))
+    } catch (err) {
+      setHymnError(err instanceof Error ? err.message : 'The hymn pack could not be loaded.')
+    } finally {
+      setHymnProgress(null)
+    }
+  }
 
   const [field, setField] = useState('Title')
   const lower = query.toLowerCase()
@@ -255,6 +287,92 @@ export function SongLibrary({
           )
         })}
         </div>
+          )}
+        </div>
+        <div className="shrink-0 border-t border-slate-200 dark:border-slate-800">
+          <button
+            type="button"
+            aria-expanded={hymnsOpen}
+            onClick={() => void openHymns()}
+            className="flex w-full items-center gap-1.5 px-3 py-1 text-left text-xs font-semibold text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            <span className="w-2 text-[9px]">{hymnsOpen ? '▾' : '▸'}</span>
+            Public domain hymns
+          </button>
+          {hymnsOpen && (
+            <div className="max-h-56 overflow-auto px-3 pb-3">
+              <p className="py-1 text-xs text-slate-500 dark:text-slate-400">
+                Every hymn here is public domain, from the{' '}
+                <a href="https://hymnary.org" target="_blank" rel="noreferrer" className="underline">
+                  Hymnary.org
+                </a>{' '}
+                public domain export and the Open Hymnal Project. Adding one puts it in
+                your library as a public domain song.
+              </p>
+              {hymnProgress !== null && (
+                <p className="py-1 text-sm text-slate-500">
+                  Downloading the hymn pack once… {Math.round(hymnProgress * 100)}%
+                </p>
+              )}
+              {hymnError && (
+                <p className="py-1 text-sm text-red-600 dark:text-red-400">{hymnError}</p>
+              )}
+              {hymnPack && (
+                <>
+                  <div className="flex flex-wrap items-center gap-2 py-1">
+                    <input
+                      value={hymnQuery}
+                      onChange={(event) => setHymnQuery(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter')
+                          setHymnHits(searchHymns(hymnPack, hymnQuery))
+                      }}
+                      placeholder="Hymn title, author or words"
+                      className="min-w-52 flex-1 rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setHymnHits(searchHymns(hymnPack, hymnQuery))}
+                      className="rounded bg-slate-800 px-3 py-1 text-sm text-white dark:bg-slate-100 dark:text-slate-900"
+                    >
+                      Search
+                    </button>
+                  </div>
+                  <p className="py-1 text-xs text-slate-500 dark:text-slate-400">
+                    {hymnPack.length.toLocaleString()} hymns on this computer.
+                  </p>
+                  {hymnHits.map((hit) => {
+                    const song = hymnToSong(hit)
+                    const added = hymnAddedIds.includes(song.id)
+                    return (
+                      <div
+                        key={hit.index}
+                        className="flex items-center justify-between gap-2 border-t border-slate-200 py-2 dark:border-slate-800"
+                      >
+                        <div className="text-sm">
+                          <p className="font-medium">{hit.hymn.title}</p>
+                          <p className="text-slate-500 dark:text-slate-400">
+                            {hit.hymn.author}
+                            {hit.hymn.year ? ` · ${hit.hymn.year}` : ''}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={added}
+                          onClick={() => {
+                            onAdd(song)
+                            setHymnAddedIds((current) => [...current, song.id])
+                          }}
+                          className="shrink-0 rounded bg-slate-800 px-3 py-1 text-sm text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+                        >
+                          {added ? 'Added' : 'Add to library'}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>

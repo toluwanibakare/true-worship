@@ -12,11 +12,16 @@ already know. Installers (free to download) are the final release phase.
   thumbnail, title and notes line per item, songs expand to show
   their slides, double-click a row to send it live.
 - **Songs** — searchable song library with verse structure, plus
-  online lyrics search (community results, clearly marked).
+  online lyrics search (community results, clearly marked) and a
+  downloadable archive of 25,716 public domain hymns that is kept
+  on the computer and searches offline.
 - **Bible** — scripture lookup by reference and by words, with live
   versions and passages from bible-api.com (public-domain
   translations), one slide per verse, and a + button to add a
-  scripture by hand.
+  scripture by hand. 114 translations can also be downloaded whole
+  from "More Available…" and kept offline: every one is public
+  domain or freely licensed, and partial editions are labelled with
+  what they actually contain. See `docs/content-api.md`.
 - **Media** — your own images, videos and audio, filtered by kind;
   preview, go live, or play. See `docs/media.md`.
 - **Themes** — backgrounds, text colour and size for the output.

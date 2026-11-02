@@ -63,6 +63,25 @@ copyrighted lyric still needs a licence; CCLI SongSelect is the legal
 route for licensed churches. Public-domain hymns stay the only lyrics
 the app itself vouches for.
 
+## Hymns: the public domain pack
+
+The Songs tab also carries a pack of 25,716 public domain hymns with
+full verses: the Hymnary.org public domain export (via Open Christian
+Data, filtered to English hymns whose hymnal instance is from 1930 or
+earlier) and the Open Hymnal Project (only hymns its own copyright
+line marks public domain). Sources that could not prove public domain
+status were rejected. No CCLI or modern worship material is in the
+pack. The full source and verification record is in `packs/README.md`.
+
+The pack ships in this repo under `packs/` as nine JSON chunks. The
+first time the hymn section is opened, the chunks download once and
+are kept on the computer (IndexedDB, database `tw-hymns`); search is
+offline after that, and a hymn enters the song library only when the
+user adds it, with source `public-domain`. Code:
+`src/features/songs/hymns.ts`. Hymnary.org asks users of its dataset
+to link to https://hymnary.org, which the panel and `packs/README.md`
+both do.
+
 ## Later
 
 - Bible packs (eBible / SWORD) downloaded into SQLite for offline use.
@@ -81,19 +100,35 @@ Source: the `scrollmapper/bible_databases` project on GitHub, which
 publishes each translation as one JSON file
 (`formats/json/<Name>.json`, about 8 MB, 31,102 verses for the standard
 66-book Bible). The project's catalogue mixes licences, so the app only
-offers an allowlist of translations that are public domain or dedicated
-to it:
+offers an allowlist of translations that are public domain or freely
+licensed for this use: 114 packs, in more than 40 languages.
 
-King James Version, American King James Version, American Standard
-Version (1901), Berean Standard Bible, Open English Bible, Webster's
-Bible, Darby Bible (1889), Young's Literal Translation (1898), Geneva
-Bible (1599), Tyndale Bible, Wycliffe Bible, Douay-Rheims
-(Challoner), Open English Bible (Christian Writings), Clementine Vulgate,
-Russian Synodal, Chinese Union Version, Czech Bible kralicka and the
-Cherokee New Testament (1860). The Bible in Basic English is
-deliberately left out (its public domain status is disputed) and stays
-online-only. Each file was checked for the full verse count and for
-clean text.
+How the allowlist was built (November 2026): all 140 files in the
+catalogue were downloaded and checked verse by verse. The licence for
+each pack is the CrossWire SWORD module record for the same text
+(public domain, CC0, CC BY or CC BY-SA), or public domain by
+publication age where CrossWire has no record. Anything copyrighted,
+non-commercial-only, no-derivatives, or with no verifiable licence
+record is excluded, including the Lexham English Bible, the Modern
+King James Version and the Updated Gdansk Bible. The American King
+James Version was in the earlier, shorter list and is removed for the
+same reason: its licence record is copyrighted, free for
+non-commercial distribution only. The Bible in Basic English stays
+left out (its public domain status is disputed outside the United
+States) and stays online-only.
+
+Coverage is counted from the text itself, never from a file's book
+list: many source files pad books a translation does not cover with
+empty verses. Full Bibles, Bibles with the Deuterocanon, and partial
+editions (a New Testament, the Old Testament, the New Testament and
+Psalms, a single book) are each labelled with what they actually
+contain, and a book with no text is left out of the stored pack. Two
+corrections fall out of the audit: the Open English Bible files in
+this source carry only the New Testament and Psalms, so they are
+labelled that way now, and the Reina Valera Gomez file contains no
+verse text at all and is excluded. The World English Bible is not in
+this catalogue; it stays available through the online list above
+until its eBible file is converted to the pack shape.
 
 Rules the code follows:
 

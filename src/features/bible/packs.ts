@@ -9,11 +9,22 @@
  * publishes each translation as one JSON file for exactly this use
  * (https://github.com/scrollmapper/bible_databases, MIT-licensed
  * project). Its catalogue mixes licences, so this list is an allowlist
- * of translations that are public domain or dedicated to it: the user
- * is never offered a copyrighted translation here. Each file was
- * checked for the full verse count and for clean text. Copyrighted
- * translations still only arrive through a licensed route (see
- * docs/content-api.md).
+ * of translations that are public domain or freely licensed for this
+ * use: the user is never offered a copyrighted translation here. The
+ * licence shown for each pack comes from the CrossWire SWORD module
+ * record for the same text, or from its publication age where
+ * CrossWire has no record. Copyrighted translations still only arrive
+ * through a licensed route (see docs/content-api.md).
+ *
+ * Coverage is honest, not assumed. Many source files carry a full
+ * book template with empty text for books the translation does not
+ * cover, so every file was downloaded and checked verse by verse:
+ * a pack only claims the books that actually have text, partial
+ * editions are labelled as partial (a New Testament, the Old
+ * Testament, the New Testament and Psalms), and a book with no text
+ * is left out of the stored pack. The American King James Version
+ * was in an earlier list and is removed: its licence record is
+ * copyrighted, free for non-commercial distribution only.
  *
  * Packs live in IndexedDB (a whole Bible is several megabytes, too much
  * for localStorage), under the "tw-bibles" database.
@@ -30,29 +41,129 @@ export type PackInfo = {
   onlineId?: string
   /** Short name shown with a verse, e.g. KJV. */
   abbr: string
+  /** Licence the text is offered under, shown in the list. */
+  license: string
+  /** What the edition actually contains, e.g. Full Bible, New Testament and Psalms. */
+  coverage: string
   /** File name on the source, without .json. */
   file: string
 }
 
 export const PACKS: PackInfo[] = [
-  { id: 'kjv', abbr: 'KJV', name: 'King James Version', language: 'English', file: 'KJV' },
-  { id: 'akjv', abbr: 'AKJV', name: 'American King James Version', language: 'English', file: 'AKJV' },
-  { id: 'asv', abbr: 'ASV', name: 'American Standard Version (1901)', language: 'English', file: 'ASV' },
-  { id: 'bsb', abbr: 'BSB', name: 'Berean Standard Bible', language: 'English', file: 'BSB' },
-  { id: 'oeb', onlineId: 'oeb-us', abbr: 'OEB', name: 'Open English Bible', language: 'English', file: 'OEB' },
-  { id: 'oeb-cw', abbr: 'OEB-CW', name: 'Open English Bible, Commonwealth Edition', language: 'English (UK)', file: 'OEBcth' },
-  { id: 'webster', abbr: 'Webster', name: "Webster's Bible", language: 'English', file: 'Webster' },
-  { id: 'darby', abbr: 'Darby', name: 'Darby Bible (1889)', language: 'English', file: 'Darby' },
-  { id: 'ylt', abbr: 'YLT', name: "Young's Literal Translation (1898)", language: 'English', file: 'YLT' },
-  { id: 'geneva1599', abbr: 'Geneva', name: 'Geneva Bible (1599)', language: 'English', file: 'Geneva1599' },
-  { id: 'tyndale', abbr: 'Tyndale', name: 'Tyndale Bible (1525/1530)', language: 'English', file: 'Tyndale' },
-  { id: 'wycliffe', abbr: 'Wycliffe', name: 'Wycliffe Bible (c. 1395)', language: 'English', file: 'Wycliffe' },
-  { id: 'drc', onlineId: 'dra', abbr: 'DRC', name: 'Douay-Rheims (Challoner)', language: 'English', file: 'DRC' },
-  { id: 'clementine', abbr: 'Clementine', name: 'Clementine Latin Vulgate', language: 'Latin', file: 'VulgClementine' },
-  { id: 'synodal', abbr: 'Synodal', name: 'Russian Synodal Translation', language: 'Russian', file: 'RusSynodal' },
-  { id: 'cuv', abbr: 'CUV', name: 'Chinese Union Version (Traditional)', language: 'Chinese', file: 'ChiUn' },
-  { id: 'bkr', abbr: 'BKR', name: 'Bible kralická', language: 'Czech', file: 'CzeBKR' },
-  { id: 'cherokee', abbr: 'Cherokee', name: 'Cherokee New Testament (1860)', language: 'Cherokee', file: 'Che1860' },
+  { id: 'acv', abbr: 'ACV', name: "A Conservative Version", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'ACV' },
+  { id: 'asv', abbr: 'ASV', name: "American Standard Version (1901)", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'ASV' },
+  { id: 'bsb', abbr: 'BSB', name: "Berean Standard Bible", language: "English", license: "Public Domain (CC0)", coverage: "Full Bible", file: 'BSB' },
+  { id: 'cpdv', abbr: 'CPDV', name: "Catholic Public Domain Version", language: "English", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'CPDV' },
+  { id: 'drc', onlineId: 'dra', abbr: 'DRC', name: "Douay-Rheims (Challoner)", language: "English", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'DRC' },
+  { id: 'darby', abbr: 'Darby', name: "Darby Bible (1889)", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'Darby' },
+  { id: 'geneva1599', abbr: 'Geneva', name: "Geneva Bible (1599)", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'Geneva1599' },
+  { id: 'jps', abbr: 'JPS', name: "Jewish Publication Society (1917)", language: "English", license: "Public Domain", coverage: "Old Testament", file: 'JPS' },
+  { id: 'kjv', abbr: 'KJV', name: "King James Version", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'KJV' },
+  { id: 'kjva', abbr: 'KJVA', name: "King James Version with Apocrypha", language: "English", license: "Public Domain", coverage: "Full Bible with Apocrypha", file: 'KJVA' },
+  { id: 'kjvpce', abbr: 'KJV PCE', name: "King James Version, Pure Cambridge Edition", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'KJVPCE' },
+  { id: 'nheb', abbr: 'NHEB', name: "New Heart English Bible", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'NHEB' },
+  { id: 'nhebje', abbr: 'NHEB JE', name: "New Heart English Bible, Jehovah Edition", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'NHEBJE' },
+  { id: 'nhebme', abbr: 'NHEB ME', name: "New Heart English Bible, Messianic Edition", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'NHEBME' },
+  { id: 'oeb', onlineId: 'oeb-us', abbr: 'OEB', name: "Open English Bible", language: "English", license: "Public Domain (CC0)", coverage: "New Testament and Psalms", file: 'OEB' },
+  { id: 'oeb-cw', abbr: 'OEB-CW', name: "Open English Bible, Commonwealth Edition", language: "English (UK)", license: "Public Domain (CC0)", coverage: "New Testament and Psalms", file: 'OEBcth' },
+  { id: 'rlt', abbr: 'RLT', name: "Revised Literal Translation", language: "English", license: "Free (GPL)", coverage: "Full Bible", file: 'RLT' },
+  { id: 'rnkjv', abbr: 'RNKJV', name: "Restored Name King James Version", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'RNKJV' },
+  { id: 'rwebster', abbr: 'RWebster', name: "Revised Webster Version (1833)", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'RWebster' },
+  { id: 'rotherham', abbr: 'Rotherham', name: "Rotherham Emphasised Bible", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'Rotherham' },
+  { id: 'ukjv', abbr: 'UKJV', name: "Updated King James Version", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'UKJV' },
+  { id: 'webster', abbr: 'Webster', name: "Webster's Bible", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'Webster' },
+  { id: 'ylt', abbr: 'YLT', name: "Young's Literal Translation (1898)", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'YLT' },
+  { id: 'anderson', abbr: 'Anderson', name: "Anderson New Testament (1864)", language: "English", license: "Public Domain", coverage: "New Testament", file: 'Anderson' },
+  { id: 'haweis', abbr: 'Haweis', name: "Haweis New Testament (1795)", language: "English", license: "Public Domain", coverage: "New Testament", file: 'Haweis' },
+  { id: 'noyes', abbr: 'Noyes', name: "Noyes Translation (1869)", language: "English", license: "Public Domain", coverage: "Job to Malachi and the New Testament", file: 'Noyes' },
+  { id: 'twenty', abbr: 'TCNT', name: "Twentieth Century New Testament", language: "English", license: "Public Domain", coverage: "New Testament", file: 'Twenty' },
+  { id: 'tyndale', abbr: 'Tyndale', name: "Tyndale Bible (1525/1530)", language: "English", license: "Public Domain", coverage: "Genesis and parts of the New Testament", file: 'Tyndale' },
+  { id: 'wycliffe', abbr: 'Wycliffe', name: "Wycliffe Bible (c. 1395)", language: "English", license: "Public Domain", coverage: "Full Bible with Apocrypha", file: 'Wycliffe' },
+  { id: 'alb', abbr: 'Alb', name: "Albanian Bible", language: "Albanian", license: "Public Domain", coverage: "Full Bible", file: 'Alb' },
+  { id: 'armeastern', abbr: 'ArmE', name: "Eastern Armenian Bible", language: "Armenian", license: "Public Domain", coverage: "Genesis, Exodus and the Gospels", file: 'ArmEastern' },
+  { id: 'burjudson', abbr: 'Judson', name: "Judson Burmese Bible (1835)", language: "Burmese", license: "Public Domain", coverage: "Full Bible", file: 'BurJudson' },
+  { id: 'cebpinadayag', abbr: 'Ceb', name: "Cebuano Pinadayag", language: "Cebuano", license: "Public Domain", coverage: "Full Bible", file: 'CebPinadayag' },
+  { id: 'cherokee', abbr: 'Cherokee', name: "Cherokee New Testament (1860)", language: "Cherokee", license: "Public Domain", coverage: "New Testament", file: 'Che1860' },
+  { id: 'cuv', abbr: 'CUV', name: "Chinese Union Version (Traditional)", language: "Chinese", license: "Public Domain", coverage: "Full Bible", file: 'ChiUn' },
+  { id: 'chiunl', abbr: 'CUVL', name: "Chinese Union Version (Literary)", language: "Chinese", license: "Public Domain", coverage: "Full Bible", file: 'ChiUnL' },
+  { id: 'cslelizabeth', abbr: 'CSl', name: "Church Slavonic Elizabeth Bible (1757)", language: "Church Slavonic", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'CSlElizabeth' },
+  { id: 'copsah', abbr: 'CopSah', name: "Sahidic Coptic Bible", language: "Coptic (Sahidic)", license: "CC BY-SA", coverage: "68 books, partial text", file: 'CopSahBible2' },
+  { id: 'crosaric', abbr: 'Saric', name: "Croatian Bible, Ivan Saric", language: "Croatian", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'CroSaric' },
+  { id: 'bkr', abbr: 'BKR', name: "Bible kralicka", language: "Czech", license: "Public Domain", coverage: "Full Bible", file: 'CzeBKR' },
+  { id: 'da1871', abbr: 'Da1871', name: "Danish Bible (OT 1871, NT 1907)", language: "Danish", license: "Public Domain", coverage: "Full Bible", file: 'DaOT1871NT1907' },
+  { id: 'beamrk', abbr: 'BeaMRK', name: "Gospel of Mark in Danezaa (Beaver)", language: "Danezaa", license: "Public Domain", coverage: "Mark", file: 'BeaMRK' },
+  { id: 'dutsvv', abbr: 'SVV', name: "Dutch Statenvertaling", language: "Dutch", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'DutSVV' },
+  { id: 'dutsvva', abbr: 'SVVA', name: "Dutch Statenvertaling with Apocrypha", language: "Dutch", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'DutSVVA' },
+  { id: 'canisius', abbr: 'Canisius', name: "Petrus Canisius Translation (1939)", language: "Dutch", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'NlCanisius1939' },
+  { id: 'vlsjo', abbr: 'VlsJo', name: "New Testament, Nicolaas De Jonge", language: "West Flemish", license: "Public Domain", coverage: "New Testament", file: 'vlsJoNT' },
+  { id: 'esperanto', abbr: 'Esp', name: "Esperanto Londona Biblio", language: "Esperanto", license: "Public Domain", coverage: "Full Bible", file: 'Esperanto' },
+  { id: 'est', abbr: 'Est', name: "Estonian Bible (1739)", language: "Estonian", license: "Public Domain", coverage: "Genesis and the New Testament", file: 'Est' },
+  { id: 'finbiblia', abbr: 'Fin1776', name: "Finnish Biblia (1776)", language: "Finnish", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'FinBiblia' },
+  { id: 'finpr', abbr: 'FinPR', name: "Finnish Pyha Raamattu (1933/1938)", language: "Finnish", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'FinPR' },
+  { id: 'frebbb', abbr: 'BBB', name: "French Bible Bovet Bonnet (1900)", language: "French", license: "Public Domain", coverage: "Full Bible", file: 'FreBBB' },
+  { id: 'frebdm', abbr: 'Martin', name: "Bible David Martin (1744)", language: "French", license: "Public Domain", coverage: "Full Bible", file: 'FreBDM1744' },
+  { id: 'frecrampon', abbr: 'Crampon', name: "La Bible Augustin Crampon (1923)", language: "French", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'FreCrampon' },
+  { id: 'fregeneve', abbr: 'Geneve', name: "Geneva New Testament (1669)", language: "French", license: "Public Domain", coverage: "New Testament", file: 'FreGeneve1669' },
+  { id: 'frejnd', abbr: 'JND', name: "Bible J.N. Darby (French)", language: "French", license: "Public Domain", coverage: "Full Bible", file: 'FreJND' },
+  { id: 'frelxx', abbr: 'LXXFr', name: "French Septuagint, Giguet (1872)", language: "French", license: "Public Domain", coverage: "Old Testament (Septuagint)", file: 'FreLXX' },
+  { id: 'frelxxgiguet', abbr: 'LXXG', name: "French Septuagint, Giguet (1872), alternate edition", language: "French", license: "Public Domain", coverage: "Old Testament (Septuagint)", file: 'FreLXXGiguet' },
+  { id: 'freoltramare', abbr: 'Oltramare', name: "New Testament, Oltramare (1874)", language: "French", license: "Public Domain", coverage: "New Testament", file: 'FreOltramare1874' },
+  { id: 'frepgr', abbr: 'PGR', name: "Bible Perret-Gentil et Rilliet", language: "French", license: "Public Domain", coverage: "Full Bible", file: 'FrePGR' },
+  { id: 'frestapfer', abbr: 'Stapfer', name: "New Testament, Stapfer (1889)", language: "French", license: "Public Domain", coverage: "New Testament", file: 'FreStapfer1889' },
+  { id: 'fresynodale', abbr: 'Synodale', name: "New Testament, Version Synodale (1921), with Psalms", language: "French", license: "Public Domain", coverage: "New Testament and Psalms", file: 'FreSynodale1921' },
+  { id: 'geralbrecht', abbr: 'Albrecht', name: "Albrecht New Testament and Psalms", language: "German", license: "Public Domain", coverage: "New Testament and Psalms", file: 'GerAlbrecht' },
+  { id: 'gerbolut', abbr: 'Luther', name: "Luther Bible (1545), modern spelling", language: "German", license: "Public Domain", coverage: "Full Bible", file: 'GerBoLut' },
+  { id: 'gerelb1871', abbr: 'Elb1871', name: "Elberfelder Bible (1871)", language: "German", license: "Public Domain", coverage: "Full Bible", file: 'GerElb1871' },
+  { id: 'gerelb1905', abbr: 'Elb1905', name: "Elberfelder Bible (1905)", language: "German", license: "Public Domain", coverage: "Full Bible", file: 'GerElb1905' },
+  { id: 'gergruenewald', abbr: 'Grunewald', name: "Grunewald Bible (1924)", language: "German", license: "Public Domain", coverage: "Full Bible", file: 'GerGruenewald' },
+  { id: 'germenge', abbr: 'Menge', name: "Menge Bible (1939)", language: "German", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'GerMenge' },
+  { id: 'geroffbist', abbr: 'OffBiSt', name: "Offene Bibel, Study Edition", language: "German", license: "CC BY-SA 4.0", coverage: "55 books, partial text", file: 'GerOffBiSt' },
+  { id: 'gertafel', abbr: 'Tafel', name: "Tafel Bible (1911)", language: "German", license: "Public Domain", coverage: "56 books", file: 'GerTafel' },
+  { id: 'gertextbibel', abbr: 'Textbibel', name: "Textbibel (1906)", language: "German", license: "Public Domain", coverage: "Full Bible", file: 'GerTextbibel' },
+  { id: 'gerzurcher', abbr: 'Zurcher', name: "Zurich Bible (1931)", language: "German", license: "Public Domain", coverage: "Full Bible", file: 'GerZurcher' },
+  { id: 'wulfila', abbr: 'Wulfila', name: "Wulfila Gothic Bible", language: "Gothic", license: "Public Domain", coverage: "18 books, surviving fragments", file: 'Wulfila' },
+  { id: 'grevamvas', abbr: 'Vamvas', name: "Vamvas Greek Bible (1850)", language: "Greek", license: "Public Domain", coverage: "Full Bible", file: 'GreVamvas' },
+  { id: 'statresgnt', abbr: 'SRGNT', name: "Statistical Restoration Greek New Testament", language: "Greek (Ancient)", license: "CC BY 4.0", coverage: "New Testament", file: 'StatResGNT' },
+  { id: 'haitian', abbr: 'Haitian', name: "Haitian Creole Bible", language: "Haitian Creole", license: "Public Domain", coverage: "Full Bible", file: 'Haitian' },
+  { id: 'mapm', abbr: 'MapM', name: "Miqra al pi ha-Mesorah", language: "Hebrew (Ancient)", license: "CC BY-SA 4.0", coverage: "Old Testament", file: 'MapM' },
+  { id: 'wlc', abbr: 'WLC', name: "Westminster Leningrad Codex", language: "Hebrew (Ancient)", license: "Public Domain", coverage: "Old Testament", file: 'WLC' },
+  { id: 'hunkar', abbr: 'Karoli', name: "Karoli Bible (1908)", language: "Hungarian", license: "Public Domain", coverage: "Full Bible", file: 'HunKar' },
+  { id: 'japbungo', abbr: 'Bungo', name: "Japanese Bungo Bible", language: "Japanese", license: "Public Domain", coverage: "Full Bible", file: 'JapBungo' },
+  { id: 'japdenmo', abbr: 'Denmo', name: "Japanese Denmo Bible", language: "Japanese", license: "Public Domain", coverage: "13 books of the New Testament", file: 'JapDenmo' },
+  { id: 'japkougo', abbr: 'Kougo', name: "Japanese Kougo Bible (1954/1955)", language: "Japanese", license: "Public Domain", coverage: "Full Bible", file: 'JapKougo' },
+  { id: 'klv', abbr: 'KLV', name: "Klingon Language Version (from the World English Bible)", language: "Klingon", license: "Public Domain", coverage: "Full Bible", file: 'KLV' },
+  { id: 'korrv', abbr: 'KorRV', name: "Korean Revised Version", language: "Korean", license: "Public Domain", coverage: "Full Bible", file: 'KorRV' },
+  { id: 'clementine', abbr: 'Clementine', name: "Clementine Latin Vulgate", language: "Latin", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'VulgClementine' },
+  { id: 'vulgconte', abbr: 'VulgConte', name: "Clementine Vulgate, Conte edition", language: "Latin", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'VulgConte' },
+  { id: 'vulghetz', abbr: 'VulgHetz', name: "Clementine Vulgate, Hetzenauer edition", language: "Latin", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'VulgHetzenauer' },
+  { id: 'vulgsistine', abbr: 'VulgSist', name: "Sistine Vulgate", language: "Latin", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'VulgSistine' },
+  { id: 'vulgate', abbr: 'Vulgate', name: "Latin Vulgate", language: "Latin", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'Vulgate' },
+  { id: 'lvgluck', abbr: 'Gluck', name: "Latvian Gluck Bible, 8th edition", language: "Latvian", license: "Public Domain", coverage: "Full Bible", file: 'LvGluck8' },
+  { id: 'mg1865', abbr: 'Mg1865', name: "Malagasy Bible (1865)", language: "Malagasy", license: "Public Domain", coverage: "Full Bible", file: 'Mg1865' },
+  { id: 'mal1910', abbr: 'Mal1910', name: "Sathyavedapusthakam (Malayalam, 1910)", language: "Malayalam", license: "Public Domain", coverage: "Full Bible", file: 'Mal1910' },
+  { id: 'manx', abbr: 'Manx', name: "Manx Gaelic Scripture Portions", language: "Manx", license: "Public Domain", coverage: "Esther, Jonah, Matthew, Luke and John", file: 'ManxGaelic' },
+  { id: 'norsmb', abbr: 'NorSMB', name: "Studentmallagsbibelen (1921)", language: "Norwegian (Nynorsk)", license: "Public Domain", coverage: "Full Bible", file: 'NorSMB' },
+  { id: 'norsk', abbr: 'Norsk', name: "Bibelen pa Norsk (1930)", language: "Norwegian (Bokmal)", license: "Public Domain", coverage: "Full Bible", file: 'Norsk' },
+  { id: 'pohnold', abbr: 'Pohn', name: "Old Pohnpeian Bible", language: "Pohnpeian", license: "Public Domain", coverage: "New Testament and Psalms", file: 'PohnOld' },
+  { id: 'polgdanska', abbr: 'Gdanska', name: "Polish Gdansk Bible (1881)", language: "Polish", license: "Public Domain", coverage: "Full Bible", file: 'PolGdanska' },
+  { id: 'porblivre', abbr: 'BLivre', name: "Biblia Livre", language: "Portuguese", license: "CC BY 3.0", coverage: "Full Bible", file: 'PorBLivre' },
+  { id: 'porblivretr', abbr: 'BLivreTR', name: "Biblia Livre, Textus Receptus", language: "Portuguese", license: "CC BY 3.0", coverage: "Full Bible", file: 'PorBLivreTR' },
+  { id: 'pornva', abbr: 'PorNVA', name: "Biblia Nova Versao de Acesso Livre", language: "Portuguese", license: "CC BY-SA 4.0", coverage: "Full Bible", file: 'PorNVA' },
+  { id: 'rusmakarij', abbr: 'Makarij', name: "Makarij Pentateuch (Russian)", language: "Russian", license: "Public Domain", coverage: "Pentateuch", file: 'RusMakarij' },
+  { id: 'synodal', abbr: 'Synodal', name: "Russian Synodal Translation", language: "Russian", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'RusSynodal' },
+  { id: 'srkdekavski', abbr: 'SrKD', name: "Serbian Bible, Danicic-Karadzic (Ekavian)", language: "Serbian", license: "Public Domain", coverage: "Full Bible", file: 'SrKDEkavski' },
+  { id: 'srkdijekav', abbr: 'SrKDI', name: "Serbian Bible, Danicic-Karadzic (Ijekavian)", language: "Serbian", license: "Public Domain", coverage: "Full Bible", file: 'SrKDIjekav' },
+  { id: 'slostritar', abbr: 'Stritar', name: "Stritar New Testament and Psalms (1882)", language: "Slovenian", license: "Public Domain", coverage: "New Testament and Psalms", file: 'SloStritar' },
+  { id: 'spaplatense', abbr: 'Platense', name: "Biblia Platense (Straubinger)", language: "Spanish", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'SpaPlatense' },
+  { id: 'sparv', abbr: 'RV1909', name: "Reina-Valera (1909)", language: "Spanish", license: "Public Domain", coverage: "Full Bible", file: 'SpaRV' },
+  { id: 'sparv1865', abbr: 'RV1865', name: "Reina-Valera (1865)", language: "Spanish", license: "Public Domain", coverage: "Full Bible", file: 'SpaRV1865' },
+  { id: 'swe1917', abbr: 'Swe1917', name: "Swedish Bible (1917)", language: "Swedish", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'Swe1917' },
+  { id: 'swekarlxii', abbr: 'KarlXII', name: "Swedish Karl XII Bible (1703)", language: "Swedish", license: "Public Domain", coverage: "44 books", file: 'SweKarlXII' },
+  { id: 'swekarlxii1873', abbr: 'KarlXII1873', name: "Swedish Karl XII Bible (1873)", language: "Swedish", license: "Public Domain", coverage: "Full Bible", file: 'SweKarlXII1873' },
+  { id: 'peshitta', abbr: 'Peshitta', name: "Syriac Peshitta", language: "Syriac", license: "Public Domain", coverage: "New Testament", file: 'Peshitta' },
+  { id: 'tagangbiblia', abbr: 'Tag', name: "Philippine Bible (1905)", language: "Tagalog", license: "Public Domain", coverage: "Full Bible", file: 'TagAngBiblia' },
+  { id: 'ukrogienko', abbr: 'Ogienko', name: "Ukrainian Bible, Ohienko", language: "Ukrainian", license: "Public Domain", coverage: "Full Bible", file: 'UkrOgienko' },
+  { id: 'viet', abbr: 'Viet', name: "Vietnamese Bible (1934)", language: "Vietnamese", license: "Public Domain", coverage: "Full Bible", file: 'Viet' },
 ]
 
 /** What is kept for one downloaded Bible: book names, and a row per verse. */
@@ -146,17 +257,24 @@ export async function downloadPack(
   if (!Array.isArray(data.books)) throw new Error(`${info.name} arrived in a shape I do not recognise.`)
   const books: string[] = []
   const rows: StoredPack['rows'] = []
-  data.books.forEach((book, bookIndex) => {
-    books.push(String(book.name ?? `Book ${bookIndex + 1}`))
+  data.books.forEach((book) => {
+    // A book only joins the stored pack when it has real text: source
+    // files pad uncovered books with empty verses, and an empty book
+    // listed in the panel would promise scripture that is not there.
+    const bookRows: StoredPack['rows'] = []
+    const bookIndex = books.length
     for (const chapter of book.chapters ?? []) {
       for (const verse of chapter.verses ?? []) {
         const clean = String(verse.text ?? '')
           .replace(/<[^>]*>/g, '')
           .replace(/\s+/g, ' ')
           .trim()
-        if (clean) rows.push([bookIndex, Number(chapter.chapter), Number(verse.verse), clean])
+        if (clean) bookRows.push([bookIndex, Number(chapter.chapter), Number(verse.verse), clean])
       }
     }
+    if (bookRows.length === 0) return
+    books.push(String(book.name ?? `Book ${bookIndex + 1}`))
+    rows.push(...bookRows)
   })
   if (rows.length < 1000) throw new Error(`${info.name} arrived incomplete (${rows.length} verses).`)
   return { id: info.id, name: info.name, books, rows }

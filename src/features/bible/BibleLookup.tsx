@@ -767,9 +767,11 @@ export function BibleLookup({
       {showMore && (
         <Modal title="More Available" onClose={() => setShowMore(false)}>
           <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-            Add a Bible to put it in the side panel. A full Bible is downloaded to this
-            computer once and saved here, so every verse is listed and searchable offline.
-            Only the ones you add are downloaded, and these are all public domain.
+            Add a Bible to put it in the side panel. It is downloaded to this
+            computer once and saved here, so every verse it contains is listed and
+            searchable offline. Only the ones you add are downloaded. Every version
+            here is public domain or freely licensed, as its line says, and partial
+            editions are labelled with what they actually contain.
           </p>
           <ul className="divide-y divide-slate-200 dark:divide-slate-800">
             {PACKS.map((pack) => {
@@ -780,7 +782,7 @@ export function BibleLookup({
                   <span>
                     <span className="block font-medium">{pack.name}</span>
                     <span className="block text-xs text-slate-500 dark:text-slate-400">
-                      {pack.language} · Public Domain
+                      {pack.language} · {pack.license} · {pack.coverage}
                       {download?.id === pack.id && download.error && (
                         <span className="ml-2 text-red-600 dark:text-red-400">{download.error}</span>
                       )}
