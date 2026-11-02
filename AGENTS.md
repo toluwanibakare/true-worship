@@ -46,7 +46,8 @@ src/
     songbook/     The community songbook: shared lyrics, versions,
                   review, sync.
     voice/        Voice: listens through the microphone, understands a
-                  spoken scripture or "next verse", and puts it live
+                  spoken scripture or "next verse", recognises a song
+                  being sung and moves its slides, and puts it live
                   (Auto) or holds it for Go Live (Manual). The speech
                   engine itself is offline Whisper in electron/voice.cjs.
     importer/     Moving churches in: .twp, .ews schedules,

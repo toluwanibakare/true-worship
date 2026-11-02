@@ -1046,6 +1046,26 @@ export function App() {
       whole: call.wholeChapter,
     })
   }
+  /** A song the voice feature recognised: shown in the Songs tab and put live at the slide being sung. */
+  const goLiveSungSong = (songId: string, verse: number) => {
+    const song = songs.find((entry) => entry.id === songId)
+    if (!song) return
+    pickedSong.current = song
+    focusNonce.current += 1
+    setTab('songs')
+    setSongFocus({ id: song.id, nonce: focusNonce.current })
+    const next = songPreview(song)
+    showPreview(next)
+    const split = fitForLayout(next.slides, next.labels)
+    goLiveWith({ ...next, slides: split.slides }, split.labels, split.starts[verse] ?? 0)
+  }
+  /** The slide the singing has reached in the live song (a verse can be several slides in a caption layout). */
+  const moveSungSong = (songId: string, verse: number) => {
+    const song = songs.find((entry) => entry.id === songId)
+    if (!song || !live || live.title !== song.title) return
+    const split = fitForLayout(songPreview(song).slides, songPreview(song).labels)
+    handleLiveSlideSelect(split.starts[verse] ?? verse)
+  }
   const stepLive = (direction: -1 | 1) => {
     if (!live || !liveSlides) return
     const next = liveSlideIndex + direction
@@ -1411,6 +1431,10 @@ export function App() {
 
         {voiceOn && (
           <VoiceBar
+            songs={songs}
+            liveTitle={live?.title ?? null}
+            onSong={goLiveSungSong}
+            onVerse={moveSungSong}
             onScripture={goLiveSpoken}
             onStep={(direction) => {
               if (!stepScripture(direction)) stepLive(direction)

@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { Song } from '../../shared/lib/types'
+import { buildSongIndex, matchPhrase, nextVerse } from './songMatcher'
 import { parseSpoken, referenceOf, type ScriptureCall } from './scriptureParser'
 import { useVoiceListener } from './useVoiceListener'
 
@@ -9,6 +11,11 @@ import { useVoiceListener } from './useVoiceListener'
  * scripture goes live, "next verse" steps on); in Manual it holds the
  * match with Go Live and Dismiss, so nothing reaches the screen until
  * the operator says so. The mode is remembered.
+ *
+ * It also follows singing: a phrase that matches a song in the library
+ * starts that song, and as the singing goes on the slides move with it
+ * (a line ahead, once the last line of a slide is heard). Pause stops the
+ * slides moving; changing what is live by hand ends the following.
  */
 type Mode = 'auto' | 'manual'
 
@@ -23,10 +30,22 @@ function loadMode(): Mode {
 }
 
 export function VoiceBar({
+  songs,
+  liveTitle,
   onScripture,
+  onSong,
+  onVerse,
   onStep,
   onStop,
 }: {
+  /** The library, for recognising a song being sung. */
+  songs: Song[]
+  /** What is live now, so changing it by hand ends the following. */
+  liveTitle: string | null
+  /** A song was recognised: put it live at this slide. */
+  onSong: (songId: string, verse: number) => void
+  /** Move the live song to this slide. */
+  onVerse: (songId: string, verse: number) => void
   /** A scripture was understood and is to go live. */
   onScripture: (call: ScriptureCall) => void
   /** "Next verse" / "previous verse". */
@@ -37,6 +56,28 @@ export function VoiceBar({
   const [heard, setHeard] = useState('')
   const [pending, setPending] = useState<ScriptureCall | null>(null)
   const [last, setLast] = useState<string | null>(null)
+  const [pendingSong, setPendingSong] = useState<{ id: string; title: string; verse: number } | null>(null)
+  // The song being followed, and the slide it is on.
+  const [following, setFollowing] = useState<{ id: string; title: string; verse: number } | null>(null)
+  const [paused, setPaused] = useState(false)
+  const followingRef = useRef(following)
+  followingRef.current = following
+  const index = useMemo(() => buildSongIndex(songs), [songs])
+  const titleOf = (id: string) => songs.find((song) => song.id === id)?.title ?? ''
+
+  // Changing what is live by hand (or a scripture going live) ends the following.
+  useEffect(() => {
+    const current = followingRef.current
+    if (current && liveTitle !== current.title) setFollowing(null)
+  }, [liveTitle])
+
+  const startSong = (id: string, verse: number) => {
+    setPendingSong(null)
+    setPaused(false)
+    setFollowing({ id, title: titleOf(id), verse })
+    setLast(`“${titleOf(id)}”`)
+    onSong(id, verse)
+  }
 
   useEffect(() => {
     try {
@@ -50,7 +91,25 @@ export function VoiceBar({
   const handle = (text: string) => {
     setHeard(text)
     const call = parseSpoken(text)
-    if (!call) return
+    if (!call) {
+      const current = followingRef.current
+      if (current && !paused) {
+        const match = matchPhrase(index, text, current.id)
+        const target = match ? nextVerse(index, current.verse, current.id, match) : null
+        if (target !== null) {
+          setFollowing({ ...current, verse: target })
+          onVerse(current.id, target)
+          return
+        }
+      }
+      // A different song, or none yet: it must match clearly.
+      const found = matchPhrase(index, text)
+      if (!found || found.score < (current ? 0.8 : 0.6) || found.songId === current?.id) return
+      if (mode === 'auto') startSong(found.songId, found.verse)
+      else setPendingSong({ id: found.songId, title: titleOf(found.songId), verse: found.verse })
+      return
+    }
+    setFollowing(null)
     if (call.kind === 'command') {
       if (mode === 'auto') onStep(call.action === 'next' ? 1 : -1)
       return
@@ -74,13 +133,16 @@ export function VoiceBar({
 
   // Esc dismisses a held match.
   useEffect(() => {
-    if (!pending) return
+    if (!pending && !pendingSong) return
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setPending(null)
+      if (event.key === 'Escape') {
+        setPending(null)
+        setPendingSong(null)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [pending])
+  }, [pending, pendingSong])
 
   const dot =
     state === 'listening' ? 'bg-red-500' : state === 'error' ? 'bg-amber-500' : 'bg-slate-400'
@@ -129,8 +191,43 @@ export function VoiceBar({
 
       {!error && (
         <span className="min-w-0 flex-1 truncate text-slate-500 dark:text-slate-400" title={heard}>
-          {heard ? `Heard: “${heard}”` : 'Say a scripture, like “John 3:16”, or “next verse”.'}
+          {heard ? `Heard: “${heard}”` : 'Say a scripture, like “John 3:16”, or start singing a song from your library.'}
           {last && !pending ? ` · Showing ${last}` : ''}
+        </span>
+      )}
+
+      {following && (
+        <span className="flex items-center gap-2">
+          <span className="font-semibold">
+            {paused ? 'Paused on' : 'Following'} “{following.title}”
+          </span>
+          <button
+            type="button"
+            onClick={() => setPaused((value) => !value)}
+            className="rounded-full border border-slate-300 px-3 py-0.5 text-xs hover:bg-slate-200 dark:border-slate-600 dark:hover:bg-slate-800"
+          >
+            {paused ? 'Resume' : 'Pause'}
+          </button>
+        </span>
+      )}
+
+      {pendingSong && (
+        <span className="flex items-center gap-2">
+          <span className="font-semibold">Sounds like “{pendingSong.title}”</span>
+          <button
+            type="button"
+            onClick={() => startSong(pendingSong.id, pendingSong.verse)}
+            className="rounded-full bg-[#1e40af] px-3 py-0.5 text-xs font-medium text-white hover:bg-blue-800"
+          >
+            Go Live
+          </button>
+          <button
+            type="button"
+            onClick={() => setPendingSong(null)}
+            className="rounded-full border border-slate-300 px-3 py-0.5 text-xs hover:bg-slate-200 dark:border-slate-600 dark:hover:bg-slate-800"
+          >
+            Dismiss
+          </button>
         </span>
       )}
 
