@@ -187,6 +187,7 @@ export function BibleLookup({
   const [packLoading, setPackLoading] = useState(false)
   const [download, setDownload] = useState<Download | null>(null)
   const [showMore, setShowMore] = useState(false)
+  const [moreQuery, setMoreQuery] = useState('')
   const [catalogue, setCatalogue] = useState<BibleVersion[] | null>(null)
   // Text search (Scripture, Any Field).
   const [query, setQuery] = useState('')
@@ -584,9 +585,18 @@ export function BibleLookup({
   ]
   const sources = [...installed.map((version) => version.name), MORE_AVAILABLE]
   // Versions that can be downloaded whole are offered above; the rest stay online lookups.
-  const onlineOnly = (catalogue ?? []).filter(
-    (version) => !PACKS.some((pack) => pack.id === version.id || pack.onlineId === version.id),
-  )
+  // The More Available list: A to Z, narrowed by the search box (name, abbreviation or language).
+  const moreMatch = (...parts: string[]) => {
+    const words = moreQuery.toLowerCase().split(/\s+/).filter(Boolean)
+    const hay = parts.join(' ').toLowerCase()
+    return words.every((word) => hay.includes(word))
+  }
+  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name)
+  const morePacks = PACKS.filter((pack) => moreMatch(pack.name, pack.abbr, pack.language)).sort(byName)
+  const onlineOnly = (catalogue ?? [])
+    .filter((version) => !PACKS.some((pack) => pack.id === version.id || pack.onlineId === version.id))
+    .filter((version) => moreMatch(version.name, version.language))
+    .sort(byName)
 
   return (
     <>
@@ -765,7 +775,22 @@ export function BibleLookup({
         </Modal>
       )}
       {showMore && (
-        <Modal title="More Available" onClose={() => setShowMore(false)}>
+        <Modal
+          title="More Available"
+          onClose={() => {
+            setShowMore(false)
+            setMoreQuery('')
+          }}
+        >
+          <input
+            autoFocus
+            type="search"
+            value={moreQuery}
+            onChange={(event) => setMoreQuery(event.target.value)}
+            placeholder="Search by name, abbreviation or language"
+            aria-label="Search translations"
+            className="mb-3 w-full rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900"
+          />
           <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
             Add a Bible to put it in the side panel. It is downloaded to this
             computer once and saved here, so every verse it contains is listed and
@@ -773,8 +798,11 @@ export function BibleLookup({
             here is public domain or freely licensed, as its line says, and partial
             editions are labelled with what they actually contain.
           </p>
+          {morePacks.length === 0 && onlineOnly.length === 0 && (
+            <p className="text-sm text-slate-500">No translation matches “{moreQuery}”.</p>
+          )}
           <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-            {PACKS.map((pack) => {
+            {morePacks.map((pack) => {
               const have = packedIds.includes(pack.id)
               const working = download?.id === pack.id && download.progress !== null
               return (

@@ -49,7 +49,6 @@ import {
 import type { ScheduleItem, SlideStyle, Song, Verse } from '../shared/lib/types'
 import { SlideEditor } from '../shared/components/SlideEditor'
 import { songCredit } from '../shared/lib/credit'
-import { hymnPack } from '../features/songs/hymns'
 
 /**
  * Toolbar button: an icon above a short label. The toolbar splits
@@ -439,18 +438,8 @@ export function App() {
   useEffect(() => {
     loadSongs()
       .then((saved) => {
-        // Hymns from the public-domain pack are added once; one the user deleted stays deleted.
-        let seen: string[] = []
-        try {
-          seen = JSON.parse(localStorage.getItem('tw-hymns-added') ?? '[]')
-        } catch {
-          seen = []
-        }
-        const base = saved ?? demoSongs
-        const have = new Set(base.map((song) => song.id))
-        const fresh = hymnPack.filter((hymn) => !seen.includes(hymn.id) && !have.has(hymn.id))
-        localStorage.setItem('tw-hymns-added', JSON.stringify(hymnPack.map((hymn) => hymn.id)))
-        setSongs(fresh.length > 0 ? [...base, ...fresh] : base)
+        // The first bundled hymn pack is gone: the Hymns list replaces it. Drop its copies.
+        if (saved) setSongs(saved.filter((song) => !/^hymn-[a-z]/.test(song.id)))
       })
       .catch(() => {})
       .finally(() => setSongsLoaded(true))

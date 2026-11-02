@@ -2,9 +2,9 @@
 
 `hymns-01.json` to `hymns-09.json` in this folder are one pack of 25,716
 public domain hymns, split into chunks so each file stays small. The
-Songs tab downloads the chunks once, keeps them on the computer
-(IndexedDB, database `tw-hymns`), and searches them offline after
-that. Code: `src/features/songs/hymns.ts`.
+app builds the chunks in, so the Hymns source in the Songs tab lists and
+searches them offline with no download. Code:
+`src/features/songs/hymnArchive.ts`.
 
 Hymnary.org asks users of its dataset to link to https://hymnary.org;
 this file and the Songs panel both do.

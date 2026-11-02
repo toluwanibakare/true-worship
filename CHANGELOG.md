@@ -7,7 +7,8 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
 ### Added
 - Song credit line: a song's title, author, copyright (or "Public Domain") and CCLI number sit small at the bottom-left of its first slide, in the previews, the Live pane and on the projector.
-- Public-domain hymn pack: 34 hymns with verifiable authors, added to the library once (a hymn you delete stays deleted).
+- Songs sidebar: All Songs and Hymns. Hymns lists the 25,716-hymn public-domain archive (built into the app, works offline), searchable by title, author or words with punctuation ignored; Add to library, drag onto the schedule, or double-click to go live. The bottom hymn panel and the small seeded hymn pack are gone.
+- More Available (Bibles): translations are listed A to Z, with a search box for name, abbreviation or language.
 - 114 downloadable Bible packs, up from 18. Every file in the source catalogue was downloaded and audited verse by verse: a pack only offers translations that are public domain or freely licensed (the licence is shown in the list, from the CrossWire record for the same text), and each pack is labelled with what it actually contains, so partial editions say so (New Testament, Old Testament, New Testament and Psalms, and so on) and a book with no text is left out of the stored pack. The list now spans more than 40 languages.
 - A downloadable public domain hymn archive in the Songs tab: 25,716 hymns with full verses from the Hymnary.org public domain export and the Open Hymnal Project, downloaded once, kept on the computer and searchable offline. Adding a hymn puts it in the library as a public domain song. Sources and verification: `packs/README.md`.
 

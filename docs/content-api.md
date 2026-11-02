@@ -73,14 +73,7 @@ line marks public domain). Sources that could not prove public domain
 status were rejected. No CCLI or modern worship material is in the
 pack. The full source and verification record is in `packs/README.md`.
 
-The pack ships in this repo under `packs/` as nine JSON chunks. The
-first time the hymn section is opened, the chunks download once and
-are kept on the computer (IndexedDB, database `tw-hymns`); search is
-offline after that, and a hymn enters the song library only when the
-user adds it, with source `public-domain`. Code:
-`src/features/songs/hymns.ts`. Hymnary.org asks users of its dataset
-to link to https://hymnary.org, which the panel and `packs/README.md`
-both do.
+The pack ships inside the app (`packs/`, nine JSON chunks built in by Vite), so the Hymns source in the Songs sidebar lists and searches it offline with no download. A hymn enters the song library only when the user adds it, with source `public-domain`. Code: `src/features/songs/hymnArchive.ts`. Hymnary.org asks users of its dataset to link to https://hymnary.org, which `packs/README.md` does.
 
 ## Later
 
