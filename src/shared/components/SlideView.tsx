@@ -156,6 +156,7 @@ export function SlideView({
   wordsKey,
   wordsFadeInMs,
   style,
+  credit,
   hideWords = false,
   className = 'w-full',
 }: {
@@ -176,6 +177,8 @@ export function SlideView({
   wordsFadeInMs?: number
   /** How this slide's words are arranged, when the operator changed it. */
   style?: SlideStyle
+  /** Small line at the bottom-left: a song's title, author and copyright. */
+  credit?: string
   /** Hides the words, while a text editor is drawn over them. */
   hideWords?: boolean
   className?: string
@@ -277,6 +280,19 @@ export function SlideView({
                 : 'bottom-0 bg-gradient-to-t from-black/55 to-transparent'
             }`}
           />
+        )}
+        {credit && (
+          <p
+            className="absolute bottom-6 left-10 right-40 z-10 truncate leading-tight"
+            style={{
+              fontSize: 22,
+              opacity: hideWords ? 0 : (textOpacity ?? 1) * 0.9,
+              transition: textFadeMs ? `opacity ${textFadeMs}ms ease` : undefined,
+              textShadow: lightText ? '0 1px 4px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,1)' : undefined,
+            }}
+          >
+            {credit}
+          </p>
         )}
         {alert && (
           <div className="absolute inset-x-0 top-0 z-20">

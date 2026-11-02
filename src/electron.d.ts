@@ -19,6 +19,8 @@ export type LiveUpdatePayload = {
   layout?: string
   /** How this slide's words are arranged, when the operator changed it. */
   style?: SlideStyle
+  /** Song title, author and copyright, shown small at the bottom-left of a song's first slide. */
+  credit?: string
   /** Book, chapter, verse and version shown under a scripture, e.g. "John 3:16 (KJV)". */
   reference?: string
   /** Scrolling alert at the top of the output, or null. */

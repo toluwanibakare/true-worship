@@ -2,12 +2,9 @@
 
 ![True Worship logo](assets/logo/object-logo.png)
 
-Free, open worship presentation software for churches, on Windows, Linux
+Free worship presentation software for churches, on Windows, Linux
 and macOS. Own code, own design, with the familiar workflow churches
-already know.
-
-Licensed under GPL-3.0 (see `LICENSE`). Contributions are welcome, see
-`CONTRIBUTING.md`, and the community rules are in `CODE_OF_CONDUCT.md`.
+already know. Installers (free to download) are the final release phase.
 
 ## Features (so far, scaffold stage)
 

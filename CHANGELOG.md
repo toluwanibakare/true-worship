@@ -5,6 +5,14 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
 
 ## [Unreleased]
 
+### Added
+- Song credit line: a song's title, author, copyright (or "Public Domain") and CCLI number sit small at the bottom-left of its first slide, in the previews, the Live pane and on the projector.
+- Public-domain hymn pack: 34 hymns with verifiable authors, added to the library once (a hymn you delete stays deleted).
+
+### Changed
+- Website, README, splash screen and footer no longer describe True Worship as open source; they say it is free to download and use, with installers to follow.
+
+
 ### Changed (website)
 
 - The hero is now a concert-hall scene: stage lights sweeping over a crowd

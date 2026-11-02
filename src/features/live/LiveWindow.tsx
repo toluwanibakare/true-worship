@@ -172,6 +172,7 @@ export function LiveWindow() {
               layoutId={slide.layout}
               style={slide.style}
               reference={slide.reference}
+              credit={slide.credit}
               alert={slide.alert ?? null}
               textOpacity={index === layers.length - 1 && wordsHidden ? 0 : 1}
               textFadeMs={ms / 2}

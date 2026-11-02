@@ -43,6 +43,7 @@ export function SlideEditor({
   backgroundVideo,
   layoutId,
   reference,
+  credit,
   alert,
   style,
   canEdit,
@@ -57,6 +58,8 @@ export function SlideEditor({
   backgroundVideo?: string
   layoutId?: string
   reference?: string
+  /** Song title, author and copyright, drawn small at the bottom-left. */
+  credit?: string
   alert?: MarqueeAlert | null
   style?: SlideStyle
   /** False for media, an empty slide, or a subtitle layout. */
@@ -314,6 +317,7 @@ export function SlideEditor({
             reference={reference}
             alert={alert}
             style={shown}
+            credit={credit}
             hideWords={editing}
             className="absolute inset-0 h-full w-full"
           />

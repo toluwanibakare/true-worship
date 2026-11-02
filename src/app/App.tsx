@@ -48,6 +48,8 @@ import {
 } from '../shared/lib/demo'
 import type { ScheduleItem, SlideStyle, Song, Verse } from '../shared/lib/types'
 import { SlideEditor } from '../shared/components/SlideEditor'
+import { songCredit } from '../shared/lib/credit'
+import { hymnPack } from '../features/songs/hymns'
 
 /**
  * Toolbar button: an icon above a short label. The toolbar splits
@@ -275,6 +277,8 @@ type Preview = {
   media?: MediaLook
   /** How each slide's words are arranged (by slide number), when the operator changed it. */
   styles?: (SlideStyle | undefined)[]
+  /** Song title, author and copyright, shown on the first slide. */
+  credit?: string
   /** The library song these slides belong to, so editing them edits the song. */
   songId?: string
 }
@@ -286,6 +290,7 @@ function songPreview(song: Song): Preview & { labels: string[] } {
     slides: song.verses.map((verse) => verse.lines),
     labels: song.verses.map((verse) => verse.label),
     styles: song.verses.map((verse) => verse.style),
+    credit: songCredit(song),
     songId: song.id,
   }
 }
@@ -404,6 +409,16 @@ export function App() {
     liveStyleRef.current = next[index]
     setLiveStylesState(next)
   }
+  // The song credit under the live words: on the first slide only. The item's
+  // credit is kept so stepping back to slide one brings it back.
+  const [liveCredit, setLiveCreditState] = useState<string | null>(null)
+  const liveCreditRef = useRef<string | null>(null)
+  const liveItemCreditRef = useRef<string | null>(null)
+  const setLiveCredit = (item: string | null, index: number) => {
+    liveItemCreditRef.current = item
+    liveCreditRef.current = index === 0 ? item : null
+    setLiveCreditState(liveCreditRef.current)
+  }
   const setLiveMedia = (next: MediaLook | null) => {
     liveMediaRef.current = next
     setLiveMediaState(next)
@@ -424,7 +439,18 @@ export function App() {
   useEffect(() => {
     loadSongs()
       .then((saved) => {
-        if (saved) setSongs(saved)
+        // Hymns from the public-domain pack are added once; one the user deleted stays deleted.
+        let seen: string[] = []
+        try {
+          seen = JSON.parse(localStorage.getItem('tw-hymns-added') ?? '[]')
+        } catch {
+          seen = []
+        }
+        const base = saved ?? demoSongs
+        const have = new Set(base.map((song) => song.id))
+        const fresh = hymnPack.filter((hymn) => !seen.includes(hymn.id) && !have.has(hymn.id))
+        localStorage.setItem('tw-hymns-added', JSON.stringify(hymnPack.map((hymn) => hymn.id)))
+        setSongs(fresh.length > 0 ? [...base, ...fresh] : base)
       })
       .catch(() => {})
       .finally(() => setSongsLoaded(true))
@@ -505,6 +531,7 @@ export function App() {
           : background?.video,
       // The reference goes only with words: not on Black, Logo or a cleared screen.
       reference: forcedBackground || lines.length === 0 ? undefined : (liveReferenceRef.current ?? undefined),
+      credit: forcedBackground || lines.length === 0 ? undefined : (liveCreditRef.current ?? undefined),
       layout: layoutId,
       style: forcedBackground ? undefined : liveStyleRef.current,
       alert: alertArg !== undefined ? alertArg : alert,
@@ -539,6 +566,7 @@ export function App() {
     setLiveSlideLabels(labels)
     setLiveSlideIndex(index)
     setLiveStyles(target.styles ?? [], index)
+    setLiveCredit(target.credit ?? null, index)
     setBlack(false)
     setLogo(false)
     clearedLiveRef.current = null
@@ -747,6 +775,7 @@ export function App() {
     setLive(null)
     setLiveMedia(null)
     setLiveReference(null)
+    setLiveCredit(null, 0)
     setLiveSlides(null)
     setLiveSlideLabels([])
     setBlack(false)
@@ -780,6 +809,7 @@ export function App() {
     const lines = liveSlides[index] ?? []
     setLiveSlideIndex(index)
     liveStyleRef.current = liveStylesRef.current[index]
+    setLiveCredit(liveItemCreditRef.current, index)
     setLive({ title: live.title, lines })
     setBlack(false)
     setLogo(false)
@@ -971,6 +1001,7 @@ export function App() {
     setLiveSlideLabels(itemFit.labels)
     setLiveSlideIndex(0)
     setLiveStyles(itemPreview.styles ?? [], 0)
+    setLiveCredit(itemPreview.credit ?? null, 0)
     setBlack(false)
     setLogo(false)
     clearedLiveRef.current = null
@@ -1459,6 +1490,7 @@ export function App() {
                     backgroundVideo={preview.media ? preview.media.video : background?.video}
                     layoutId={layoutId}
                     reference={preview.reference}
+                    credit={Math.min(slideIndex, preview.slides.length - 1) === 0 ? preview.credit : undefined}
                     alert={alert}
                     style={preview.styles?.[Math.min(slideIndex, preview.slides.length - 1)]}
                     toolbarHost={toolbarHost}
@@ -1531,6 +1563,7 @@ export function App() {
                     layoutId={layoutId}
                     reference={live !== null && !black && !logo ? (liveReference ?? undefined) : undefined}
                     style={live !== null && !black && !logo ? liveStyles[liveSlideIndex] : undefined}
+                    credit={live !== null && !black && !logo ? (liveCredit ?? undefined) : undefined}
                     alert={live !== null && !black && !logo ? alert : null}
                     className="h-full max-w-full"
                   />
@@ -1674,7 +1707,7 @@ export function App() {
       </main>
 
       <footer className="flex items-center justify-between border-t border-slate-300 px-4 py-1.5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-        <span>True Worship {__APP_VERSION__} · GPL-3.0 · {schedule.length} items in schedule</span>
+        <span>True Worship {__APP_VERSION__} · {schedule.length} items in schedule</span>
         <span>Built by TMB</span>
       </footer>
 
