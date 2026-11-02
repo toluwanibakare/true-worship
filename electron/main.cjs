@@ -482,7 +482,13 @@ registerLibrary({
 })
 
 ipcMain.handle('get-displays', () => listDisplays())
-ipcMain.handle('voice-start', (_event, model) => voice.start(app.getPath('userData'), model))
+ipcMain.handle('voice-start', (_event, model) => voice.start(app.getPath('userData'), model, app.isPackaged))
+ipcMain.handle('voice-model-status', (_event, model) => voice.modelStatus(app.getPath('userData'), model))
+ipcMain.handle('voice-model-download', (event, model) =>
+  voice.downloadModel(app.getPath('userData'), model ?? 'base', (fraction) =>
+    event.sender.send('voice-model-progress', fraction),
+  ),
+)
 ipcMain.handle('voice-stop', () => voice.stop())
 ipcMain.handle('voice-transcribe', (_event, wav) => voice.transcribe(Buffer.from(wav)))
 ipcMain.handle('ndi-status', () => ndi.getStatus())

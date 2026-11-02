@@ -11,34 +11,105 @@ const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 
+const crypto = require('node:crypto')
+
 const PORT = 18181
 /** Words the model is nudged towards, so "Psalm 23" is not heard as "some 23". */
 const PROMPT = 'Scripture reading: John 3:16, Psalm 23, Romans 8:28, 1 Corinthians 13, Genesis 1:1, Revelation 21.'
 
+/**
+ * The models the app can fetch. They are the MIT-licensed ggml Whisper files
+ * published with whisper.cpp; the size and SHA-1 are checked after download.
+ */
+const MODELS = {
+  base: {
+    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin',
+    bytes: 147951465,
+    sha1: '465707469ff3a37a2b9b8d8f89f2f99de7299dac',
+  },
+}
+
 const exe = process.platform === 'win32' ? 'whisper-server.exe' : 'whisper-server'
+/** Folder name of this platform's engine build, e.g. linux-x64, win32-x64, darwin-arm64. */
+const platformDir = `${process.platform}-${process.arch}`
 
 function firstExisting(paths) {
   return paths.find((candidate) => candidate && fs.existsSync(candidate)) ?? null
 }
 
-function findServer(userData) {
+/**
+ * The engine ships inside the installer (resources/whisper/<platform>/), built
+ * by .github/workflows/whisper-engine.yml. A copy in the app's data folder wins,
+ * so it can be replaced without a new installer. From source (not packaged)
+ * a build in whisper/<platform>/ or an engine another app left is used.
+ */
+function findServer(userData, packaged) {
   return firstExisting([
     process.env.TW_WHISPER_SERVER,
-    path.join(userData, 'whisper', exe),
-    path.join(process.resourcesPath ?? '', 'whisper', exe),
-    path.join(__dirname, '..', 'whisper', exe),
-    '/opt/OpenWhispr/resources/bin/whisper-server-linux-x64',
+    path.join(userData, 'whisper', platformDir, exe),
+    path.join(process.resourcesPath ?? '', 'whisper', platformDir, exe),
+    ...(packaged
+      ? []
+      : [
+          path.join(__dirname, '..', 'whisper', platformDir, exe),
+          '/opt/OpenWhispr/resources/bin/whisper-server-linux-x64',
+        ]),
   ])
 }
 
+const modelDir = (userData) => path.join(userData, 'whisper-models')
+const modelFile = (name) => `ggml-${name}.bin`
+
 function findModel(userData, name) {
-  const file = `ggml-${name}.bin`
   return firstExisting([
     process.env.TW_WHISPER_MODEL,
-    path.join(userData, 'whisper-models', file),
-    path.join(process.resourcesPath ?? '', 'whisper', file),
-    path.join(os.homedir(), '.cache', 'openwhispr', 'whisper-models', file),
+    path.join(modelDir(userData), modelFile(name)),
+    path.join(process.resourcesPath ?? '', 'whisper', modelFile(name)),
   ])
+}
+
+/** Whether the model for `name` is on this computer. */
+function modelStatus(userData, name = 'base') {
+  return { present: findModel(userData, name) !== null, model: name, bytes: MODELS[name]?.bytes ?? 0 }
+}
+
+/**
+ * Downloads a model into the app's data folder, reporting progress (0 to 1),
+ * then checks its size and checksum before keeping it.
+ */
+async function downloadModel(userData, name, onProgress) {
+  const model = MODELS[name]
+  if (!model) return { ok: false, error: `No model called ${name}.` }
+  fs.mkdirSync(modelDir(userData), { recursive: true })
+  const target = path.join(modelDir(userData), modelFile(name))
+  const partial = `${target}.part`
+  try {
+    const res = await fetch(model.url, { redirect: 'follow' })
+    if (!res.ok || !res.body) return { ok: false, error: `The download server answered ${res.status}.` }
+    const total = Number(res.headers.get('content-length')) || model.bytes
+    const hash = crypto.createHash('sha1')
+    const out = fs.createWriteStream(partial)
+    let received = 0
+    for await (const chunk of res.body) {
+      hash.update(chunk)
+      received += chunk.length
+      if (!out.write(chunk)) await new Promise((resolve) => out.once('drain', resolve))
+      onProgress?.(Math.min(1, received / total))
+    }
+    await new Promise((resolve, reject) => out.end((error) => (error ? reject(error) : resolve())))
+    if (received !== model.bytes || hash.digest('hex') !== model.sha1) {
+      fs.rmSync(partial, { force: true })
+      return { ok: false, error: 'The downloaded model did not match its checksum. Try again.' }
+    }
+    fs.renameSync(partial, target)
+    return { ok: true }
+  } catch (error) {
+    fs.rmSync(partial, { force: true })
+    return {
+      ok: false,
+      error: error instanceof Error ? `The download failed: ${error.message}` : 'The download failed.',
+    }
+  }
 }
 
 let child = null
@@ -60,21 +131,23 @@ async function waitUntilUp(timeoutMs) {
 }
 
 /** Starts the speech engine (once). Resolves to { ok, model } or { ok: false, error }. */
-function start(userData, model = 'base') {
+function start(userData, model = 'base', packaged = false) {
   if (child && ready && modelName === model) return ready
   stop()
-  const server = findServer(userData)
+  const server = findServer(userData, packaged)
   if (!server) {
     return Promise.resolve({
       ok: false,
-      error: `The speech engine (${exe}) was not found. Put it in ${path.join(userData, 'whisper')}.`,
+      needs: 'engine',
+      error: `The speech engine for ${platformDir} is missing from this install. Reinstall True Worship.`,
     })
   }
   const weights = findModel(userData, model)
   if (!weights) {
     return Promise.resolve({
       ok: false,
-      error: `The Whisper model ggml-${model}.bin was not found. Put it in ${path.join(userData, 'whisper-models')}.`,
+      needs: 'model',
+      error: 'The speech model is not on this computer yet.',
     })
   }
   modelName = model
@@ -135,4 +208,4 @@ async function transcribe(wav) {
   }
 }
 
-module.exports = { start, stop, transcribe }
+module.exports = { start, stop, transcribe, modelStatus, downloadModel }

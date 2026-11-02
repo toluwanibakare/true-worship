@@ -122,7 +122,25 @@ export function VoiceBar({
       setPending(call)
     }
   }
-  const { state, error, level, busy } = useVoiceListener(true, handle)
+  const [attempt, setAttempt] = useState(0)
+  const [download, setDownload] = useState<{ progress: number; error?: string } | null>(null)
+  const { state, error, level, busy, needsModel } = useVoiceListener(true, handle, attempt)
+
+  // The speech model is fetched once, on request, and kept on this computer.
+  const downloadModel = async () => {
+    const api = window.electronAPI
+    if (!api) return
+    setDownload({ progress: 0 })
+    const stop = api.onVoiceModelProgress((progress) => setDownload({ progress }))
+    const result = await api.voiceModelDownload('base')
+    stop()
+    if (result.ok) {
+      setDownload(null)
+      setAttempt((value) => value + 1)
+    } else {
+      setDownload({ progress: 0, error: result.error })
+    }
+  }
 
   const goPending = () => {
     if (!pending) return
@@ -187,9 +205,30 @@ export function VoiceBar({
         ))}
       </div>
 
-      {error && <span className="text-red-600 dark:text-red-400">{error}</span>}
+      {needsModel ? (
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <span className="text-slate-600 dark:text-slate-300">
+            Voice needs a one-time download of the speech model (148 MB). It stays on this computer and
+            listening works offline after that.
+          </span>
+          {download && !download.error ? (
+            <span className="font-medium">Downloading… {Math.round(download.progress * 100)}%</span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void downloadModel()}
+              className="rounded-full bg-[#1e40af] px-3 py-0.5 text-xs font-medium text-white hover:bg-blue-800"
+            >
+              Download
+            </button>
+          )}
+          {download?.error && <span className="text-red-600 dark:text-red-400">{download.error}</span>}
+        </span>
+      ) : (
+        error && <span className="text-red-600 dark:text-red-400">{error}</span>
+      )}
 
-      {!error && (
+      {!error && !needsModel && (
         <span className="min-w-0 flex-1 truncate text-slate-500 dark:text-slate-400" title={heard}>
           {heard ? `Heard: “${heard}”` : 'Say a scripture, like “John 3:16”, or start singing a song from your library.'}
           {last && !pending ? ` · Showing ${last}` : ''}

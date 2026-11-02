@@ -39,8 +39,9 @@ function wavOf(samples: Float32Array): ArrayBuffer {
 
 export type VoiceState = 'off' | 'starting' | 'listening' | 'error'
 
-export function useVoiceListener(active: boolean, onText: (text: string) => void) {
+export function useVoiceListener(active: boolean, onText: (text: string) => void, attempt = 0) {
   const [state, setState] = useState<VoiceState>('off')
+  const [needsModel, setNeedsModel] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [level, setLevel] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -59,6 +60,7 @@ export function useVoiceListener(active: boolean, onText: (text: string) => void
     let source: MediaStreamAudioSourceNode | null = null
     setState('starting')
     setError(null)
+    setNeedsModel(false)
 
     const queue: Float32Array[] = []
     let working = false
@@ -85,7 +87,10 @@ export function useVoiceListener(active: boolean, onText: (text: string) => void
         const api = window.electronAPI
         if (!api?.voiceStart) throw new Error('Voice needs the desktop app.')
         const engine = await api.voiceStart('base')
-        if (!engine.ok) throw new Error(engine.error ?? 'The speech engine did not start.')
+        if (!engine.ok) {
+          if (engine.needs === 'model' && !cancelled) setNeedsModel(true)
+          throw new Error(engine.error ?? 'The speech engine did not start.')
+        }
         if (cancelled) return
         stream = await navigator.mediaDevices.getUserMedia({
           audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
@@ -175,7 +180,7 @@ export function useVoiceListener(active: boolean, onText: (text: string) => void
       setLevel(0)
       setBusy(false)
     }
-  }, [active])
+  }, [active, attempt])
 
-  return { state, error, level, busy }
+  return { state, error, level, busy, needsModel }
 }

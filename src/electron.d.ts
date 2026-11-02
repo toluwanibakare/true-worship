@@ -76,7 +76,11 @@ export type ElectronAPI = {
   getLastLive: () => Promise<LiveUpdatePayload | null>
   onLiveUpdate: (callback: (payload: LiveUpdatePayload) => void) => void
   /** Starts the offline speech engine; { ok: false, error } says what is missing. */
-  voiceStart: (model?: string) => Promise<{ ok: boolean; model?: string; error?: string }>
+  voiceStart: (model?: string) => Promise<{ ok: boolean; model?: string; error?: string; needs?: 'engine' | 'model' }>
+  voiceModelStatus: (model?: string) => Promise<{ present: boolean; model: string; bytes: number }>
+  /** Downloads the speech model once; progress arrives through onVoiceModelProgress. */
+  voiceModelDownload: (model?: string) => Promise<{ ok: boolean; error?: string }>
+  onVoiceModelProgress: (callback: (fraction: number) => void) => () => void
   voiceStop: () => Promise<void>
   /** Turns a 16 kHz mono WAV clip into text. */
   voiceTranscribe: (wav: ArrayBuffer) => Promise<{ ok: boolean; text?: string; error?: string }>

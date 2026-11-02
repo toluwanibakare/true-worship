@@ -1,0 +1,70 @@
+name: Speech engine
+
+# Builds whisper.cpp's server (MIT licence) for each platform True Worship
+# runs on. The result is bundled into the installer under
+# resources/whisper/<platform>-<arch>/ (see docs/speech-engine.md). Run it by
+# hand (Actions > Speech engine > Run workflow) when the pinned version changes.
+on:
+  workflow_dispatch:
+    inputs:
+      whisper_tag:
+        description: whisper.cpp release tag to build
+        default: v1.9.5
+
+jobs:
+  build:
+    name: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x64
+            os: ubuntu-22.04
+            flags: -DBUILD_SHARED_LIBS=ON -DGGML_BACKEND_DL=ON -DGGML_CPU_ALL_VARIANTS=ON -DGGML_NATIVE=OFF "-DCMAKE_BUILD_RPATH=$ORIGIN" -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON "-DCMAKE_INSTALL_RPATH=$ORIGIN"
+          - platform: win32-x64
+            os: windows-2022
+            flags: -DBUILD_SHARED_LIBS=ON -DGGML_BACKEND_DL=ON -DGGML_CPU_ALL_VARIANTS=ON -DGGML_NATIVE=OFF
+          - platform: darwin-arm64
+            os: macos-14
+            flags: -DBUILD_SHARED_LIBS=OFF -DGGML_METAL_EMBED_LIBRARY=ON
+          - platform: darwin-x64
+            os: macos-15-intel
+            flags: -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON
+    steps:
+      - name: Get whisper.cpp
+        shell: bash
+        run: git clone --depth 1 --branch "${{ inputs.whisper_tag }}" https://github.com/ggml-org/whisper.cpp.git whisper.cpp
+
+      - name: Build whisper-server
+        shell: bash
+        working-directory: whisper.cpp
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF ${{ matrix.flags }}
+          cmake --build build --config Release --target whisper-server -j 4
+
+      - name: Collect the program and its libraries
+        shell: bash
+        run: |
+          mkdir -p out
+          bin=whisper.cpp/build/bin
+          [ -d "$bin/Release" ] && bin="$bin/Release"
+          cp -R "$bin"/. out/
+          # Only what the server needs at run time.
+          rm -f out/*.lib out/*.exp out/*.pdb
+          ls -la out
+          tar -czf "whisper-${{ matrix.platform }}.tar.gz" -C out .
+
+      - name: Check it starts
+        shell: bash
+        run: |
+          mkdir -p check && tar -xzf "whisper-${{ matrix.platform }}.tar.gz" -C check
+          exe=check/whisper-server
+          [ -f "$exe.exe" ] && exe="$exe.exe"
+          "$exe" --help 2>&1 | head -5
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: whisper-${{ matrix.platform }}
+          path: whisper-${{ matrix.platform }}.tar.gz
+          if-no-files-found: error

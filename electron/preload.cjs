@@ -31,6 +31,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onLiveUpdate: (callback) =>
     ipcRenderer.on('live-update', (_event, payload) => callback(payload)),
   voiceStart: (model) => ipcRenderer.invoke('voice-start', model),
+  voiceModelStatus: (model) => ipcRenderer.invoke('voice-model-status', model),
+  voiceModelDownload: (model) => ipcRenderer.invoke('voice-model-download', model),
+  onVoiceModelProgress: (callback) => {
+    const listener = (_event, fraction) => callback(fraction)
+    ipcRenderer.on('voice-model-progress', listener)
+    return () => ipcRenderer.removeListener('voice-model-progress', listener)
+  },
   voiceStop: () => ipcRenderer.invoke('voice-stop'),
   voiceTranscribe: (wav) => ipcRenderer.invoke('voice-transcribe', wav),
   ndiStatus: () => ipcRenderer.invoke('ndi-status'),
