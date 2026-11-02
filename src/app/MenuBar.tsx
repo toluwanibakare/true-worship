@@ -25,8 +25,8 @@ function Menu({ label, open, onToggle, onClose, children }: MenuProps) {
         onClick={onToggle}
         className={`rounded px-2 py-1 text-sm ${
           open
-            ? 'bg-white/25 dark:bg-black/15'
-            : 'hover:bg-white/15 dark:hover:bg-black/10'
+            ? 'bg-white/25'
+            : 'hover:bg-white/15'
         }`}
       >
         {label}
