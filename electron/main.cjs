@@ -14,6 +14,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 const ndi = require('./ndi.cjs')
+const voice = require('./voice.cjs')
 
 const isDev = process.env.TW_DEV === '1'
 
@@ -481,6 +482,9 @@ registerLibrary({
 })
 
 ipcMain.handle('get-displays', () => listDisplays())
+ipcMain.handle('voice-start', (_event, model) => voice.start(app.getPath('userData'), model))
+ipcMain.handle('voice-stop', () => voice.stop())
+ipcMain.handle('voice-transcribe', (_event, wav) => voice.transcribe(Buffer.from(wav)))
 ipcMain.handle('ndi-status', () => ndi.getStatus())
 ipcMain.handle('ndi-set', (_event, options) =>
   ndi.setNdi(options, () => liveWindow),
@@ -518,6 +522,7 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   quitting = true
+  voice.stop()
   void ndi.destroyAll()
 })
 

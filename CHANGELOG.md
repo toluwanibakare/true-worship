@@ -6,6 +6,7 @@ Keep a Changelog, and versioning is exploratory while the project is 0.x.
 ## [Unreleased]
 
 ### Added
+- Voice (first slice): the Listen button starts offline speech recognition (whisper.cpp with the Whisper base model; nothing leaves the computer and no key is needed). Say "John chapter 3 verse 16", "First Corinthians 13", "Psalm 23 in the NIV" or "John 3:16 to 18" and it goes live in the Scriptures tab's version (or the one named, if installed); "next verse" and "previous verse" step on. Auto goes live straight away; Manual holds the match with Go Live and Dismiss. The mode is remembered. The speech engine and model are looked for in the app's data folder first (`whisper/` and `whisper-models/`), then in an OpenWhispr install, until we ship our own.
 - Song credit line: a song's title, author, copyright (or "Public Domain") and CCLI number sit small at the bottom-left of its first slide, in the previews, the Live pane and on the projector.
 - Songs sidebar: All Songs and Hymns. Hymns lists the 25,716-hymn public-domain archive (built into the app, works offline), searchable by title, author or words with punctuation ignored; Add to library, drag onto the schedule, or double-click to go live. The bottom hymn panel and the small seeded hymn pack are gone.
 - More Available (Bibles): translations are listed A to Z, with a search box for name, abbreviation or language.

@@ -49,6 +49,8 @@ import {
 import type { ScheduleItem, SlideStyle, Song, Verse } from '../shared/lib/types'
 import { SlideEditor } from '../shared/components/SlideEditor'
 import { songCredit } from '../shared/lib/credit'
+import { VoiceBar } from '../features/voice/VoiceBar'
+import type { ScriptureCall } from '../features/voice/scriptureParser'
 
 /**
  * Toolbar button: an icon above a short label. The toolbar splits
@@ -205,6 +207,13 @@ const IconBell = (
     <path d="M10 20a2 2 0 0 0 4 0" />
   </svg>
 )
+const IconMic = (
+  <svg {...iconProps}>
+    <rect x="9" y="3" width="6" height="11" rx="3" />
+    <path d="M5 11a7 7 0 0 0 14 0" />
+    <path d="M12 18v3" />
+  </svg>
+)
 const IconImage = (
   <svg {...iconProps}>
     <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -347,7 +356,12 @@ export function App() {
     version?: string
     nonce: number
     live: boolean
+    /** Put the verse(s) live as soon as they are found (the voice feature). */
+    go?: boolean
+    endVerse?: number
+    whole?: boolean
   } | null>(null)
+  const [voiceOn, setVoiceOn] = useState(false)
   const focusNonce = useRef(0)
   const [selectedId, setSelectedId] = useState<string | null>(demoSchedule[0]?.id ?? null)
   const [tab, setTab] = useState<Tab>('songs')
@@ -1018,6 +1032,20 @@ export function App() {
     liveFromScriptures.current && live !== null && scriptureStepper.current
       ? scriptureStepper.current(direction)
       : false
+  /** A scripture the voice feature understood: shown in the Scriptures tab and put live. */
+  const goLiveSpoken = (call: ScriptureCall) => {
+    focusNonce.current += 1
+    setTab('bible')
+    setScriptureFocus({
+      reference: `${call.book} ${call.chapter}:${call.verse}`,
+      version: call.version,
+      nonce: focusNonce.current,
+      live: true,
+      go: true,
+      endVerse: call.endVerse,
+      whole: call.wholeChapter,
+    })
+  }
   const stepLive = (direction: -1 | 1) => {
     if (!live || !liveSlides) return
     const next = liveSlideIndex + direction
@@ -1359,6 +1387,13 @@ export function App() {
             <ToolButton label="Go Live" icon={IconPlay} accent onClick={handleGoLive} />
             <ToolDivider />
             <ToolButton label="Alerts" icon={IconBell} onClick={() => setDialog('alerts')} />
+            <ToolButton
+              label="Listen"
+              icon={IconMic}
+              blinking={voiceOn}
+              title="Listen for scriptures spoken aloud"
+              onClick={() => setVoiceOn((on) => !on)}
+            />
             <ToolDivider />
             <ToolButton label="Logo" icon={IconImage} onClick={handleLogo} />
             <ToolButton label="Black" icon={IconBlack} onClick={handleBlack} />
@@ -1373,6 +1408,16 @@ export function App() {
             />
           </div>
         </div>
+
+        {voiceOn && (
+          <VoiceBar
+            onScripture={goLiveSpoken}
+            onStep={(direction) => {
+              if (!stepScripture(direction)) stepLive(direction)
+            }}
+            onStop={() => setVoiceOn(false)}
+          />
+        )}
 
         <input
           ref={fileInputRef}

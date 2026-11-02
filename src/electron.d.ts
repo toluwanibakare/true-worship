@@ -75,6 +75,11 @@ export type ElectronAPI = {
   sendLiveUpdate: (payload: LiveUpdatePayload) => void
   getLastLive: () => Promise<LiveUpdatePayload | null>
   onLiveUpdate: (callback: (payload: LiveUpdatePayload) => void) => void
+  /** Starts the offline speech engine; { ok: false, error } says what is missing. */
+  voiceStart: (model?: string) => Promise<{ ok: boolean; model?: string; error?: string }>
+  voiceStop: () => Promise<void>
+  /** Turns a 16 kHz mono WAV clip into text. */
+  voiceTranscribe: (wav: ArrayBuffer) => Promise<{ ok: boolean; text?: string; error?: string }>
   ndiStatus: () => Promise<NdiStatus>
   setNdi: (options: NdiOptions) => Promise<NdiStatus>
 }

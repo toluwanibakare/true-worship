@@ -169,7 +169,17 @@ export function BibleLookup({
    * keys and Up/Down carry on from it. A new `nonce` is a new request;
    * `live` marks the verse as the one on the screen.
    */
-  focus?: { reference: string; version?: string; nonce: number; live: boolean } | null
+  focus?: {
+    reference: string
+    version?: string
+    nonce: number
+    live: boolean
+    /** Put it live as soon as it is found. */
+    go?: boolean
+    /** The last verse of a passage, or `whole` for the whole chapter. */
+    endVerse?: number
+    whole?: boolean
+  } | null
   passages: Record<string, string>
   /**
    * Hands the app a function that puts the previous (-1) or next (1) verse
@@ -427,6 +437,27 @@ export function BibleLookup({
     remember(row.reference)
     enterPreview.current = null
     if (request.live) liveKey.current = row.key
+    if (request.go) {
+      // A passage (or a whole chapter) goes live a verse to a slide, from its first verse.
+      const sameChapter = allRows
+        .filter(
+          (entry) =>
+            entry.translationId === row.translationId &&
+            entry.book === row.book &&
+            entry.chapter === row.chapter &&
+            entry.verse >= row.verse &&
+            (request.whole || entry.verse <= (request.endVerse ?? row.verse)),
+        )
+        .sort((a, b) => a.verse - b.verse)
+      const from = request.whole ? sameChapter[0] ?? row : row
+      const last = sameChapter[sameChapter.length - 1] ?? row
+      const label =
+        sameChapter.length > 1
+          ? `${displayBook(from.book)} ${from.chapter}:${from.verse}-${last.verse}`
+          : from.reference
+      liveKey.current = from.key
+      onGoLive(label, sameChapter.length > 0 ? sameChapter.map((entry) => [entry.text]) : [[row.text]], abbrFor(row.translationId))
+    }
     // remember only reads its argument.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allRows, focus?.nonce])

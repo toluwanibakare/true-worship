@@ -30,6 +30,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getLastLive: () => ipcRenderer.invoke('live-last'),
   onLiveUpdate: (callback) =>
     ipcRenderer.on('live-update', (_event, payload) => callback(payload)),
+  voiceStart: (model) => ipcRenderer.invoke('voice-start', model),
+  voiceStop: () => ipcRenderer.invoke('voice-stop'),
+  voiceTranscribe: (wav) => ipcRenderer.invoke('voice-transcribe', wav),
   ndiStatus: () => ipcRenderer.invoke('ndi-status'),
   setNdi: (options) => ipcRenderer.invoke('ndi-set', options),
 })
