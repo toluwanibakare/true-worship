@@ -12,3 +12,6 @@ easyworship-7-screenshots.zip
 
 # Speech engine builds (from .github/workflows/whisper-engine.yml), bundled by the installer
 /whisper/
+
+# Local clone of thiagobodruk/bible (served via public/bible symlink)
+bible/

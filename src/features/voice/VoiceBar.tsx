@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Song } from '../../shared/lib/types'
 import { buildSongIndex, matchPhrase, nextVerse } from './songMatcher'
 import { parseSpoken, referenceOf, type ScriptureCall } from './scriptureParser'
-import { useVoiceListener } from './useVoiceListener'
+import { useVoiceListener, type VoiceSensitivity } from './useVoiceListener'
+import { VoiceSettingsModal } from './VoiceSettingsModal'
 
 /**
  * Feature: voice — the listening bar.
@@ -20,6 +21,8 @@ import { useVoiceListener } from './useVoiceListener'
 type Mode = 'auto' | 'manual'
 
 const MODE_KEY = 'tw-voice-mode'
+const DEFAULT_VERSION_KEY = 'tw-voice-default-version'
+const SENSITIVITY_KEY = 'tw-voice-sensitivity'
 
 function loadMode(): Mode {
   try {
@@ -29,10 +32,28 @@ function loadMode(): Mode {
   }
 }
 
+function loadDefaultVersion(): string {
+  try {
+    return localStorage.getItem(DEFAULT_VERSION_KEY) || 'NKJV'
+  } catch {
+    return 'NKJV'
+  }
+}
+
+function loadSensitivity(): VoiceSensitivity {
+  try {
+    const val = localStorage.getItem(SENSITIVITY_KEY)
+    return val === 'low' || val === 'high' ? val : 'normal'
+  } catch {
+    return 'normal'
+  }
+}
+
 export function VoiceBar({
   songs,
   liveTitle,
   onScripture,
+  onTranslation,
   onSong,
   onVerse,
   onStep,
@@ -48,14 +69,22 @@ export function VoiceBar({
   onVerse: (songId: string, verse: number) => void
   /** A scripture was understood and is to go live. */
   onScripture: (call: ScriptureCall) => void
+  /** A translation switch was requested without a new reference. */
+  onTranslation?: (version: string) => void
   /** "Next verse" / "previous verse". */
   onStep: (direction: -1 | 1) => void
   onStop: () => void
 }) {
   const [mode, setMode] = useState<Mode>(loadMode)
+  const [defaultVersion, setDefaultVersion] = useState<string>(loadDefaultVersion)
+  const [sensitivity, setSensitivity] = useState<VoiceSensitivity>(loadSensitivity)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [heard, setHeard] = useState('')
   const [pending, setPending] = useState<ScriptureCall | null>(null)
+  const [pendingTranslation, setPendingTranslation] = useState<string | null>(null)
   const [last, setLast] = useState<string | null>(null)
+  // Other books it might have been, after an unclear one went live (tap one to switch).
+  const [alternatives, setAlternatives] = useState<ScriptureCall[]>([])
   const [pendingSong, setPendingSong] = useState<{ id: string; title: string; verse: number } | null>(null)
   // The song being followed, and the slide it is on.
   const [following, setFollowing] = useState<{ id: string; title: string; verse: number } | null>(null)
@@ -87,6 +116,22 @@ export function VoiceBar({
     }
   }, [mode])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(DEFAULT_VERSION_KEY, defaultVersion)
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [defaultVersion])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SENSITIVITY_KEY, sensitivity)
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [sensitivity])
+
   // The latest handlers and mode, read when speech arrives.
   const handle = (text: string) => {
     setHeard(text)
@@ -114,17 +159,46 @@ export function VoiceBar({
       if (mode === 'auto') onStep(call.action === 'next' ? 1 : -1)
       return
     }
+    if (call.kind === 'translation') {
+      if (mode === 'auto') {
+        setPending(null)
+        setPendingTranslation(null)
+        setAlternatives([])
+        setLast(call.version)
+        onTranslation?.(call.version)
+      } else {
+        setPending(null)
+        setPendingTranslation(call.version)
+        setAlternatives([])
+      }
+      return
+    }
+    const resolvedCall: ScriptureCall = call.version
+      ? call
+      : {
+          ...call,
+          version: defaultVersion,
+          ...(call.alternatives
+            ? {
+                alternatives: call.alternatives.map((alt) =>
+                  alt.version ? alt : { ...alt, version: defaultVersion },
+                ),
+              }
+            : {}),
+        }
     if (mode === 'auto') {
       setPending(null)
-      setLast(referenceOf(call) + (call.version ? ` (${call.version})` : ''))
-      onScripture(call)
+      setLast(label(resolvedCall))
+      setAlternatives(resolvedCall.guessed ? (resolvedCall.alternatives ?? []) : [])
+      onScripture(resolvedCall)
     } else {
-      setPending(call)
+      setPending(resolvedCall)
+      setAlternatives([])
     }
   }
   const [attempt, setAttempt] = useState(0)
   const [download, setDownload] = useState<{ progress: number; error?: string } | null>(null)
-  const { state, error, level, busy, needsModel } = useVoiceListener(true, handle, attempt)
+  const { state, error, level, busy, needsModel } = useVoiceListener(true, handle, attempt, sensitivity)
 
   // The speech model is fetched once, on request, and kept on this computer.
   const downloadModel = async () => {
@@ -142,12 +216,31 @@ export function VoiceBar({
     }
   }
 
+  const label = (call: ScriptureCall) => referenceOf(call) + (call.version ? ` (${call.version})` : '')
   const goPending = () => {
     if (!pending) return
-    setLast(referenceOf(pending) + (pending.version ? ` (${pending.version})` : ''))
+    setLast(label(pending))
     onScripture(pending)
     setPending(null)
   }
+  // Tapping another book puts that one live instead.
+  const choose = (call: ScriptureCall) => {
+    setLast(label(call))
+    setPending(null)
+    setAlternatives([])
+    onScripture(call)
+  }
+  const chips = (calls: ScriptureCall[]) =>
+    calls.map((call) => (
+      <button
+        key={label(call)}
+        type="button"
+        onClick={() => choose(call)}
+        className="rounded-full border border-slate-300 px-3 py-0.5 text-xs hover:bg-slate-200 dark:border-slate-600 dark:hover:bg-slate-800"
+      >
+        {label(call)}
+      </button>
+    ))
 
   // Esc dismisses a held match.
   useEffect(() => {
@@ -231,7 +324,7 @@ export function VoiceBar({
       {!error && !needsModel && (
         <span className="min-w-0 flex-1 truncate text-slate-500 dark:text-slate-400" title={heard}>
           {heard ? `Heard: “${heard}”` : 'Say a scripture, like “John 3:16”, or start singing a song from your library.'}
-          {last && !pending ? ` · Showing ${last}` : ''}
+          {last && !pending ? ` · Showing ${last}${alternatives.length > 0 ? ' (best guess)' : ''}` : ''}
         </span>
       )}
 
@@ -270,12 +363,49 @@ export function VoiceBar({
         </span>
       )}
 
-      {pending && (
+      {alternatives.length > 0 && !pending && (
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-slate-500 dark:text-slate-400">Not clear. Did you mean</span>
+          {chips(alternatives)}
+        </span>
+      )}
+
+      {pendingTranslation && (
         <span className="flex items-center gap-2">
+          <span className="font-semibold">Switch to {pendingTranslation}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setLast(pendingTranslation)
+              onTranslation?.(pendingTranslation)
+              setPendingTranslation(null)
+            }}
+            className="rounded-full bg-[#1e40af] px-3 py-0.5 text-xs font-medium text-white hover:bg-blue-800"
+          >
+            Go Live
+          </button>
+          <button
+            type="button"
+            onClick={() => setPendingTranslation(null)}
+            className="rounded-full border border-slate-300 px-3 py-0.5 text-xs hover:bg-slate-200 dark:border-slate-600 dark:hover:bg-slate-800"
+          >
+            Dismiss
+          </button>
+        </span>
+      )}
+
+      {pending && (
+        <span className="flex flex-wrap items-center gap-2">
           <span className="font-semibold">
-            {referenceOf(pending)}
-            {pending.version ? ` (${pending.version})` : ''}
+            {pending.guessed ? 'Best guess: ' : ''}
+            {label(pending)}
           </span>
+          {pending.guessed && pending.alternatives && pending.alternatives.length > 0 && (
+            <>
+              <span className="text-slate-500 dark:text-slate-400">or</span>
+              {chips(pending.alternatives)}
+            </>
+          )}
           <button
             type="button"
             onClick={goPending}
@@ -293,13 +423,35 @@ export function VoiceBar({
         </span>
       )}
 
-      <button
-        type="button"
-        onClick={onStop}
-        className="ml-auto rounded-full border border-slate-300 px-3 py-0.5 text-xs hover:bg-slate-200 dark:border-slate-600 dark:hover:bg-slate-800"
-      >
-        Stop listening
-      </button>
+      <div className="ml-auto flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          className="rounded-full border border-slate-300 px-3 py-0.5 text-xs hover:bg-slate-200 dark:border-slate-600 dark:hover:bg-slate-800"
+        >
+          Settings
+        </button>
+        <button
+          type="button"
+          onClick={onStop}
+          className="rounded-full border border-slate-300 px-3 py-0.5 text-xs hover:bg-slate-200 dark:border-slate-600 dark:hover:bg-slate-800"
+        >
+          Stop listening
+        </button>
+      </div>
+      {settingsOpen && (
+        <VoiceSettingsModal
+          mode={mode}
+          onMode={setMode}
+          defaultVersion={defaultVersion}
+          onDefaultVersion={setDefaultVersion}
+          sensitivity={sensitivity}
+          onSensitivity={setSensitivity}
+          liveLevel={level}
+          isListening={state === 'listening'}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </div>
   )
 }

@@ -48,3 +48,21 @@ The engine is only ever started on 127.0.0.1 and only while Listen is on.
 - Models are looked up the same way: an installed copy at
   `resources/whisper/ggml-<name>.bin` is used if present (for an offline
   installer), otherwise the downloaded one.
+
+## Voice commands, settings & translation fallback
+
+- **Simplified references**: Speak references naturally without saying
+  "chapter" or "verse", for example `John 11:25` or `John 11 25` (or
+  `John 11 12`, `Psalm 23`, `1 Corinthians 13 4 to 7`).
+- **Listen Settings**: Click **Settings** in the Listen bar to choose the
+  default voice translation (defaults to **NKJV**), switch between **Auto**
+  and **Manual** mode, adjust microphone sensitivity, and test your
+  microphone with a live input level bar.
+- **Translation fallback**:
+  - When a spoken scripture names a translation that is available in True
+    Worship's local packs but not yet downloaded, True Worship prompts you
+    to download it for offline use.
+  - When a translation is not available in True Worship's local packs, True
+    Worship checks for a configured **API.Bible key** (`Scriptures → + →
+    Licensed versions online`) and fetches the passage online if connected,
+    or prompts you to connect your API.Bible key if not set.

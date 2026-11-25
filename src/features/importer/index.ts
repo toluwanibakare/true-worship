@@ -1,6 +1,8 @@
 import JSZip from 'jszip'
 import type { ScheduleItem, Song } from '../../shared/lib/types'
+import { parseBibleShowFile } from './bibleshow'
 import { parseEwsFile } from './ews'
+import { parseHolyricsFile } from './holyrics'
 import { parseOpenLyricsXml } from './openlyrics'
 import { parseOpenSongXml } from './opensong'
 import { parseSqliteSongs } from './sqlite'
@@ -82,18 +84,34 @@ async function importZipFile(
     }
   }
   const songs: Song[] = []
+  const schedule: ScheduleItem[] = []
   const warnings: string[] = []
   for (const entry of Object.keys(zip.files)) {
-    if (zip.files[entry].dir || !/\.xml$/i.test(entry)) continue
-    const text = await zip.files[entry].async('text')
-    const result = await importXmlText(text, entry)
-    songs.push(...result.songs)
-    warnings.push(...result.warnings)
+    if (zip.files[entry].dir) continue
+    const ext = extensionOf(entry)
+    const fallbackTitle = baseName(entry).replace(/\.[^.]+$/, '')
+    if (ext === 'xml') {
+      const text = await zip.files[entry].async('text')
+      const result = await importXmlText(text, entry)
+      songs.push(...result.songs)
+      warnings.push(...result.warnings)
+    } else if (ext === 'hly' || ext === 'hlp' || ext === 'json') {
+      const text = await zip.files[entry].async('text')
+      const result = parseHolyricsFile(text, fallbackTitle)
+      songs.push(...result.songs)
+      schedule.push(...result.schedule)
+      warnings.push(...result.warnings)
+    } else if (ext === 'bs' || ext === 'bss' || ext === 'bsong') {
+      const text = await zip.files[entry].async('text')
+      const result = parseBibleShowFile(text, fallbackTitle)
+      songs.push(...result.songs)
+      warnings.push(...result.warnings)
+    }
   }
-  if (songs.length === 0) {
+  if (songs.length === 0 && schedule.length === 0) {
     warnings.push('No song files were found inside this zip.')
   }
-  return { songs, schedule: [], warnings, source: fileName }
+  return { songs, schedule, warnings, source: fileName }
 }
 
 export async function importFile(
@@ -119,6 +137,34 @@ export async function importFile(
         return {
           songs: [],
           schedule: parsed.schedule,
+          warnings: parsed.warnings,
+          source: file.name,
+        }
+      }
+      case 'hly':
+      case 'hlp':
+      case 'json': {
+        const parsed = parseHolyricsFile(
+          await file.text(),
+          baseName(file.name).replace(/\.[^.]+$/, ''),
+        )
+        return {
+          songs: parsed.songs,
+          schedule: parsed.schedule,
+          warnings: parsed.warnings,
+          source: file.name,
+        }
+      }
+      case 'bs':
+      case 'bss':
+      case 'bsong': {
+        const parsed = parseBibleShowFile(
+          await file.text(),
+          baseName(file.name).replace(/\.[^.]+$/, ''),
+        )
+        return {
+          songs: parsed.songs,
+          schedule: [],
           warnings: parsed.warnings,
           source: file.name,
         }

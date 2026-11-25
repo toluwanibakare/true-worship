@@ -26,7 +26,7 @@ then visit http://localhost:8000/.
   only while on screen, a pausable walkthrough, copy buttons, the FAQ and the mobile
   menu. The page reads and works without it, and motion is skipped for visitors who
   ask for reduced motion.
-- `assets/shots/`: WebP screenshots captured from the real app (version 0.18.0).
+- `assets/shots/`: WebP screenshots captured from the real app (version 0.19.0).
   Recapture them when the interface changes.
 - `assets/media/concert.webp`: the hero scene (an illustration made for this site, with
   lyrics on the screens), in two sizes.

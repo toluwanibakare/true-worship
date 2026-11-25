@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { UserMedia } from '../../electron'
 import { Button } from '../../shared/components/ui'
+import { Modal } from '../../shared/components/Modal'
 import { ResourceView } from '../../shared/components/ResourceView'
 import { SOURCE_ICONS } from '../../shared/components/sourceIcons'
 
@@ -23,17 +24,39 @@ const KIND_OF: Record<string, UserMedia['kind']> = {
 export function MediaLibrary({
   onPreview,
   onGoLive,
+  onCopyToTheme,
+  onSetLogoBackground,
 }: {
   onPreview: (item: UserMedia) => void
   onGoLive: (item: UserMedia) => void
+  onCopyToTheme?: (item: UserMedia, category: 'song' | 'scripture' | 'presentation') => void
+  onSetLogoBackground?: (item: UserMedia) => void
 }) {
   const [items, setItems] = useState<UserMedia[]>([])
   const [source, setSource] = useState('All')
   const [query, setQuery] = useState('')
   const [pickedFile, setPickedFile] = useState<string | null>(null)
   const [playing, setPlaying] = useState<string | null>(null)
+  const [context, setContext] = useState<{ x: number; y: number; item: UserMedia } | null>(null)
+  const [themeSubOpen, setThemeSubOpen] = useState(false)
+  const [editing, setEditing] = useState<UserMedia | null>(null)
+  const [editName, setEditName] = useState('')
+  const [fileDragOver, setFileDragOver] = useState(false)
   const player = useRef<HTMLAudioElement | null>(null)
+  const browserFileRef = useRef<HTMLInputElement | null>(null)
   const api = window.electronAPI
+
+  useEffect(() => {
+    if (!context) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setContext(null)
+        setThemeSubOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [context])
 
   useEffect(() => {
     api?.listMedia().then(setItems)
@@ -50,13 +73,41 @@ export function MediaLibrary({
 
   const addInBrowser = (files: FileList | null) => {
     if (!files) return
-    const added = [...files].map<UserMedia>((file) => ({
-      file: `${file.name}-${file.size}`,
+    const mediaFiles = [...files].filter(
+      (file) =>
+        file.type.startsWith('image/') ||
+        file.type.startsWith('video/') ||
+        file.type.startsWith('audio/') ||
+        /\.(png|jpe?g|webp|gif|bmp|svg|mp4|webm|mov|mkv|avi|mp3|wav|ogg|m4a)$/i.test(file.name),
+    )
+    if (mediaFiles.length === 0) return
+    const added = mediaFiles.map<UserMedia>((file) => ({
+      file: `${file.name}-${file.size}-${Date.now()}`,
       name: file.name.replace(/\.[^.]+$/, ''),
-      kind: file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'still',
+      kind:
+        file.type.startsWith('video/') || /\.(mp4|webm|mov|mkv|avi)$/i.test(file.name)
+          ? 'video'
+          : file.type.startsWith('audio/') || /\.(mp3|wav|ogg|m4a)$/i.test(file.name)
+            ? 'audio'
+            : 'still',
       url: URL.createObjectURL(file),
     }))
     setItems((current) => [...current, ...added])
+  }
+
+  const triggerImport = () => {
+    if (api) void add()
+    else browserFileRef.current?.click()
+  }
+
+  const saveEdit = () => {
+    if (!editing) return
+    const nextName = editName.trim()
+    if (!nextName) return
+    setItems((current) =>
+      current.map((entry) => (entry.file === editing.file ? { ...entry, name: nextName } : entry)),
+    )
+    setEditing(null)
   }
 
   const remove = (item: UserMedia) => {
@@ -102,22 +153,41 @@ export function MediaLibrary({
       onSelectSource={setSource}
       footer={`${visible.length} of ${items.length} ${items.length === 1 ? 'file' : 'files'}`}
     >
-      <div className="p-3">
+      <div
+        className={`h-full p-3 transition-colors ${fileDragOver ? 'bg-blue-50/60 ring-2 ring-inset ring-blue-500 dark:bg-blue-950/30' : ''}`}
+        onDragOver={(event) => {
+          if (event.dataTransfer.types.includes('Files')) {
+            event.preventDefault()
+            event.dataTransfer.dropEffect = 'copy'
+            if (!fileDragOver) setFileDragOver(true)
+          }
+        }}
+        onDragLeave={() => setFileDragOver(false)}
+        onDrop={(event) => {
+          setFileDragOver(false)
+          if (event.dataTransfer.files?.length > 0) {
+            event.preventDefault()
+            addInBrowser(event.dataTransfer.files)
+          }
+        }}
+      >
         <div className="mb-3">
           {api ? (
             <Button onClick={() => void add()}>Add media…</Button>
           ) : (
-            <label className="cursor-pointer rounded-md bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
-              Add media…
-              <input
-                type="file"
-                accept="image/*,video/*,audio/*"
-                multiple
-                className="hidden"
-                onChange={(event) => addInBrowser(event.target.files)}
-              />
-            </label>
+            <Button onClick={triggerImport}>Add media…</Button>
           )}
+          <input
+            ref={browserFileRef}
+            type="file"
+            accept="image/*,video/*,audio/*"
+            multiple
+            className="hidden"
+            onChange={(event) => {
+              addInBrowser(event.target.files)
+              event.target.value = ''
+            }}
+          />
         </div>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-x-2 gap-y-1.5">
           {visible.map((item) => (
@@ -126,6 +196,12 @@ export function MediaLibrary({
                 type="button"
                 onClick={() => pick(item)}
                 onDoubleClick={() => item.kind !== 'audio' && onGoLive(item)}
+                onContextMenu={(event) => {
+                  event.preventDefault()
+                  setPickedFile(item.file)
+                  setThemeSubOpen(false)
+                  setContext({ x: event.clientX, y: event.clientY, item })
+                }}
                 title={
                   item.kind === 'audio'
                     ? `${item.name} — click to ${playing === item.file ? 'stop' : 'play'}`
@@ -171,11 +247,165 @@ export function MediaLibrary({
         {visible.length === 0 && (
           <p className="py-4 text-sm text-slate-500">
             {items.length === 0
-              ? 'No media yet. Use "Add media…" to bring in images, videos and audio.'
+              ? 'No media yet. Use "Add media…" or drag and drop images, videos and audio here.'
               : 'No media matches.'}
           </p>
         )}
       </div>
+      {context && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => {
+              setContext(null)
+              setThemeSubOpen(false)
+            }}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              setContext(null)
+              setThemeSubOpen(false)
+            }}
+          />
+          <div
+            className="fixed z-50 w-56 rounded-md border border-slate-300 bg-white py-1 text-slate-900 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            style={{ left: Math.min(context.x, window.innerWidth - 240), top: Math.min(context.y, window.innerHeight - 220) }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setContext(null)
+                triggerImport()
+              }}
+              className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-200 dark:hover:bg-slate-800"
+            >
+              {context.item.kind === 'video'
+                ? 'Import New Video File…'
+                : context.item.kind === 'audio'
+                  ? 'Import New Audio File…'
+                  : 'Import New Image File…'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(context.item)
+                setEditName(context.item.name)
+                setContext(null)
+              }}
+              className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-200 dark:hover:bg-slate-800"
+            >
+              {context.item.kind === 'video'
+                ? 'Edit Video Properties…'
+                : context.item.kind === 'audio'
+                  ? 'Edit Audio Properties…'
+                  : 'Edit Image Properties…'}
+            </button>
+            {context.item.kind !== 'audio' && (
+              <>
+                <div
+                  className="relative"
+                  onMouseEnter={() => setThemeSubOpen(true)}
+                  onMouseLeave={() => setThemeSubOpen(false)}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setThemeSubOpen((value) => !value)}
+                    className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-slate-200 dark:hover:bg-slate-800"
+                  >
+                    <span>Copy to Theme</span>
+                    <span className="text-xs opacity-70">›</span>
+                  </button>
+                  {themeSubOpen && (
+                    <div className="absolute left-full top-0 z-50 ml-0.5 w-48 rounded-md border border-slate-300 bg-white py-1 text-slate-900 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                      {(
+                        [
+                          ['song', 'Song Theme'],
+                          ['scripture', 'Scripture Theme'],
+                          ['presentation', 'Presentation Theme'],
+                        ] as const
+                      ).map(([category, label]) => (
+                        <button
+                          key={category}
+                          type="button"
+                          onClick={() => {
+                            onCopyToTheme?.(context.item, category)
+                            setContext(null)
+                            setThemeSubOpen(false)
+                          }}
+                          className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-200 dark:hover:bg-slate-800"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSetLogoBackground?.(context.item)
+                    setContext(null)
+                  }}
+                  className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-200 dark:hover:bg-slate-800"
+                >
+                  Set As Logo Background
+                </button>
+              </>
+            )}
+            <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+            <button
+              type="button"
+              onClick={() => {
+                remove(context.item)
+                setContext(null)
+              }}
+              className="block w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-slate-200 dark:text-red-400 dark:hover:bg-slate-800"
+            >
+              Delete
+            </button>
+          </div>
+        </>
+      )}
+      {editing && (
+        <Modal
+          title={editing.kind === 'video' ? 'Video Properties' : editing.kind === 'audio' ? 'Audio Properties' : 'Image Properties'}
+          onClose={() => setEditing(null)}
+        >
+          <div className="flex flex-col gap-3 text-sm">
+            <label className="flex flex-col gap-1">
+              <span className="font-medium">Title</span>
+              <input
+                autoFocus
+                value={editName}
+                onChange={(event) => setEditName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') saveEdit()
+                }}
+                className="rounded border border-slate-300 bg-white px-2.5 py-1.5 dark:border-slate-700 dark:bg-slate-900"
+              />
+            </label>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Type: {editing.kind === 'still' ? 'Image' : editing.kind === 'video' ? 'Video' : 'Audio'} · File: {editing.file}
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditing(null)}
+                className="rounded bg-slate-200 px-3 py-1.5 font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!editName.trim()}
+                onClick={saveEdit}
+                className="rounded bg-slate-800 px-3 py-1.5 text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </ResourceView>
   )
 }

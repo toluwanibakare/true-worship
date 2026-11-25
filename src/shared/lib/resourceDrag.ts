@@ -4,10 +4,12 @@
  * drop, and neither knows about the other: both use this one format.
  */
 export const RESOURCE_MIME = 'application/x-true-worship-resource'
+export const THEME_MIME = 'application/x-true-worship-theme'
 
 export type ResourceDrag =
   | { kind: 'song'; id: string }
   | { kind: 'scripture'; reference: string; slides: string[][]; version: string }
+  | { kind: 'theme'; id: string }
 
 export const encodeResource = (resource: ResourceDrag) => JSON.stringify(resource)
 
@@ -16,6 +18,7 @@ export function decodeResource(data: string): ResourceDrag | null {
   try {
     const value = JSON.parse(data) as ResourceDrag
     if (value.kind === 'song' && typeof value.id === 'string') return value
+    if (value.kind === 'theme' && typeof value.id === 'string') return value
     if (value.kind === 'scripture' && typeof value.reference === 'string' && Array.isArray(value.slides)) {
       return value
     }

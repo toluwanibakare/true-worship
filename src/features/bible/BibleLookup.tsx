@@ -3,7 +3,7 @@ import { ResourceView } from '../../shared/components/ResourceView'
 import { ResourceTable, type Column } from '../../shared/components/ResourceTable'
 import { Modal } from '../../shared/components/Modal'
 import { encodeResource } from '../../shared/lib/resourceDrag'
-import { FALLBACK_VERSIONS, fetchPassage, fetchVersions, type BibleVersion } from './api'
+import { fetchPassage } from './api'
 import {
   clearApiBible,
   discoverLicensedVersions,
@@ -53,7 +53,6 @@ type Row = {
 }
 
 const INSTALLED_KEY = 'tw-bible-versions'
-const MORE_AVAILABLE = 'More Available…'
 const POSITION_KEY = 'tw-bible-position'
 
 /** Where the search box opens: the last verse selected, or the very beginning. */
@@ -66,7 +65,7 @@ function loadPosition(): string {
 }
 
 /** KJV is in the side panel to begin with; every other version is added by the user. */
-const DEFAULT_INSTALLED: Installed[] = [{ id: 'kjv', name: 'King James Version' }]
+const DEFAULT_INSTALLED: Installed[] = [{ id: 'local-kjv', name: 'King James Version' }]
 
 function loadInstalled(): Installed[] {
   try {
@@ -76,7 +75,22 @@ function loadInstalled(): Installed[] {
       raw.length > 0 &&
       raw.every((item) => typeof item?.id === 'string' && typeof item?.name === 'string')
     ) {
-      return raw
+      // Remove legacy online-only entries (such as old BBE/NLT) that did not
+      // carry a pack in PACKS, and migrate legacy 'kjv' to 'local-kjv'.
+      const validPackIds = new Set(PACKS.map((p) => p.id))
+      const cleaned: Installed[] = []
+      const seenIds = new Set<string>()
+      const seenNames = new Set<string>()
+      for (const item of raw as Installed[]) {
+        const id = item.id === 'kjv' ? 'local-kjv' : item.id
+        const nameKey = item.name.trim().toLowerCase()
+        if (item.source !== 'apibible' && !validPackIds.has(id)) continue
+        if (seenIds.has(id) || seenNames.has(nameKey)) continue
+        seenIds.add(id)
+        seenNames.add(nameKey)
+        cleaned.push({ ...item, id })
+      }
+      if (cleaned.length > 0) return cleaned
     }
   } catch {
     // Unreadable storage: fall back to the default.
@@ -214,7 +228,6 @@ export function BibleLookup({
   const [download, setDownload] = useState<Download | null>(null)
   const [showMore, setShowMore] = useState(false)
   const [moreQuery, setMoreQuery] = useState('')
-  const [catalogue, setCatalogue] = useState<BibleVersion[] | null>(null)
   // Text search (Scripture, Any Field).
   const [query, setQuery] = useState('')
   // Book, Chapter and Verse: three fields; they open on the last verse used.
@@ -234,10 +247,6 @@ export function BibleLookup({
   const [scrollKey, setScrollKey] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showAdd, setShowAdd] = useState(false)
-  const [addTranslation, setAddTranslation] = useState('kjv')
-  const [addReference, setAddReference] = useState('')
-  const [addText, setAddText] = useState('')
 
   const selected = installed.find((version) => version.id === selectedId) ?? installed[0]
   const selectedPack = PACKS.find((pack) => pack.id === selected.id)
@@ -255,6 +264,11 @@ export function BibleLookup({
   const [licensedBusy, setLicensedBusy] = useState(false)
   const [licensedError, setLicensedError] = useState<string | null>(null)
   const [licensedNotice, setLicensedNotice] = useState('')
+  const [missingVersionPrompt, setMissingVersionPrompt] = useState<
+    | { kind: 'download'; pack: PackInfo; reference: string }
+    | { kind: 'apibible'; abbr: string; reference: string }
+    | null
+  >(null)
 
   useEffect(() => {
     try {
@@ -267,7 +281,39 @@ export function BibleLookup({
   // Which versions already have their full text on this computer.
   useEffect(() => {
     listPackIds()
-      .then((ids) => setPackedIds(ids.map(String)))
+      .then(async (ids) => {
+        const strIds = ids.map(String)
+        // Auto-install local KJV into IndexedDB on first run so it is
+        // immediately searchable offline without needing an online lookup.
+        if (!strIds.includes('local-kjv')) {
+          const kjvPack = PACKS.find((p) => p.id === 'local-kjv')
+          if (kjvPack) {
+            try {
+              const stored = await downloadPack(kjvPack)
+              await savePack(stored)
+              strIds.push('local-kjv')
+            } catch {
+              // Ignore if local file is unreachable.
+            }
+          }
+        }
+        setPackedIds(strIds)
+        // Keep installed list in sync with downloaded packs in IndexedDB.
+        setInstalled((current) => {
+          const next = [...current]
+          let changed = false
+          for (const id of strIds) {
+            if (!next.some((item) => item.id === id)) {
+              const pack = PACKS.find((p) => p.id === id)
+              if (pack) {
+                next.push({ id: pack.id, name: pack.name })
+                changed = true
+              }
+            }
+          }
+          return changed ? next : current
+        })
+      })
       .catch(() => setPackedIds([]))
   }, [])
 
@@ -299,18 +345,6 @@ export function BibleLookup({
       current = false
     }
   }, [selected.id, isPacked])
-
-  // The catalogue of online-only versions is fetched only when "More Available…" opens.
-  useEffect(() => {
-    if (!showMore || catalogue) return
-    let live = true
-    fetchVersions().then((list) => {
-      if (live) setCatalogue(list)
-    })
-    return () => {
-      live = false
-    }
-  }, [showMore, catalogue])
 
   const allRows = useMemo(
     () => packRows ?? entries.filter((entry) => entry.translationId === selected.id),
@@ -407,13 +441,104 @@ export function BibleLookup({
   const pendingFocus = useRef<NonNullable<typeof focus> | null>(null)
   useEffect(() => {
     if (!focus) return
-    pendingFocus.current = focus
+    setMissingVersionPrompt(null)
+    const targetRef =
+      focus.reference.trim() ||
+      allRows.find((entry) => entry.key === pickedKey)?.reference ||
+      loadPosition()
+    pendingFocus.current = { ...focus, reference: targetRef }
     const wanted = installed.find(
       (version) => version.id.toLowerCase() === focus.version?.toLowerCase() || abbrFor(version.id).toLowerCase() === focus.version?.toLowerCase(),
     )
-    if (wanted && wanted.id !== selectedId) setSelectedId(wanted.id)
+    if (wanted) {
+      if (wanted.id !== selectedId) setSelectedId(wanted.id)
+      // If it's an API.Bible version, fetch the passage directly online.
+      if (wanted.source === 'apibible' && wanted.bibleId) {
+        const key = loadApiBibleKey()
+        if (key) {
+          setBusy(true)
+          setError(null)
+          fetchLicensedPassage(
+            key,
+            {
+              id: wanted.id,
+              name: wanted.name,
+              bibleId: wanted.bibleId,
+              abbr: wanted.abbr ?? wanted.id.toUpperCase(),
+              language: 'English',
+              copyright: wanted.copyright ?? '',
+            },
+            targetRef,
+          )
+            .then((passage) => {
+              setLicensedNotice(passage.copyright)
+              const rows = passage.verses.map((v) =>
+                makeRow(wanted.id, `${v.book} ${v.chapter}:${v.verse}`, v.text, orderOfReference(`${v.book} ${v.chapter}:${v.verse}`)),
+              )
+              if (rows.length > 0) {
+                setEntries((current) => [
+                  ...rows,
+                  ...current.filter((item) => !rows.some((r) => r.key === item.key)),
+                ])
+              }
+            })
+            .catch((err) => setError(err instanceof Error ? err.message : 'Could not fetch passage from API.Bible.'))
+            .finally(() => setBusy(false))
+        }
+      }
+    } else if (focus.version) {
+      const requested = focus.version.trim()
+      const requestedLower = requested.toLowerCase()
+      const packMatch = PACKS.find(
+        (pack) =>
+          pack.id.toLowerCase() === requestedLower ||
+          pack.abbr.toLowerCase() === requestedLower ||
+          pack.name.toLowerCase() === requestedLower,
+      )
+      if (packMatch) {
+        // Available in True Worship's local packs: prompt the user to download it.
+        setMissingVersionPrompt({ kind: 'download', pack: packMatch, reference: targetRef })
+      } else {
+        // Not available in True Worship's local packs: check API.Bible key.
+        const key = loadApiBibleKey()
+        if (!key) {
+          setMissingVersionPrompt({ kind: 'apibible', abbr: requested, reference: targetRef })
+        } else {
+          setBusy(true)
+          setError(null)
+          discoverLicensedVersions(key)
+            .then(({ found }) => {
+              const match = found.find(
+                (v) =>
+                  v.abbr.toLowerCase() === requestedLower ||
+                  v.id.toLowerCase() === requestedLower ||
+                  v.name.toLowerCase().includes(requestedLower),
+              )
+              if (!match) {
+                setMissingVersionPrompt({ kind: 'apibible', abbr: requested, reference: targetRef })
+                return
+              }
+              addLicensed(match)
+              return fetchLicensedPassage(key, match, targetRef).then((passage) => {
+                setLicensedNotice(passage.copyright)
+                const rows = passage.verses.map((v) =>
+                  makeRow(match.id, `${v.book} ${v.chapter}:${v.verse}`, v.text, orderOfReference(`${v.book} ${v.chapter}:${v.verse}`)),
+                )
+                if (rows.length > 0) {
+                  setEntries((current) => [
+                    ...rows,
+                    ...current.filter((item) => !rows.some((r) => r.key === item.key)),
+                  ])
+                }
+              })
+            })
+            .catch((err) => setError(err instanceof Error ? err.message : 'Could not reach API.Bible.'))
+            .finally(() => setBusy(false))
+        }
+      }
+    }
     setField(BCV)
-    setFields(focus.reference)
+    setFields(targetRef)
     // Only a new request, not every change to the installed list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.nonce])
@@ -623,11 +748,13 @@ export function BibleLookup({
       )
       await savePack(stored)
       setPackedIds((ids) => (ids.includes(pack.id) ? ids : [...ids, pack.id]))
-      setInstalled((current) =>
-        current.some((item) => item.id === pack.id)
-          ? current
-          : [...current, { id: pack.id, name: pack.name }],
-      )
+      setInstalled((current) => {
+        const nameKey = pack.name.trim().toLowerCase()
+        const filtered = current.filter(
+          (item) => item.id !== pack.id && item.name.trim().toLowerCase() !== nameKey,
+        )
+        return [...filtered, { id: pack.id, name: pack.name }]
+      })
       setSelectedId(pack.id)
       setDownload(null)
       setShowMore(false)
@@ -638,16 +765,6 @@ export function BibleLookup({
         error: err instanceof Error ? err.message : 'The download failed.',
       })
     }
-  }
-
-  function addOnlineVersion(version: BibleVersion) {
-    setInstalled((current) =>
-      current.some((item) => item.id === version.id)
-        ? current
-        : [...current, { id: version.id, name: version.name }],
-    )
-    setSelectedId(version.id)
-    setShowMore(false)
   }
 
   function saveKey() {
@@ -689,8 +806,11 @@ export function BibleLookup({
   }
 
   function addLicensed(version: LicensedVersion) {
-    setInstalled((current) =>
-      current.some((item) => item.id === version.id)
+    setInstalled((current) => {
+      const nameKey = version.name.trim().toLowerCase()
+      return current.some(
+        (item) => item.id === version.id || item.name.trim().toLowerCase() === nameKey,
+      )
         ? current
         : [
             ...current,
@@ -702,23 +822,10 @@ export function BibleLookup({
               abbr: version.abbr,
               copyright: version.copyright,
             },
-          ],
-    )
+          ]
+    })
     setSelectedId(version.id)
     setShowMore(false)
-  }
-
-  function addScripture() {
-    const reference = addReference.trim()
-    const text = addText.trim()
-    if (!reference || !text) return
-    const version = installed.find((item) => item.id === addTranslation)
-    const row = makeRow(version ? version.id : addTranslation, reference, text, orderOfReference(reference))
-    setEntries((current) => [row, ...current.filter((item) => item.key !== row.key)])
-    setPickedKey(row.key)
-    setAddReference('')
-    setAddText('')
-    setShowAdd(false)
   }
 
   const columns: Column<Row>[] = [
@@ -726,7 +833,7 @@ export function BibleLookup({
     { key: 'reference', label: 'Reference', width: '170px', value: (row) => row.reference, sortValue: (row) => row.order, className: 'font-medium' },
     { key: 'text', label: 'Scripture', width: '1fr', value: (row) => row.text },
   ]
-  const sources = [...installed.map((version) => version.name), MORE_AVAILABLE]
+  const sources = installed.map((version) => version.name)
   // Versions that can be downloaded whole are offered above; the rest stay online lookups.
   // The More Available list: A to Z, narrowed by the search box (name, abbreviation or language).
   const moreMatch = (...parts: string[]) => {
@@ -736,10 +843,6 @@ export function BibleLookup({
   }
   const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name)
   const morePacks = PACKS.filter((pack) => moreMatch(pack.name, pack.abbr, pack.language)).sort(byName)
-  const onlineOnly = (catalogue ?? [])
-    .filter((version) => !PACKS.some((pack) => pack.id === version.id || pack.onlineId === version.id))
-    .filter((version) => moreMatch(version.name, version.language))
-    .sort(byName)
 
   return (
     <>
@@ -782,10 +885,6 @@ export function BibleLookup({
         sources={sources}
         activeSource={selected.name}
         onSelectSource={(source) => {
-          if (source === MORE_AVAILABLE) {
-            setShowMore(true)
-            return
-          }
           const version = installed.find((item) => item.name === source)
           if (version) {
             setSelectedId(version.id)
@@ -797,9 +896,9 @@ export function BibleLookup({
         sideFooter={
           <button
             type="button"
-            onClick={() => setShowAdd(true)}
-            title="Add scripture"
-            aria-label="Add scripture"
+            onClick={() => setShowMore(true)}
+            title="Download translations"
+            aria-label="Download translations"
             className="rounded bg-slate-800 px-3 py-1 text-lg font-bold leading-none text-white dark:bg-slate-100 dark:text-slate-900"
           >
             +
@@ -807,6 +906,53 @@ export function BibleLookup({
         }
       >
         <div className="flex h-full min-h-0 flex-col">
+          {missingVersionPrompt?.kind === 'download' && (
+            <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:border-amber-800 dark:bg-amber-950/40">
+              <span className="text-slate-700 dark:text-slate-200">
+                <strong>{missingVersionPrompt.pack.name}</strong> ({missingVersionPrompt.pack.abbr}) is available in True Worship. Download it to show {missingVersionPrompt.reference}.
+              </span>
+              <button
+                type="button"
+                disabled={download?.id === missingVersionPrompt.pack.id && download.progress !== null}
+                onClick={() => {
+                  const pack = missingVersionPrompt.pack
+                  setMissingVersionPrompt(null)
+                  void downloadVersion(pack)
+                }}
+                className="rounded bg-slate-800 px-3 py-1 text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+              >
+                Download {missingVersionPrompt.pack.abbr}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMissingVersionPrompt(null)}
+                className="rounded border border-slate-300 px-2.5 py-1 text-xs dark:border-slate-700"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+          {missingVersionPrompt?.kind === 'apibible' && (
+            <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:border-amber-800 dark:bg-amber-950/40">
+              <span className="text-slate-700 dark:text-slate-200">
+                <strong>{missingVersionPrompt.abbr}</strong> is not available in True Worship. Connect your Bible API key to fetch it online.
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowMore(true)}
+                className="rounded bg-slate-800 px-3 py-1 text-white dark:bg-slate-100 dark:text-slate-900"
+              >
+                Connect Bible API key
+              </button>
+              <button
+                type="button"
+                onClick={() => setMissingVersionPrompt(null)}
+                className="rounded border border-slate-300 px-2.5 py-1 text-xs dark:border-slate-700"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
           {!isPacked && selectedPack && (
             <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-slate-200 px-3 py-2 text-sm dark:border-slate-800">
               <span className="text-slate-600 dark:text-slate-300">
@@ -861,70 +1007,9 @@ export function BibleLookup({
           </div>
         </div>
       </ResourceView>
-      {showAdd && (
-        <Modal title="Add scripture" onClose={() => setShowAdd(false)}>
-          <div className="flex flex-col gap-3 text-sm">
-            <label className="flex flex-col gap-1">
-              <span className="font-medium">Translation</span>
-              <select
-                value={addTranslation}
-                onChange={(event) => setAddTranslation(event.target.value)}
-                className="rounded border border-slate-300 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900"
-              >
-                {installed.map((version) => (
-                  <option key={version.id} value={version.id}>
-                    {version.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="font-medium">Reference</span>
-              <input
-                value={addReference}
-                onChange={(event) => setAddReference(event.target.value)}
-                placeholder="For example, Psalm 23:1"
-                className="rounded border border-slate-300 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="font-medium">Scripture</span>
-              <textarea
-                value={addText}
-                onChange={(event) => setAddText(event.target.value)}
-                placeholder="Paste or type the passage text"
-                rows={6}
-                className="rounded border border-slate-300 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900"
-              />
-            </label>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Added scriptures live in this session and preview like any
-              other row. Saving them into the library arrives with
-              SQLite storage.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowAdd(false)}
-                className="rounded bg-slate-200 px-3 py-1.5 font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={addScripture}
-                disabled={!addReference.trim() || !addText.trim()}
-                className="rounded bg-slate-800 px-3 py-1.5 text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
-              >
-                Add scripture
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
       {showMore && (
         <Modal
-          title="More Available"
+          title="Download"
           onClose={() => {
             setShowMore(false)
             setMoreQuery('')
@@ -946,7 +1031,7 @@ export function BibleLookup({
             here is public domain or freely licensed, as its line says, and partial
             editions are labelled with what they actually contain.
           </p>
-          {morePacks.length === 0 && onlineOnly.length === 0 && (
+          {morePacks.length === 0 && (
             <p className="text-sm text-slate-500">No translation matches “{moreQuery}”.</p>
           )}
           <ul className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -976,43 +1061,6 @@ export function BibleLookup({
               )
             })}
           </ul>
-          <h3 className="mb-1 mt-5 border-t border-slate-300 pt-4 text-sm font-semibold dark:border-slate-700">
-            Online lookup only
-          </h3>
-          <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
-            No downloadable copy is available for these, and bible-api.com asks apps not to
-            download whole Bibles from it. Passages are fetched one at a time when you look
-            them up, and need the internet.
-          </p>
-          {!catalogue ? (
-            <p className="text-sm text-slate-500">Loading the list…</p>
-          ) : catalogue === FALLBACK_VERSIONS ? (
-            <p className="text-sm text-slate-500">The online list could not be reached.</p>
-          ) : (
-            <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-              {onlineOnly.map((version) => {
-                const added = installed.some((item) => item.id === version.id)
-                return (
-                  <li key={version.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                    <span>
-                      <span className="block font-medium">{version.name}</span>
-                      <span className="block text-xs text-slate-500 dark:text-slate-400">
-                        {version.language} · {version.license}
-                      </span>
-                    </span>
-                    <button
-                      type="button"
-                      disabled={added}
-                      onClick={() => addOnlineVersion(version)}
-                      className="shrink-0 rounded bg-slate-800 px-3 py-1 text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
-                    >
-                      {added ? 'Added' : 'Add'}
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
           <h3 className="mb-1 mt-5 border-t border-slate-300 pt-4 text-sm font-semibold dark:border-slate-700">
             Licensed versions online (API.Bible)
           </h3>

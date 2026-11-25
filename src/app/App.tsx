@@ -12,6 +12,7 @@ import { ThemePicker } from '../features/themes/ThemePicker'
 import { LivePanel } from '../features/live/LivePanel'
 import { LiveWindow } from '../features/live/LiveWindow'
 import { AlertBar } from '../features/alerts/AlertBar'
+import JSZip from 'jszip'
 import { SongbookPanel } from '../features/songbook/SongbookPanel'
 import { ImporterPanel } from '../features/importer/ImporterPanel'
 import { downloadTworship, importFile } from '../features/importer'
@@ -28,7 +29,7 @@ import {
   isTypingTarget,
   resolveJumpSequence,
 } from '../features/shortcuts/shortcuts'
-import { MenuBar, type ThemeMode } from './MenuBar'
+import { MenuBar, type ThemeMode, type ViewMode } from './MenuBar'
 import { TitleBar } from './TitleBar'
 import { PreviewPanel } from '../features/preview/PreviewPanel'
 import { OutputPanel } from '../shared/components/OutputPanel'
@@ -46,7 +47,7 @@ import {
   demoSongs,
   demoThemes,
 } from '../shared/lib/demo'
-import type { ScheduleItem, SlideStyle, Song, Verse } from '../shared/lib/types'
+import type { ScheduleItem, SlideStyle, Song, Theme, Verse } from '../shared/lib/types'
 import { SlideEditor } from '../shared/components/SlideEditor'
 import { songCredit } from '../shared/lib/credit'
 import { VoiceBar } from '../features/voice/VoiceBar'
@@ -308,6 +309,13 @@ const clamp = (value: number, min: number, max: number) =>
 
 function previewForSchedule(item: ScheduleItem | undefined, songs: Song[]): Preview {
   if (!item) return { title: 'Nothing selected', slides: [['Select an item from the schedule.']] }
+  if (item.type === 'media' && item.media) {
+    return {
+      title: item.title,
+      slides: [['']],
+      media: { css: item.media.css ?? '#000000', video: item.media.video },
+    }
+  }
   if (item.type === 'song') {
     const song = songs.find((entry) => entry.id === item.ref)
     if (!song) return { title: item.title, slides: [['Song not found.']] }
@@ -370,10 +378,23 @@ export function App() {
   const [themeMode, setThemeMode] = useState<ThemeMode>(
     () => (localStorage.getItem('tw-theme') as ThemeMode) || 'system',
   )
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const saved = localStorage.getItem('tw-view-mode')
+    return saved === 'combined' || saved === 'live-resource' ? saved : 'split'
+  })
+  const [combinedPane, setCombinedPane] = useState<'preview' | 'live'>('preview')
+  useEffect(() => {
+    try {
+      localStorage.setItem('tw-view-mode', viewMode)
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [viewMode])
   // Deep Rays is the default look; the Backgrounds tab changes it.
   const [background, setBackground] = useState<BackgroundPreset | null>(
     () => BACKGROUNDS.find((entry) => entry.id === 'deep-rays') ?? null,
   )
+  const [logoBackground, setLogoBackground] = useState<{ css?: string; video?: string } | null>(null)
   const [layoutId, setLayoutId] = useState('fullscreen')
   const [alert, setAlert] = useState<MarqueeAlert | null>(null)
   const [slideIndex, setSlideIndex] = useState(0)
@@ -634,6 +655,7 @@ export function App() {
       if (song) insertScheduleItem({ id: newItemId(), type: 'song', title: song.title, ref: song.id }, at)
       return
     }
+    if (resource.kind !== 'scripture') return
     insertScheduleItem(
       {
         id: newItemId(),
@@ -948,6 +970,7 @@ export function App() {
   }
 
   const slideLabelsForItem = (item: ScheduleItem) => {
+    if (item.type === 'media') return ['Media']
     if (item.type === 'song') {
       const song = songs.find((entry) => entry.id === item.ref)
       return song ? song.verses.map((verse) => verse.label) : []
@@ -967,6 +990,7 @@ export function App() {
     const item = schedule.find((entry) => entry.id === id)
     if (!item) return
     focusNonce.current += 1
+    if (item.type === 'media') return
     if (item.type === 'song') {
       const song = songs.find((entry) => entry.id === item.ref)
       if (!song) return
@@ -1046,6 +1070,20 @@ export function App() {
       whole: call.wholeChapter,
     })
   }
+  /** Switch the active translation for the current scripture when the pastor names only a version. */
+  const switchSpokenTranslation = (version: string) => {
+    focusNonce.current += 1
+    setTab('bible')
+    setScriptureFocus((current) => ({
+      reference: '',
+      version,
+      nonce: focusNonce.current,
+      live: true,
+      go: true,
+      endVerse: current?.endVerse,
+      whole: current?.whole,
+    }))
+  }
   /** A song the voice feature recognised: shown in the Songs tab and put live at the slide being sung. */
   const goLiveSungSong = (songId: string, verse: number) => {
     const song = songs.find((entry) => entry.id === songId)
@@ -1091,6 +1129,7 @@ export function App() {
     toggleBlack,
     toggleLogo,
     toggleText,
+    toggleVoice: () => setVoiceOn((on) => !on),
     stepSlide,
     stepLive,
     stepScripture,
@@ -1116,6 +1155,7 @@ export function App() {
     toggleBlack,
     toggleLogo,
     toggleText,
+    toggleVoice: () => setVoiceOn((on) => !on),
     stepSlide,
     stepLive,
     stepScripture,
@@ -1186,6 +1226,9 @@ export function App() {
             event.preventDefault()
             a.toggleText()
           }
+        } else if (lower === 'v') {
+          event.preventDefault()
+          a.toggleVoice()
         } else if (key === 'Delete') {
           event.preventDefault()
           a.removeSelected()
@@ -1309,6 +1352,101 @@ export function App() {
     markClean()
   }
 
+  const copyMediaToTheme = (item: UserMedia, category: 'song' | 'scripture' | 'presentation') => {
+    const next: Theme = {
+      id: `theme-${Date.now()}`,
+      name: item.name,
+      category,
+      background: item.kind === 'still' ? `url("${item.url}") center / cover no-repeat` : '#000000',
+      backgroundVideo: item.kind === 'video' ? item.url : undefined,
+      textColor: '#ffffff',
+      fontSize: theme.fontSize,
+      fontFamily: theme.fontFamily,
+      bold: theme.bold,
+    }
+    setThemes((current) => [...current, next])
+    setThemeId(next.id)
+  }
+
+  const setLogoFromMedia = (item: UserMedia) => {
+    setLogoBackground({
+      css: item.kind === 'still' ? `url("${item.url}") center / cover no-repeat` : undefined,
+      video: item.kind === 'video' ? item.url : undefined,
+    })
+  }
+
+  const applyThemeToScheduleItem = (droppedThemeId: string, itemId: string) => {
+    setSchedule((current) =>
+      current.map((entry) => (entry.id === itemId ? { ...entry, themeId: droppedThemeId } : entry)),
+    )
+    setSelectedId(itemId)
+  }
+
+  const handleDropScheduleFiles = async (files: FileList, insertIndex: number) => {
+    const newItems: ScheduleItem[] = []
+    for (const file of Array.from(files)) {
+      if (
+        file.type.startsWith('image/') ||
+        file.type.startsWith('video/') ||
+        /\.(png|jpe?g|webp|gif|bmp|svg|mp4|webm|mov|mkv|avi)$/i.test(file.name)
+      ) {
+        const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|mkv|avi)$/i.test(file.name)
+        const url = URL.createObjectURL(file)
+        newItems.push({
+          id: `media-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          type: 'media',
+          title: file.name.replace(/\.[^.]+$/, ''),
+          ref: file.name,
+          media: isVideo ? { video: url } : { css: `url("${url}") center / cover no-repeat` },
+        })
+      } else if (/\.pptx$/i.test(file.name)) {
+        try {
+          const zip = await JSZip.loadAsync(file)
+          const slidePaths = Object.keys(zip.files)
+            .filter((name) => /^ppt\/slides\/slide\d+\.xml$/i.test(name))
+            .sort((a, b) => Number(a.match(/\d+/)?.[0] ?? 0) - Number(b.match(/\d+/)?.[0] ?? 0))
+          const slides: string[][] = []
+          for (const path of slidePaths) {
+            const xml = await zip.files[path].async('string')
+            const doc = new DOMParser().parseFromString(xml, 'application/xml')
+            const paragraphs = Array.from(doc.getElementsByTagName('a:p'))
+              .map((p) =>
+                Array.from(p.getElementsByTagName('a:t'))
+                  .map((t) => t.textContent ?? '')
+                  .join('')
+                  .trim(),
+              )
+              .filter(Boolean)
+            slides.push(paragraphs.length > 0 ? paragraphs : [''])
+          }
+          if (slides.length > 0) {
+            newItems.push({
+              id: `pptx-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              type: 'custom',
+              title: file.name.replace(/\.[^.]+$/, ''),
+              ref: file.name,
+              slides,
+            })
+          }
+        } catch {
+          // Ignore malformed pptx.
+        }
+      } else {
+        const result = await importFile(file, { wasmUrl })
+        if (result.songs.length > 0) mergeSongs(result.songs)
+        if (result.schedule.length > 0) newItems.push(...result.schedule)
+      }
+    }
+    if (newItems.length > 0) {
+      setSchedule((current) => {
+        const next = [...current]
+        next.splice(insertIndex, 0, ...newItems)
+        return next
+      })
+      setSelectedId(newItems[0].id)
+    }
+  }
+
   // On air: something is live, or the output is held on Black or Logo.
   const onAir = live !== null || black || logo || webLive
   const liveLines = black ? [] : logo ? ['True Worship'] : (live?.lines ?? [])
@@ -1343,6 +1481,8 @@ export function App() {
           <MenuBar
             theme={themeMode}
             onThemeChange={setThemeMode}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
             onNewSchedule={newSchedule}
             onOpenService={() => fileInputRef.current?.click()}
             onSaveService={saveSchedule}
@@ -1359,8 +1499,6 @@ export function App() {
             onClear={handleClear}
             onImport={() => setDialog('import')}
             onLiveSettings={() => setDialog('liveSettings')}
-            onShowLayouts={() => setTab('layouts')}
-            onShowBackgrounds={() => setTab('backgrounds')}
             onShowShortcuts={() => setShowShortcuts(true)}
           />
           }
@@ -1436,6 +1574,7 @@ export function App() {
             onSong={goLiveSungSong}
             onVerse={moveSungSong}
             onScripture={goLiveSpoken}
+            onTranslation={switchSpokenTranslation}
             onStep={(direction) => {
               if (!stepScripture(direction)) stepLive(direction)
             }}
@@ -1446,7 +1585,7 @@ export function App() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".twp,.tworship,.ews,.ewsx,.xml,.txt,.db,.sqlite,.sqlite3,.zip"
+          accept=".twp,.tworship,.ews,.ewsx,.hly,.hlp,.bs,.bss,.bsong,.json,.xml,.txt,.db,.sqlite,.sqlite3,.zip"
           multiple
           className="hidden"
           onChange={(event) => {
@@ -1495,6 +1634,8 @@ export function App() {
               onEditItem={editScheduleItem}
               onDuplicateItem={duplicateScheduleItem}
               onReorder={reorderSchedule}
+              onDropTheme={applyThemeToScheduleItem}
+              onDropFiles={(files, at) => void handleDropScheduleFiles(files, at)}
               slideLabelsFor={slideLabelsForItem}
             />
           </div>
@@ -1509,127 +1650,202 @@ export function App() {
             <div className="h-full min-w-0 flex-1">
               <WebBrowser live={webLive} onLiveChange={setWebLive} onClose={() => setShowWeb(false)} />
             </div>
-          ) : (
-          <div ref={centreRef} className="flex min-h-0 min-w-0 flex-1">
-            <div className="flex h-full min-w-0 flex-col" style={{ width: `${previewPercent}%` }}>
-              <div className="min-h-0 flex-1">
-                <PreviewPanel
-                  title={preview.title}
-                  slides={preview.slides}
-                  labels={slideLabels}
-                  selectedIndex={slideIndex}
-                  onSelect={setSlideIndex}
-                  onGoLive={(index) => {
-                    setSlideIndex(index)
-                    goLiveSlide(index)
-                  }}
-                />
-              </div>
-              <Splitter
-                orientation="horizontal"
-                label="Resize preview output"
-                onDrag={(delta) => setPreviewOutputHeight((height) => clamp(height - delta, 150, 480))}
-                onReset={() => setPreviewOutputHeight(220)}
+          ) : (() => {
+            const previewPane = (
+              <PreviewPanel
+                title={preview.title}
+                slides={preview.slides}
+                labels={slideLabels}
+                selectedIndex={slideIndex}
+                onSelect={setSlideIndex}
+                onGoLive={(index) => {
+                  setSlideIndex(index)
+                  goLiveSlide(index)
+                }}
               />
-              <div className="shrink-0" style={{ height: previewOutputHeight }}>
-                <OutputPanel
-                  title="Preview Output"
-                  actions={<div ref={setToolbarHost} className="min-w-0" />}
-                  counter={`Slide ${Math.min(slideIndex, preview.slides.length - 1) + 1} of ${preview.slides.length}`}
-                  canPrev={slideIndex > 0}
-                  canNext={slideIndex < preview.slides.length - 1}
-                  onPrev={() => stepSlide(-1)}
-                  onNext={() => stepSlide(1)}
-                >
-                  <SlideEditor
-                    lines={slide}
-                    theme={theme}
-                    backgroundCss={preview.media?.css ?? background?.css}
-                    backgroundVideo={preview.media ? preview.media.video : background?.video}
-                    layoutId={layoutId}
-                    reference={preview.reference}
-                    credit={Math.min(slideIndex, preview.slides.length - 1) === 0 ? preview.credit : undefined}
-                    alert={alert}
-                    style={preview.styles?.[Math.min(slideIndex, preview.slides.length - 1)]}
-                    toolbarHost={toolbarHost}
-                    canEdit={!preview.media && slide.some((line) => line.trim() !== '')}
-                    onStyle={(next, all) => setSlideStyle(Math.min(slideIndex, preview.slides.length - 1), next, all)}
-                    onLines={(lines) => setSlideLines(Math.min(slideIndex, preview.slides.length - 1), lines)}
-                  />
-                </OutputPanel>
-              </div>
-            </div>
-
-            <Splitter
-              orientation="vertical"
-              label="Resize preview and live"
-              onDrag={(delta) => {
-                const width = centreRef.current?.clientWidth ?? 0
-                if (width > 0) {
-                  setPreviewPercent((percent) => clamp(percent + (delta / width) * 100, 25, 75))
-                }
-              }}
-              onReset={() => setPreviewPercent(50)}
-            />
-
-            <div className="flex h-full min-w-0 flex-1 flex-col">
-              <div className="min-h-0 flex-1">
-                <LivePanel
-                  title={liveTitle}
-                  theme={theme}
-                  slides={liveSlides ?? []}
-                  styles={liveStyles}
-                  slideLabels={liveSlideLabels}
-                  liveSlideIndex={liveSlideIndex}
-                  live={live !== null && !black && !logo}
-                  backgroundCss={liveMedia?.css ?? background?.css}
+            )
+            const activeScheduleItem = schedule.find((entry) => entry.id === selectedId)
+            const activePreviewTheme = themes.find((entry) => entry.id === activeScheduleItem?.themeId) ?? theme
+            const previewOutput = (
+              <OutputPanel
+                title={viewMode === 'live-resource' ? 'Resource Preview' : 'Preview Output'}
+                actions={<div ref={setToolbarHost} className="min-w-0" />}
+                counter={`Slide ${Math.min(slideIndex, preview.slides.length - 1) + 1} of ${preview.slides.length}`}
+                canPrev={slideIndex > 0}
+                canNext={slideIndex < preview.slides.length - 1}
+                onPrev={() => stepSlide(-1)}
+                onNext={() => stepSlide(1)}
+              >
+                <SlideEditor
+                  lines={slide}
+                  theme={activePreviewTheme}
+                  backgroundCss={preview.media?.css ?? (activeScheduleItem?.themeId ? activePreviewTheme.background : background?.css)}
+                  backgroundVideo={preview.media ? preview.media.video : (activePreviewTheme.backgroundVideo ?? background?.video)}
                   layoutId={layoutId}
-                  reference={liveReference ?? undefined}
-                  onSelectLiveSlide={handleLiveSlideSelect}
+                  reference={preview.reference}
+                  credit={Math.min(slideIndex, preview.slides.length - 1) === 0 ? preview.credit : undefined}
+                  alert={alert}
+                  style={preview.styles?.[Math.min(slideIndex, preview.slides.length - 1)]}
+                  toolbarHost={toolbarHost}
+                  canEdit={!preview.media && slide.some((line) => line.trim() !== '')}
+                  onStyle={(next, all) => setSlideStyle(Math.min(slideIndex, preview.slides.length - 1), next, all)}
+                  onLines={(lines) => setSlideLines(Math.min(slideIndex, preview.slides.length - 1), lines)}
                 />
-              </div>
-              <Splitter
-                orientation="horizontal"
-                label="Resize live output"
-                onDrag={(delta) => setLiveOutputHeight((height) => clamp(height - delta, 150, 480))}
-                onReset={() => setLiveOutputHeight(220)}
+              </OutputPanel>
+            )
+            const livePane = (
+              <LivePanel
+                title={liveTitle}
+                theme={theme}
+                slides={liveSlides ?? []}
+                styles={liveStyles}
+                slideLabels={liveSlideLabels}
+                liveSlideIndex={liveSlideIndex}
+                live={live !== null && !black && !logo}
+                backgroundCss={liveMedia?.css ?? background?.css}
+                layoutId={layoutId}
+                reference={liveReference ?? undefined}
+                onSelectLiveSlide={handleLiveSlideSelect}
               />
-              <div className="shrink-0" style={{ height: liveOutputHeight }}>
-                <OutputPanel
-                  title="Live Output"
-                  counter={
-                    liveSlides && live
-                      ? `Slide ${liveSlideIndex + 1} of ${liveSlides.length}`
-                      : 'Not live'
+            )
+            const liveOutput = (
+              <OutputPanel
+                title="Live Output"
+                counter={
+                  liveSlides && live
+                    ? `Slide ${liveSlideIndex + 1} of ${liveSlides.length}`
+                    : 'Not live'
+                }
+                canPrev={live !== null && liveSlideIndex > 0}
+                canNext={live !== null && liveSlides !== null && liveSlideIndex < liveSlides.length - 1}
+                onPrev={() => handleLiveSlideSelect(liveSlideIndex - 1)}
+                onNext={() => handleLiveSlideSelect(liveSlideIndex + 1)}
+              >
+                <SlideView
+                  lines={liveLines}
+                  theme={theme}
+                  backgroundCss={
+                    live === null || black
+                      ? '#000000'
+                      : logo && logoBackground?.css
+                        ? logoBackground.css
+                        : (liveMedia?.css ?? background?.css)
                   }
-                  canPrev={live !== null && liveSlideIndex > 0}
-                  canNext={live !== null && liveSlides !== null && liveSlideIndex < liveSlides.length - 1}
-                  onPrev={() => handleLiveSlideSelect(liveSlideIndex - 1)}
-                  onNext={() => handleLiveSlideSelect(liveSlideIndex + 1)}
-                >
-                  <SlideView
-                    lines={liveLines}
-                    theme={theme}
-                    backgroundCss={live === null || black ? '#000000' : (liveMedia?.css ?? background?.css)}
-                    backgroundVideo={
-                      live === null || black
-                        ? undefined
+                  backgroundVideo={
+                    live === null || black
+                      ? undefined
+                      : logo && logoBackground?.video
+                        ? logoBackground.video
                         : liveMedia
                           ? liveMedia.video
                           : background?.video
-                    }
-                    layoutId={layoutId}
-                    reference={live !== null && !black && !logo ? (liveReference ?? undefined) : undefined}
-                    style={live !== null && !black && !logo ? liveStyles[liveSlideIndex] : undefined}
-                    credit={live !== null && !black && !logo ? (liveCredit ?? undefined) : undefined}
-                    alert={live !== null && !black && !logo ? alert : null}
-                    className="h-full max-w-full"
+                  }
+                  layoutId={layoutId}
+                  reference={live !== null && !black && !logo ? (liveReference ?? undefined) : undefined}
+                  style={live !== null && !black && !logo ? liveStyles[liveSlideIndex] : undefined}
+                  credit={live !== null && !black && !logo ? (liveCredit ?? undefined) : undefined}
+                  alert={live !== null && !black && !logo ? alert : null}
+                  className="h-full max-w-full"
+                />
+              </OutputPanel>
+            )
+
+            if (viewMode === 'combined') {
+              return (
+                <div ref={centreRef} className="flex min-h-0 min-w-0 flex-1 flex-col">
+                  <div className="flex shrink-0 items-center gap-1 border-b border-slate-300 bg-slate-200 px-2 py-1 dark:border-slate-700 dark:bg-slate-900">
+                    {(['preview', 'live'] as const).map((pane) => (
+                      <button
+                        key={pane}
+                        type="button"
+                        onClick={() => setCombinedPane(pane)}
+                        className={`rounded px-3 py-1 text-xs font-medium capitalize ${
+                          combinedPane === pane
+                            ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100'
+                            : 'text-slate-600 hover:bg-slate-300/60 dark:text-slate-400 dark:hover:bg-slate-800/60'
+                        }`}
+                      >
+                        {pane}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="min-h-0 flex-1">
+                    {combinedPane === 'preview' ? previewPane : livePane}
+                  </div>
+                  <Splitter
+                    orientation="horizontal"
+                    label="Resize outputs"
+                    onDrag={(delta) => setLiveOutputHeight((height) => clamp(height - delta, 150, 480))}
+                    onReset={() => setLiveOutputHeight(220)}
                   />
-                </OutputPanel>
+                  <div className="grid shrink-0 grid-cols-2 gap-1" style={{ height: liveOutputHeight }}>
+                    {previewOutput}
+                    {liveOutput}
+                  </div>
+                </div>
+              )
+            }
+
+            if (viewMode === 'live-resource') {
+              return (
+                <div ref={centreRef} className="flex min-h-0 min-w-0 flex-1 flex-col">
+                  <div className="min-h-0 flex-1">{livePane}</div>
+                  <Splitter
+                    orientation="horizontal"
+                    label="Resize outputs"
+                    onDrag={(delta) => setLiveOutputHeight((height) => clamp(height - delta, 150, 480))}
+                    onReset={() => setLiveOutputHeight(220)}
+                  />
+                  <div className="grid shrink-0 grid-cols-2 gap-1" style={{ height: liveOutputHeight }}>
+                    {previewOutput}
+                    {liveOutput}
+                  </div>
+                </div>
+              )
+            }
+
+            return (
+              <div ref={centreRef} className="flex min-h-0 min-w-0 flex-1">
+                <div className="flex h-full min-w-0 flex-col" style={{ width: `${previewPercent}%` }}>
+                  <div className="min-h-0 flex-1">{previewPane}</div>
+                  <Splitter
+                    orientation="horizontal"
+                    label="Resize preview output"
+                    onDrag={(delta) => setPreviewOutputHeight((height) => clamp(height - delta, 150, 480))}
+                    onReset={() => setPreviewOutputHeight(220)}
+                  />
+                  <div className="shrink-0" style={{ height: previewOutputHeight }}>
+                    {previewOutput}
+                  </div>
+                </div>
+
+                <Splitter
+                  orientation="vertical"
+                  label="Resize preview and live"
+                  onDrag={(delta) => {
+                    const width = centreRef.current?.clientWidth ?? 0
+                    if (width > 0) {
+                      setPreviewPercent((percent) => clamp(percent + (delta / width) * 100, 25, 75))
+                    }
+                  }}
+                  onReset={() => setPreviewPercent(50)}
+                />
+
+                <div className="flex h-full min-w-0 flex-1 flex-col">
+                  <div className="min-h-0 flex-1">{livePane}</div>
+                  <Splitter
+                    orientation="horizontal"
+                    label="Resize live output"
+                    onDrag={(delta) => setLiveOutputHeight((height) => clamp(height - delta, 150, 480))}
+                    onReset={() => setLiveOutputHeight(220)}
+                  />
+                  <div className="shrink-0" style={{ height: liveOutputHeight }}>
+                    {liveOutput}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          )}
+            )
+          })()}
         </div>
 
         <Splitter
@@ -1725,7 +1941,14 @@ export function App() {
                 }}
               />
             </div>
-            {tab === 'media' && <MediaLibrary onPreview={previewMedia} onGoLive={goLiveMedia} />}
+            {tab === 'media' && (
+              <MediaLibrary
+                onPreview={previewMedia}
+                onGoLive={goLiveMedia}
+                onCopyToTheme={copyMediaToTheme}
+                onSetLogoBackground={setLogoFromMedia}
+              />
+            )}
             {tab === 'themes' && (
               <ThemePicker
                 themes={themes}
