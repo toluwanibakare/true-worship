@@ -153,3 +153,94 @@ src/
 2. Wire it into `app/App.tsx` (tab, panel, or schedule item type).
 3. If it needs shared types or UI, add only what it needs to `shared/`.
 4. Update README.md's feature list and this file if a rule changes.
+
+<!-- standing-rules:start -->
+## Standing rules (all projects)
+
+General rules for every project and every agent (Claude, Codex, others). Read fully before changing anything. If this project's own rules above conflict with these, the project's own rules win. Qorelly projects follow the Qorelly org rules at the end of this file, which win over everything.
+
+### How we work
+- We discuss a problem, an agent executes one small verifiable slice, we review the report. Keep chat replies short and direct. Give honest rankings and clear reasoning, not hedged advice.
+- One slice at a time with explicit scope. No changes to unrelated surfaces.
+- Audit read-only before implementing.
+- Never guess column or file names. Show table DDL and the first 10 lines of any file over 50 lines before writing code against it.
+- Stop and report contradictions. Do not build past them.
+- Browser or visual claims need screenshots. Never claim a visual result you did not see.
+- Keep `HANDOVER.md` current when the state of the project changes.
+
+### Writing style
+- Never use em dashes, in code, comments, copy, commits, or replies. Use a comma, colon, period or " - ".
+- No generic AI output: no boilerplate structures, filler comments, or template-looking designs.
+
+### Code
+- Write the most concise code that gives the exact same result. No dead code, no speculative abstractions.
+- Keep code organized: one clear job per file, predictable names, no sprawling files.
+- Do not touch unrelated files. Never guess file or column names; look them up.
+- Report outcomes faithfully: what was done, verified, skipped, or failed.
+
+### Structure (feature-first)
+- Organize by feature, not by type. Each feature lives in its own folder with everything it owns (components, hooks, api, types, utils).
+  ```
+  src/features/<feature>/{components,hooks,api,types,utils}
+  ```
+- Features never import from each other's internals.
+- Anything used by more than one feature moves to a shared layer (`src/shared/...`) and every feature imports from there.
+- Easy to locate beats clever. A new dev should find any component by knowing its feature name.
+
+### Design
+- Premium at all times. Considered spacing, typography, and motion. No generic AI look.
+- Password fields:
+  - Always an eye toggle (`type="button"`, with `aria-label` and `aria-pressed`).
+  - Hidden: show the open eye (click to reveal). Revealed: show the closed eye (click to hide).
+  - The masked dots must be visibly large. Keep the field itself normal size; raise the input font size and letter spacing so the dots read big.
+- Buttons:
+  - Every action button has a loading state: disabled, spinner, no double submit.
+  - Every submit generates a UUID idempotency key (see Idempotency).
+
+### Idempotency (buttons and mutating requests)
+- Generate one UUID per user action when the button is pressed. Send it as the `Idempotency-Key` header.
+- On network failure or timeout, retry with the same UUID. Only generate a new UUID after a success or when the form data changes.
+- Backend stores key + request hash + response (unique constraint on key per user). A replay returns the stored response and never creates a second entry. Same key with a different payload returns 422.
+- Expire stored keys after a defined window (e.g. 24h).
+
+### Security
+- Auth uses HttpOnly cookies carrying an opaque server-side session ID. Not JWTs in cookies, never tokens in localStorage or sessionStorage.
+- Cookie flags: `HttpOnly; Secure; SameSite=Lax` (or `Strict`), scoped `Path` and `Domain`, with a sensible expiry. Rotate the session ID on login and privilege change. Invalidate on logout server-side.
+- CSRF protection on every state-changing request (SameSite plus a CSRF token or origin check).
+- Hash passwords with argon2id or bcrypt. Never log, return, or store plaintext passwords or tokens.
+- Rate limit login, signup, password reset, OTP, and any expensive endpoint. Lock out or slow down repeated failures.
+- No secrets in code, git, logs, or client bundles. Secrets only via env or a secret manager. Never commit `.env`.
+- Validate and sanitize all input. Escape output. No `dangerouslySetInnerHTML` or raw HTML injection without sanitizing.
+- Set security headers: CSP, HSTS, X-Content-Type-Options, Referrer-Policy, frame protections. Strict CORS allowlist, never `*` with credentials.
+- Least privilege everywhere: database roles, API keys, IAM, and user roles.
+- Keep dependencies updated and audited. Do not add packages without a reason.
+- File uploads: check type and size server-side, store outside the web root, randomize names.
+
+### Fingerprint and Device Authentication
+- All authentication flows mandate device and browser fingerprint tracking:
+  - Signup flow always requires standard OTP verification before account activation.
+  - Login flow records client device and browser attributes (user agent, browser name, platform/OS, screen resolution, language, time zone) and derives a deterministic fingerprint token (`fp_<browser>_<hash>`).
+  - When logging in from the same browser and device with a matching fingerprint token, authenticate immediately using the session token.
+  - If a login attempt presents a mismatched or unrecognized fingerprint token (such as a different browser or device), the backend must challenge the request with an OTP requirement (`requiresOtp: true`). Only after successful OTP verification is the new fingerprint registered as a trusted device session and the auth session granted.
+
+### Backend
+- Validate every request body, query, and param server-side with a schema (e.g. zod). Never trust the client, including prices, roles, and ids.
+- Authenticate and authorize on every route, and check resource ownership (no IDOR). Deny by default.
+- Parameterized queries only. Never string-build SQL.
+- Wrap multi-step writes in transactions. Use unique constraints and indexes for integrity, not just app checks.
+- One consistent response and error shape. Correct HTTP status codes. No stack traces or internals in responses.
+- Mutating endpoints are idempotent via the `Idempotency-Key` rule above.
+- Paginate every list endpoint. Set timeouts on outbound calls.
+- Structured logs with a request id. No PII, passwords, or tokens in logs.
+- Schema changes go through migration files, never ad hoc edits. Applied migrations are frozen.
+- Keep handlers thin: routing and validation in the handler, logic in services, data access in a repository layer.
+
+### Git
+- No Claude or AI attribution in commits or PRs: no `Co-Authored-By` trailers, no "Generated with" lines.
+- Commit or push only when asked. Small focused commits.
+- Pushes go to `staging`, never straight to `main`. If `staging` does not exist, create it from the current branch and say so. If on a feature branch, push it, then bring it into `staging`.
+- After pushing to `staging`, open a pull request from `staging` into `main` with `gh pr create`. If one is already open, reuse it and say so. Short title, and a body that says what changed and how it was verified.
+- Never merge or close a pull request without being asked. When told "merge", "close" or "ship it", merge that PR, then confirm the result and that `staging` and `main` match.
+- Never push to `main`, force-push `main` or `staging`, or delete either branch unless explicitly told for that action.
+- Before opening or merging a PR, run the project's tests and build and report the real result. If they fail, say so and do not open the PR as ready.
+<!-- standing-rules:end -->
