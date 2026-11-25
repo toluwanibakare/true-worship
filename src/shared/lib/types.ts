@@ -57,12 +57,18 @@ export type ScheduleItem = {
   version?: string
   /** How each of those slides is arranged, by slide number, when the operator changed it. */
   slideStyles?: (SlideStyle | null)[]
+  /** Optional theme id applied to this schedule item by dragging a theme onto it. */
+  themeId?: string
+  /** Optional media background for a media schedule item. */
+  media?: { css?: string; video?: string }
 }
 
 export type Theme = {
   id: string
   name: string
   background: string
+  backgroundVideo?: string
+  category?: 'song' | 'scripture' | 'presentation'
   textColor: string
   fontSize: number
   /** Slide font stack. Calibri first, with open fallbacks. */

@@ -38,8 +38,20 @@ function wavOf(samples: Float32Array): ArrayBuffer {
 }
 
 export type VoiceState = 'off' | 'starting' | 'listening' | 'error'
+export type VoiceSensitivity = 'low' | 'normal' | 'high'
 
-export function useVoiceListener(active: boolean, onText: (text: string) => void, attempt = 0) {
+const SENSITIVITY_FLOOR: Record<VoiceSensitivity, { min: number; mult: number }> = {
+  high: { min: 0.006, mult: 2.2 },
+  normal: { min: 0.012, mult: 3 },
+  low: { min: 0.025, mult: 4.2 },
+}
+
+export function useVoiceListener(
+  active: boolean,
+  onText: (text: string) => void,
+  attempt = 0,
+  sensitivity: VoiceSensitivity = 'normal',
+) {
   const [state, setState] = useState<VoiceState>('off')
   const [needsModel, setNeedsModel] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -47,6 +59,8 @@ export function useVoiceListener(active: boolean, onText: (text: string) => void
   const [busy, setBusy] = useState(false)
   const onTextRef = useRef(onText)
   onTextRef.current = onText
+  const sensitivityRef = useRef(sensitivity)
+  sensitivityRef.current = sensitivity
 
   useEffect(() => {
     if (!active) {
@@ -138,7 +152,8 @@ export function useVoiceListener(active: boolean, onText: (text: string) => void
           for (const value of chunk) sum += value * value
           const rms = Math.sqrt(sum / chunk.length)
           setLevel(Math.min(1, rms * 12))
-          const threshold = Math.max(0.012, noise * 3)
+          const { min, mult } = SENSITIVITY_FLOOR[sensitivityRef.current]
+          const threshold = Math.max(min, noise * mult)
           if (rms > threshold) {
             if (!speaking) {
               speaking = true

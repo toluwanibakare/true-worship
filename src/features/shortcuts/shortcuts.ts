@@ -48,6 +48,7 @@ export const SHORTCUT_LIST: ShortcutDef[] = [
   { keys: 'Page Up', does: 'Select the previous slide', group: 'Also active by default' },
   { keys: '?', does: 'Open this shortcut list', group: 'True Worship' },
   { keys: 'Esc', does: 'Close this shortcut list', group: 'True Worship' },
+  { keys: 'Ctrl + V', does: 'Start or stop voice listening', group: 'True Worship', note: 'Never hijacks Paste: only fires when you are not typing in a field.' },
 ]
 
 /** True when the keypress belongs to a text field, a select, or an

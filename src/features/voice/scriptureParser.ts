@@ -16,9 +16,13 @@ export type ScriptureCall = {
   wholeChapter?: boolean
   /** The version asked for, as its usual abbreviation (NIV, KJV...). */
   version?: string
+  /** The book was not heard clearly: this is the closest one, and `alternatives` are the next closest. */
+  guessed?: boolean
+  alternatives?: ScriptureCall[]
 }
 
 export type VoiceCommand = { kind: 'command'; action: 'next' | 'previous' }
+export type TranslationCall = { kind: 'translation'; version: string }
 
 /** [name, chapters has numbered form (1, 2, 3)] */
 const BOOKS: { name: string; aliases: string[]; numbered?: number[]; oneChapter?: boolean }[] = [
@@ -81,16 +85,25 @@ const BOOKS: { name: string; aliases: string[]; numbered?: number[]; oneChapter?
 ]
 
 const VERSIONS: [string, string[]][] = [
-  ['NKJV', ['new king james', 'nkjv']],
-  ['KJV', ['king james', 'kjv']],
-  ['NIV', ['new international', 'niv']],
-  ['NLT', ['new living translation', 'new living', 'nlt']],
+  ['NKJV', ['new king james', 'nkjv', 'n k j v']],
+  ['KJV', ['king james', 'kjv', 'k j v']],
+  ['NIV', ['new international', 'niv', 'n i v']],
+  ['NLT', ['new living', 'nlt', 'n l t']],
   ['AMPC', ['amplified classic', 'ampc']],
   ['AMP', ['amplified', 'amp']],
   ['MSG', ['the message', 'msg']],
   ['GNT', ['good news', 'gnt']],
-  ['ESV', ['english standard', 'esv']],
+  ['ESV', ['english standard', 'esv', 'e s v']],
   ['NASB', ['new american standard', 'nasb']],
+  ['CSB', ['christian standard', 'csb']],
+  ['CEV', ['contemporary english', 'cev']],
+  ['LEB', ['lexham english', 'leb']],
+  ['LSV', ['literal standard', 'lsv']],
+  ['FBV', ['free bible', 'fbv']],
+  ['BBE', ['bible in basic english', 'basic english', 'bbe']],
+  ['DRC', ['douay rheims', 'douay-rheims', 'drc', 'dra']],
+  ['Geneva', ['geneva bible', 'geneva', 'gnv']],
+  ['Darby', ['darby']],
   ['TPT', ['the passion translation', 'passion translation', 'tpt']],
   ['BSB', ['berean standard', 'berean', 'bsb']],
   ['YLT', ['youngs literal', "young's literal", 'ylt']],
@@ -177,16 +190,60 @@ function normalise(text: string): string {
     .trim()
 }
 
-/** Reads one scripture or command out of what was said; null when it is neither. */
-export function parseSpoken(text: string): ScriptureCall | VoiceCommand | null {
+/** Words that sit between a book and its numbers, or are not a book at all. */
+const FILLER = new Set([
+  'chapter', 'chapters', 'verse', 'verses', 'number', 'in', 'the', 'to', 'and', 'of', 'at', 'on', 'for',
+  'with', 'from', 'turn', 'open', 'read', 'please', 'now', 'page', 'point', 'about', 'is', 'are',
+  'was', 'it', 'we', 'have', 'has', 'had', 'that', 'this', 'let', 'us', 'go', 'next', 'another', 'then',
+])
+
+/** Words speech recognition often writes for a book (or its number), however the speaker said it. */
+const MISHEARD: Record<string, string> = {
+  some: 'Psalms', sums: 'Psalms', salm: 'Psalms', sarm: 'Psalms', psalmist: 'Psalms',
+  dude: 'Jude', axe: 'Acts', ax: 'Acts', facts: 'Acts', look: 'Luke', luck: 'Luke',
+  roots: 'Romans', moses: 'Exodus', ruth: 'Ruth', root: 'Ruth', jon: 'John', joan: 'John',
+  mathew: 'Matthew', matt: 'Matthew', maths: 'Matthew', matching: 'Matthew', matchin: 'Matthew', matthews: 'Matthew',
+}
+const ORDINAL_ERRORS: Record<string, string> = { fist: 'first', furst: 'first', thirst: 'third', sec: 'second' }
+
+function distance(a: string, b: string): number {
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i += 1) {
+    let diagonal = row[0]
+    row[0] = i
+    for (let j = 1; j <= b.length; j += 1) {
+      const above = row[j]
+      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, diagonal + (a[i - 1] === b[j - 1] ? 0 : 1))
+      diagonal = above
+    }
+  }
+  return row[b.length]
+}
+
+/**
+ * How close a heard word is to a book name, 0 to 1. The first letter must agree
+ * (speech errors rarely change how a word starts), then edit distance and the
+ * letters they begin with in common decide.
+ */
+function similarity(heard: string, name: string): number {
+  if (heard[0] !== name[0] && !(/[ck]/.test(heard[0]) && /[ck]/.test(name[0]))) return 0
+  const closeness = 1 - distance(heard, name) / Math.max(heard.length, name.length)
+  let shared = 0
+  while (shared < heard.length && shared < name.length && heard[shared] === name[shared]) shared += 1
+  const prefix = shared / Math.min(heard.length, name.length)
+  return Math.max(closeness, 0.4 * closeness + 0.6 * prefix)
+}
+
+/** Reads one scripture, translation switch, or command out of what was said; null when it is none of them. */
+export function parseSpoken(text: string): ScriptureCall | VoiceCommand | TranslationCall | null {
   let said = normalise(text)
   if (!said) return null
 
-  // The version, named anywhere ("in the NIV", "King James version").
+  // The version, named anywhere ("in the NIV", "King James version", "New Living Transition").
   let version: string | undefined
   for (const [abbr, names] of VERSIONS) {
     for (const name of names) {
-      const found = new RegExp(`\\b${name}\\b( version| translation| bible)?`).exec(said)
+      const found = new RegExp(`\\b${name}\\b( version| translation| transition| bible)?`).exec(said)
       if (found) {
         version = abbr
         said = said.replace(found[0], ' ')
@@ -195,35 +252,79 @@ export function parseSpoken(text: string): ScriptureCall | VoiceCommand | null {
     }
     if (version) break
   }
-  said = said.replace(/\b(version|translation)\b/g, ' ').replace(/\s+/g, ' ').trim()
+  said = said.replace(/\b(version|translation|transition)\b/g, ' ').replace(/\s+/g, ' ').trim()
 
-  const tokens = numberWordsToDigits(said.split(' '))
+  const tokens = numberWordsToDigits(said.split(' ').map((word) => ORDINAL_ERRORS[word] ?? word))
   const joined = tokens.join(' ')
 
   // A book and what follows it.
+  type Found = { name: string; numberedPrefix: number | null; oneChapter: boolean; after: string[] }
+  let found: Found | null = null
   let best: { name: string; index: number; length: number; prefix: number | null; oneChapter: boolean } | null = null
   for (const book of BOOKS) {
     for (const alias of book.aliases) {
-      const found = new RegExp(`(?:\\b(1|2|3|first|second|third|1st|2nd|3rd)\\s+)?\\b${alias}\\b`).exec(joined)
-      if (!found) continue
+      const hit = new RegExp(`(?:\\b(1|2|3|first|second|third|1st|2nd|3rd)\\s+)?\\b${alias}\\b`).exec(joined)
+      if (!hit) continue
       let prefix: number | null = null
-      if (found[1] && book.numbered) {
-        const n = ORDINALS[found[1]] ?? Number(found[1])
+      if (hit[1] && book.numbered) {
+        const n = ORDINALS[hit[1]] ?? Number(hit[1])
         if (book.numbered.includes(n)) prefix = n
       }
-      if (book.numbered && prefix === null && found[1]) {
-        // The number belongs to something else ("chapter 3 john"): keep the plain book.
-      }
-      const start = prefix !== null ? found.index : found.index + (found[0].length - alias.length)
-      const length = prefix !== null ? found[0].length : alias.length
+      const start = prefix !== null ? hit.index : hit.index + (hit[0].length - alias.length)
+      const length = prefix !== null ? hit[0].length : alias.length
       if (!best || length > best.length) {
         best = { name: book.name, index: start, length, prefix, oneChapter: Boolean(book.oneChapter) }
       }
     }
   }
-  // "John" alone with a number first is 1, 2 or 3 John only when a prefix was spoken.
   if (best) {
-    const after = joined.slice(best.index + best.length).trim().split(' ').filter(Boolean)
+    found = {
+      name: best.name,
+      numberedPrefix: best.prefix,
+      oneChapter: best.oneChapter,
+      after: joined.slice(best.index + best.length).trim().split(' ').filter(Boolean),
+    }
+  }
+
+  // Not heard clearly ("matching 3 1" for Matthew 3:1): the word just before the numbers is
+  // taken as the book, and the closest names are offered, best first.
+  let guesses: { book: (typeof BOOKS)[number]; score: number }[] = []
+  if (!found) {
+    const at = tokens.findIndex((token) => /^\d+$/.test(token))
+    if (at > 0) {
+      let word = at - 1
+      // Only the words for "chapter" and "verse" can sit between the book and its numbers.
+      while (word >= 0 && /^(chapters?|verses?|number)$/.test(tokens[word])) word -= 1
+      const spoken = tokens[word]
+      if (spoken && /^[a-z']{3,}$/.test(spoken) && !FILLER.has(spoken)) {
+        const known = MISHEARD[spoken]
+        guesses = BOOKS.map((book) => ({
+          book,
+          score:
+            book.name === known
+              ? 0.8
+              : Math.max(...book.aliases.map((alias) => similarity(spoken, alias))),
+        }))
+          .filter((guess) => guess.score >= 0.45)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 4)
+      }
+      if (guesses.length > 0) {
+        const lead = guesses[0].book
+        const before = tokens[word - 1]
+        const ordinal = before !== undefined ? (ORDINALS[before] ?? (/^[123]$/.test(before) ? Number(before) : null)) : null
+        found = {
+          name: lead.name,
+          numberedPrefix: ordinal !== null && lead.numbered?.includes(ordinal) ? ordinal : null,
+          oneChapter: Boolean(lead.oneChapter),
+          after: tokens.slice(word + 1),
+        }
+      }
+    }
+  }
+
+  if (found) {
+    const after = found.after
     const nums: number[] = []
     let sawRange = false
     for (const [i, token] of after.entries()) {
@@ -232,24 +333,35 @@ export function parseSpoken(text: string): ScriptureCall | VoiceCommand | null {
         if (nums.length > 0 && /^\d+$/.test(after[i + 1] ?? '')) sawRange = true
       }
     }
-    const name = best.prefix !== null ? `${best.prefix} ${best.name}` : best.name
-    const single = best.oneChapter || (best.prefix !== null && best.prefix >= 2 && best.name === 'John')
-    const call = (chapter: number, verse: number, endVerse?: number, whole?: boolean): ScriptureCall => ({
-      kind: 'scripture',
-      book: name,
-      chapter,
-      verse,
-      ...(endVerse && endVerse > verse ? { endVerse } : {}),
-      ...(whole ? { wholeChapter: true } : {}),
-      ...(version ? { version } : {}),
-    })
     if (nums.length === 0) return null
-    if (single && nums.length <= 2 && !after.includes('chapter')) {
-      return call(1, nums[0], sawRange ? nums[1] : undefined)
+    const make = (bookName: string, prefix: number | null, oneChapter: boolean): ScriptureCall => {
+      const name = prefix !== null ? `${prefix} ${bookName}` : bookName
+      const single = oneChapter || (prefix !== null && prefix >= 2 && bookName === 'John')
+      const call = (chapter: number, verse: number, endVerse?: number, whole?: boolean): ScriptureCall => ({
+        kind: 'scripture',
+        book: name,
+        chapter,
+        verse,
+        ...(endVerse && endVerse > verse ? { endVerse } : {}),
+        ...(whole ? { wholeChapter: true } : {}),
+        ...(version ? { version } : {}),
+      })
+      if (single && nums.length <= 2 && !after.includes('chapter')) {
+        return call(1, nums[0], sawRange ? nums[1] : undefined)
+      }
+      if (nums.length === 1) return call(nums[0], 1, undefined, true)
+      if (sawRange && nums.length >= 3) return call(nums[0], nums[1], nums[2])
+      return call(nums[0], nums[1])
     }
-    if (nums.length === 1) return call(nums[0], 1, undefined, true)
-    if (sawRange && nums.length >= 3) return call(nums[0], nums[1], nums[2])
-    return call(nums[0], nums[1])
+    const result = make(found.name, found.numberedPrefix, found.oneChapter)
+    // A near-perfect spelling ('Mathew') is not a guess worth flagging.
+    if (guesses.length > 0 && guesses[0].score < 0.85) {
+      result.guessed = true
+      result.alternatives = guesses
+        .slice(1)
+        .map((guess) => make(guess.book.name, found.numberedPrefix !== null && guess.book.numbered?.includes(found.numberedPrefix) ? found.numberedPrefix : null, Boolean(guess.book.oneChapter)))
+    }
+    return result
   }
 
   if (/\b(next|following|forward)( verse| slide| one)?\b/.test(joined) && joined.split(' ').length <= 4) {
@@ -257,6 +369,9 @@ export function parseSpoken(text: string): ScriptureCall | VoiceCommand | null {
   }
   if (/\b(previous|last|back|before)( verse| slide| one)?\b/.test(joined) && joined.split(' ').length <= 4) {
     return { kind: 'command', action: 'previous' }
+  }
+  if (version) {
+    return { kind: 'translation', version }
   }
   return null
 }

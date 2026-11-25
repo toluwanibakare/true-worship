@@ -47,18 +47,36 @@ export type PackInfo = {
   coverage: string
   /** File name on the source, without .json. */
   file: string
+  /** Where to fetch the pack from: 'local' reads /bible/<file>.json from the cloned thiagobodruk/bible repo. */
+  source?: 'scrollmapper' | 'local'
 }
 
 export const PACKS: PackInfo[] = [
+  // Local packs from the cloned thiagobodruk/bible repository (/bible/*.json)
+  { id: 'local-kjv', abbr: 'KJV', name: 'King James Version', language: 'English', license: 'Public Domain', coverage: 'Full Bible', file: 'en_kjv', source: 'local' },
+  { id: 'local-nlt', abbr: 'NLT', name: 'New Living Translation', language: 'English', license: 'Local (thiagobodruk/bible)', coverage: 'Full Bible', file: 'en_nlt', source: 'local' },
+  { id: 'local-niv', abbr: 'NIV', name: 'New International Version', language: 'English', license: 'Local (thiagobodruk/bible)', coverage: 'Full Bible', file: 'en_niv', source: 'local' },
+  { id: 'local-esv', abbr: 'ESV', name: 'English Standard Version', language: 'English', license: 'Local (thiagobodruk/bible)', coverage: 'Full Bible', file: 'en_esv', source: 'local' },
+  { id: 'local-nkjv', abbr: 'NKJV', name: 'New King James Version', language: 'English', license: 'Local (thiagobodruk/bible)', coverage: 'Full Bible', file: 'en_nkjv', source: 'local' },
+  { id: 'local-nasb', abbr: 'NASB', name: 'New American Standard Bible', language: 'English', license: 'Local (thiagobodruk/bible)', coverage: 'Full Bible', file: 'en_nasb', source: 'local' },
+  { id: 'local-csb', abbr: 'CSB', name: 'Christian Standard Bible', language: 'English', license: 'Local (thiagobodruk/bible)', coverage: 'Full Bible', file: 'en_csb', source: 'local' },
+  { id: 'local-amp', abbr: 'AMP', name: 'Amplified Bible', language: 'English', license: 'Local (thiagobodruk/bible)', coverage: 'Full Bible', file: 'en_amp', source: 'local' },
+  { id: 'local-asv', abbr: 'ASV', name: 'American Standard Version (1901)', language: 'English', license: 'Public Domain', coverage: 'Full Bible', file: 'en_asv', source: 'local' },
+  { id: 'local-bsb', abbr: 'BSB', name: 'Berean Standard Bible', language: 'English', license: 'Public Domain (CC0)', coverage: 'Full Bible', file: 'en_bsb', source: 'local' },
+  { id: 'local-cev', abbr: 'CEV', name: 'Contemporary English Version', language: 'English', license: 'Local (thiagobodruk/bible)', coverage: 'Full Bible', file: 'en_cev', source: 'local' },
+  { id: 'local-darby', abbr: 'Darby', name: 'Darby Bible (1889)', language: 'English', license: 'Public Domain', coverage: 'Full Bible', file: 'en_darby', source: 'local' },
+  { id: 'local-dra', abbr: 'DRC', name: 'Douay-Rheims (Challoner)', language: 'English', license: 'Public Domain', coverage: 'Full Bible', file: 'en_dra', source: 'local' },
+  { id: 'local-fbv', abbr: 'FBV', name: 'Free Bible Version', language: 'English', license: 'Local (thiagobodruk/bible)', coverage: 'Full Bible', file: 'en_fbv', source: 'local' },
+  { id: 'local-gnv', abbr: 'Geneva', name: 'Geneva Bible (1599)', language: 'English', license: 'Public Domain', coverage: 'Full Bible', file: 'en_gnv', source: 'local' },
+  { id: 'local-gnt', abbr: 'GNT', name: 'Good News Translation', language: 'English', license: 'Local (thiagobodruk/bible)', coverage: 'Full Bible', file: 'en_gnt', source: 'local' },
+  { id: 'local-leb', abbr: 'LEB', name: 'Lexham English Bible', language: 'English', license: 'Local (thiagobodruk/bible)', coverage: 'Full Bible', file: 'en_leb', source: 'local' },
+  { id: 'local-lsv', abbr: 'LSV', name: 'Literal Standard Version', language: 'English', license: 'Local (thiagobodruk/bible)', coverage: 'Full Bible', file: 'en_lsv', source: 'local' },
+  { id: 'local-bbe', abbr: 'BBE', name: 'Bible in Basic English', language: 'English', license: 'Public Domain', coverage: 'Full Bible', file: 'en_bbe', source: 'local' },
+  { id: 'local-web', abbr: 'WEB', name: 'World English Bible', language: 'English', license: 'Public Domain', coverage: 'Full Bible', file: 'en_web', source: 'local' },
+  { id: 'local-ylt', abbr: 'YLT', name: "Young's Literal Translation (1898)", language: 'English', license: 'Public Domain', coverage: 'Full Bible', file: 'en_ylt98', source: 'local' },
   { id: 'acv', abbr: 'ACV', name: "A Conservative Version", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'ACV' },
-  { id: 'asv', abbr: 'ASV', name: "American Standard Version (1901)", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'ASV' },
-  { id: 'bsb', abbr: 'BSB', name: "Berean Standard Bible", language: "English", license: "Public Domain (CC0)", coverage: "Full Bible", file: 'BSB' },
   { id: 'cpdv', abbr: 'CPDV', name: "Catholic Public Domain Version", language: "English", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'CPDV' },
-  { id: 'drc', onlineId: 'dra', abbr: 'DRC', name: "Douay-Rheims (Challoner)", language: "English", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'DRC' },
-  { id: 'darby', abbr: 'Darby', name: "Darby Bible (1889)", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'Darby' },
-  { id: 'geneva1599', abbr: 'Geneva', name: "Geneva Bible (1599)", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'Geneva1599' },
   { id: 'jps', abbr: 'JPS', name: "Jewish Publication Society (1917)", language: "English", license: "Public Domain", coverage: "Old Testament", file: 'JPS' },
-  { id: 'kjv', abbr: 'KJV', name: "King James Version", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'KJV' },
   { id: 'kjva', abbr: 'KJVA', name: "King James Version with Apocrypha", language: "English", license: "Public Domain", coverage: "Full Bible with Apocrypha", file: 'KJVA' },
   { id: 'kjvpce', abbr: 'KJV PCE', name: "King James Version, Pure Cambridge Edition", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'KJVPCE' },
   { id: 'nheb', abbr: 'NHEB', name: "New Heart English Bible", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'NHEB' },
@@ -72,7 +90,6 @@ export const PACKS: PackInfo[] = [
   { id: 'rotherham', abbr: 'Rotherham', name: "Rotherham Emphasised Bible", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'Rotherham' },
   { id: 'ukjv', abbr: 'UKJV', name: "Updated King James Version", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'UKJV' },
   { id: 'webster', abbr: 'Webster', name: "Webster's Bible", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'Webster' },
-  { id: 'ylt', abbr: 'YLT', name: "Young's Literal Translation (1898)", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'YLT' },
   { id: 'anderson', abbr: 'Anderson', name: "Anderson New Testament (1864)", language: "English", license: "Public Domain", coverage: "New Testament", file: 'Anderson' },
   { id: 'haweis', abbr: 'Haweis', name: "Haweis New Testament (1795)", language: "English", license: "Public Domain", coverage: "New Testament", file: 'Haweis' },
   { id: 'noyes', abbr: 'Noyes', name: "Noyes Translation (1869)", language: "English", license: "Public Domain", coverage: "Job to Malachi and the New Testament", file: 'Noyes' },
@@ -223,7 +240,8 @@ export async function downloadPack(
   info: PackInfo,
   onProgress?: (fraction: number) => void,
 ): Promise<StoredPack> {
-  const response = await fetch(`${BASE}${info.file}.json`)
+  const url = info.source === 'local' ? `/bible/${info.file}.json` : `${BASE}${info.file}.json`
+  const response = await fetch(url)
   if (!response.ok) {
     throw new Error(`Could not download ${info.name} (the server said ${response.status}).`)
   }
@@ -251,31 +269,55 @@ export async function downloadPack(
     text = await response.text()
   }
 
-  const data = JSON.parse(text) as {
-    books?: { name?: string; chapters?: { chapter?: number; verses?: { verse?: number; text?: string }[] }[] }[]
-  }
-  if (!Array.isArray(data.books)) throw new Error(`${info.name} arrived in a shape I do not recognise.`)
+  const parsed = JSON.parse(text.replace(/^\uFEFF/, '')) as unknown
   const books: string[] = []
   const rows: StoredPack['rows'] = []
-  data.books.forEach((book) => {
-    // A book only joins the stored pack when it has real text: source
-    // files pad uncovered books with empty verses, and an empty book
-    // listed in the panel would promise scripture that is not there.
-    const bookRows: StoredPack['rows'] = []
-    const bookIndex = books.length
-    for (const chapter of book.chapters ?? []) {
-      for (const verse of chapter.verses ?? []) {
-        const clean = String(verse.text ?? '')
-          .replace(/<[^>]*>/g, '')
-          .replace(/\s+/g, ' ')
-          .trim()
-        if (clean) bookRows.push([bookIndex, Number(chapter.chapter), Number(verse.verse), clean])
-      }
+
+  if (Array.isArray(parsed)) {
+    // thiagobodruk/bible format: [{ abbrev, name, chapters: string[][] }]
+    for (const book of parsed as { name?: string; chapters?: unknown[][] }[]) {
+      const bookRows: StoredPack['rows'] = []
+      const bookIndex = books.length
+      const chapters = Array.isArray(book.chapters) ? book.chapters : []
+      chapters.forEach((verses, chapterIdx) => {
+        if (!Array.isArray(verses)) return
+        verses.forEach((rawVerse, verseIdx) => {
+          const clean = String(rawVerse ?? '')
+            .replace(/<[^>]*>/g, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+          if (clean) bookRows.push([bookIndex, chapterIdx + 1, verseIdx + 1, clean])
+        })
+      })
+      if (bookRows.length === 0) continue
+      books.push(String(book.name ?? `Book ${bookIndex + 1}`))
+      rows.push(...bookRows)
     }
-    if (bookRows.length === 0) return
-    books.push(String(book.name ?? `Book ${bookIndex + 1}`))
-    rows.push(...bookRows)
-  })
+  } else {
+    const data = parsed as {
+      books?: { name?: string; chapters?: { chapter?: number; verses?: { verse?: number; text?: string }[] }[] }[]
+    }
+    if (!Array.isArray(data.books)) throw new Error(`${info.name} arrived in a shape I do not recognise.`)
+    data.books.forEach((book) => {
+      // A book only joins the stored pack when it has real text: source
+      // files pad uncovered books with empty verses, and an empty book
+      // listed in the panel would promise scripture that is not there.
+      const bookRows: StoredPack['rows'] = []
+      const bookIndex = books.length
+      for (const chapter of book.chapters ?? []) {
+        for (const verse of chapter.verses ?? []) {
+          const clean = String(verse.text ?? '')
+            .replace(/<[^>]*>/g, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+          if (clean) bookRows.push([bookIndex, Number(chapter.chapter), Number(verse.verse), clean])
+        }
+      }
+      if (bookRows.length === 0) return
+      books.push(String(book.name ?? `Book ${bookIndex + 1}`))
+      rows.push(...bookRows)
+    })
+  }
   if (rows.length < 1000) throw new Error(`${info.name} arrived incomplete (${rows.length} verses).`)
   return { id: info.id, name: info.name, books, rows }
 }

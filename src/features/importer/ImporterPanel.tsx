@@ -47,16 +47,16 @@ export function ImporterPanel({
   return (
     <Panel title="Import" className="h-full" bare={bare}>
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        Bring a whole Sunday over from EasyWorship, OpenSong, OpenLP or
-        another True Worship install. Pick files and they land in the
-        library and schedule.
+        Bring a whole Sunday over from EasyWorship, Holyrics, BibleShow,
+        OpenSong, OpenLP or another True Worship install. Pick files and they
+        land in the library and schedule.
       </p>
       <label className="mt-3 block text-sm text-slate-700 dark:text-slate-300">
-        Import files (.twp, .ews, .ewsx, .xml, .txt, .db, .sqlite, .zip)
+        Import files (.twp, .ews, .ewsx, .hly, .hlp, .bs, .bss, .bsong, .json, .xml, .txt, .db, .sqlite, .zip)
         <input
           type="file"
           multiple
-          accept=".twp,.tworship,.ews,.ewsx,.xml,.txt,.db,.sqlite,.sqlite3,.zip"
+          accept=".twp,.tworship,.ews,.ewsx,.hly,.hlp,.bs,.bss,.bsong,.json,.xml,.txt,.db,.sqlite,.sqlite3,.zip"
           className="mt-1 block w-full text-sm text-slate-500 dark:text-slate-400"
           onChange={(event) => void handleFiles(event.target.files)}
         />

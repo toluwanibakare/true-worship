@@ -8,6 +8,7 @@ import { useState } from 'react'
  */
 
 export type ThemeMode = 'light' | 'dark' | 'system'
+export type ViewMode = 'split' | 'combined' | 'live-resource'
 
 type MenuProps = {
   label: string
@@ -74,6 +75,8 @@ function Item({
 export function MenuBar(props: {
   theme: ThemeMode
   onThemeChange: (mode: ThemeMode) => void
+  viewMode: ViewMode
+  onViewModeChange: (mode: ViewMode) => void
   onNewSchedule: () => void
   onOpenService: () => void
   onSaveService: () => void
@@ -88,13 +91,18 @@ export function MenuBar(props: {
   onLogo: () => void
   onBlack: () => void
   onClear: () => void
-  onShowLayouts: () => void
-  onShowBackgrounds: () => void
   onShowShortcuts: () => void
 }) {
   const [open, setOpen] = useState<string | null>(null)
-  const close = () => setOpen(null)
-  const toggle = (name: string) => setOpen((current) => (current === name ? null : name))
+  const [colorOpen, setColorOpen] = useState(false)
+  const close = () => {
+    setOpen(null)
+    setColorOpen(false)
+  }
+  const toggle = (name: string) => {
+    setColorOpen(false)
+    setOpen((current) => (current === name ? null : name))
+  }
   const run = (action: () => void) => () => {
     close()
     action()
@@ -123,11 +131,55 @@ export function MenuBar(props: {
         <Item label="Live Settings…" onClick={run(props.onLiveSettings)} />
       </Menu>
       <Menu label="View" open={open === 'view'} onToggle={() => toggle('view')} onClose={close}>
-        <Item label="Light Theme" checked={props.theme === 'light'} onClick={run(() => props.onThemeChange('light'))} />
-        <Item label="Dark Theme" checked={props.theme === 'dark'} onClick={run(() => props.onThemeChange('dark'))} />
-        <Item label="System Theme" checked={props.theme === 'system'} onClick={run(() => props.onThemeChange('system'))} />
-        <Item label="Layouts…" onClick={run(props.onShowLayouts)} />
-        <Item label="Backgrounds…" onClick={run(props.onShowBackgrounds)} />
+        <Item
+          label="Preview and Live"
+          checked={props.viewMode === 'split'}
+          onClick={run(() => props.onViewModeChange('split'))}
+        />
+        <Item
+          label="Preview and Live Combined"
+          checked={props.viewMode === 'combined'}
+          onClick={run(() => props.onViewModeChange('combined'))}
+        />
+        <Item
+          label="Live with Resource Preview"
+          checked={props.viewMode === 'live-resource'}
+          onClick={run(() => props.onViewModeChange('live-resource'))}
+        />
+        <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+        <div
+          className="relative"
+          onMouseEnter={() => setColorOpen(true)}
+          onMouseLeave={() => setColorOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setColorOpen((value) => !value)}
+            className="flex w-full items-center justify-between gap-4 px-3 py-1.5 text-left text-sm hover:bg-slate-200 dark:hover:bg-slate-800"
+          >
+            <span>Interface Color</span>
+            <span className="text-xs opacity-70">›</span>
+          </button>
+          {colorOpen && (
+            <div className="absolute left-full top-0 z-50 ml-0.5 w-44 rounded-md border border-slate-300 bg-white py-1 text-slate-900 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+              <Item
+                label="Light"
+                checked={props.theme === 'light'}
+                onClick={run(() => props.onThemeChange('light'))}
+              />
+              <Item
+                label="Dark"
+                checked={props.theme === 'dark'}
+                onClick={run(() => props.onThemeChange('dark'))}
+              />
+              <Item
+                label="System"
+                checked={props.theme === 'system'}
+                onClick={run(() => props.onThemeChange('system'))}
+              />
+            </div>
+          )}
+        </div>
       </Menu>
       <Menu label="Help" open={open === 'help'} onToggle={() => toggle('help')} onClose={close}>
         <Item label="Keyboard Shortcuts…" shortcut="?" onClick={run(props.onShowShortcuts)} />

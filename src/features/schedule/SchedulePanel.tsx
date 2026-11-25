@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ScheduleItem, SlideStyle, Theme } from '../../shared/lib/types'
 import { Panel } from '../../shared/components/ui'
 import { SlideView } from '../../shared/components/SlideView'
-import { RESOURCE_MIME, decodeResource, type ResourceDrag } from '../../shared/lib/resourceDrag'
+import { RESOURCE_MIME, THEME_MIME, decodeResource, type ResourceDrag } from '../../shared/lib/resourceDrag'
 
 /**
  * Feature: schedule.
@@ -39,6 +39,8 @@ export function SchedulePanel({
   onDuplicateItem,
   onReorder,
   onDropResource,
+  onDropTheme,
+  onDropFiles,
   slideLabelsFor,
   previewFor,
 }: {
@@ -62,6 +64,10 @@ export function SchedulePanel({
   onReorder: (id: string, insertIndex: number) => void
   /** A song or verse dropped from the library, to go in before the item at insertIndex. */
   onDropResource: (resource: ResourceDrag, insertIndex: number) => void
+  /** A theme dropped onto a schedule item. */
+  onDropTheme?: (themeId: string, itemId: string) => void
+  /** Files dropped from the OS into the schedule. */
+  onDropFiles?: (files: FileList, insertIndex: number) => void
   slideLabelsFor: (item: ScheduleItem) => string[]
   /** The slides an item will show, and its scripture reference if it has one. */
   previewFor: (item: ScheduleItem) => { slides: string[][]; reference?: string; styles?: (SlideStyle | undefined)[] }
@@ -85,10 +91,12 @@ export function SchedulePanel({
   // after the last).
   const [dragId, setDragId] = useState<string | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
-  const dragging = dragId !== null || dropIndex !== null
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null)
+  const dragging = dragId !== null || dropIndex !== null || dropTargetId !== null
   const endDrag = () => {
     setDragId(null)
     setDropIndex(null)
+    setDropTargetId(null)
   }
   const run = (action: () => void) => () => {
     setMenuOpen(false)
@@ -97,17 +105,30 @@ export function SchedulePanel({
   const menuItem =
     'block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-slate-800'
 
-  /** True for a drag we can accept: a row of ours, or a song or verse from the library. */
+  /** True for a drag we can accept: a row of ours, a library resource, a theme, or OS files. */
   const acceptable = (event: React.DragEvent) =>
-    dragId !== null || event.dataTransfer.types.includes(RESOURCE_MIME)
+    dragId !== null ||
+    event.dataTransfer.types.includes(RESOURCE_MIME) ||
+    event.dataTransfer.types.includes(THEME_MIME) ||
+    event.dataTransfer.types.includes('Files')
 
-  /** Carry out a drop at the current gap: a reorder, or a new item from the library. */
-  const drop = (event: React.DragEvent, fallbackIndex: number) => {
+  /** Carry out a drop at the current gap or onto a target item. */
+  const drop = (event: React.DragEvent, fallbackIndex: number, targetItemId?: string) => {
     event.preventDefault()
     const at = dropIndex ?? fallbackIndex
+    if (event.dataTransfer.files?.length > 0) {
+      onDropFiles?.(event.dataTransfer.files, at)
+      endDrag()
+      return
+    }
     const resource = decodeResource(event.dataTransfer.getData(RESOURCE_MIME))
-    if (resource) onDropResource(resource, at)
-    else if (dragId) onReorder(dragId, at)
+    if (resource?.kind === 'theme') {
+      if (targetItemId) onDropTheme?.(resource.id, targetItemId)
+    } else if (resource) {
+      onDropResource(resource, at)
+    } else if (dragId) {
+      onReorder(dragId, at)
+    }
     endDrag()
   }
 
@@ -199,16 +220,24 @@ export function SchedulePanel({
                     if (!acceptable(event)) return
                     event.preventDefault()
                     event.stopPropagation()
+                    if (event.dataTransfer.types.includes(THEME_MIME)) {
+                      setDropTargetId(item.id)
+                      setDropIndex(null)
+                      return
+                    }
+                    setDropTargetId(null)
                     const rect = event.currentTarget.getBoundingClientRect()
                     const above = event.clientY < rect.top + rect.height / 2
                     setDropIndex(above ? itemIndex : itemIndex + 1)
                   }}
                   onDrop={(event) => {
                     event.stopPropagation()
-                    drop(event, itemIndex)
+                    drop(event, itemIndex, item.id)
                   }}
                   onDragEnd={endDrag}
                   className={`rounded-md ${dragId === item.id ? 'opacity-40' : ''} ${
+                    dropTargetId === item.id ? 'ring-2 ring-blue-500' : ''
+                  } ${
                     dragging && dropIndex === itemIndex
                       ? 'border-t-2 border-blue-500'
                       : dragging && dropIndex === itemIndex + 1

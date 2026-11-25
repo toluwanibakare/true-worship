@@ -1,6 +1,7 @@
 import type { Theme } from '../../shared/lib/types'
 import { Panel } from '../../shared/components/ui'
 import { DISPLAY_FONTS } from '../../shared/lib/fonts'
+import { RESOURCE_MIME, THEME_MIME, encodeResource } from '../../shared/lib/resourceDrag'
 
 /**
  * Feature: themes.
@@ -33,7 +34,14 @@ export function ThemePicker({
           <button
             key={theme.id}
             type="button"
+            draggable
+            onDragStart={(event) => {
+              event.dataTransfer.setData(RESOURCE_MIME, encodeResource({ kind: 'theme', id: theme.id }))
+              event.dataTransfer.setData(THEME_MIME, theme.id)
+              event.dataTransfer.effectAllowed = 'copy'
+            }}
             onClick={() => onPick(theme.id)}
+            title="Click to apply, or drag onto a schedule item"
             className={`rounded-md border p-3 text-left text-sm ${
               theme.id === activeId
                 ? 'border-blue-500 bg-slate-200 dark:bg-slate-800'
