@@ -151,8 +151,10 @@ corrections fall out of the audit: the Open English Bible files in
 this source carry only the New Testament and Psalms, so they are
 labelled that way now, and the Reina Valera Gomez file contains no
 verse text at all and is excluded. The World English Bible is not in
-this catalogue; it stays available through the online list above
-until its eBible file is converted to the pack shape.
+this catalogue, so it was converted from the eBible USFM files into
+the same pack shape and is kept in this repo at `packs/WEB.json`
+(converter: `scripts/convert-web-usfm.py`); the pack entry carries
+its own download URL for that reason.
 
 Rules the code follows:
 

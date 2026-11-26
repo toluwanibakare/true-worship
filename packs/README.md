@@ -133,3 +133,31 @@ text itself).
   worked around: the site publishes both.
 - The Hymnary PD export is a 50 MB JSON file in the Open Christian Data
   repo; it was obtained by a sparse git checkout of just that folder.
+
+## World English Bible pack
+
+`WEB.json` in this folder is the World English Bible as one downloadable
+pack, in the same shape as the scrollmapper files the app downloads
+(`{"books": [{"name", "chapters": [{"chapter", "verses": [{"verse",
+"text"}]}]}]}`). It is kept here because the World English Bible is
+not in the scrollmapper catalogue; the app fetches this file from
+`raw.githubusercontent.com/toluwanibakare/true-worship/main/packs/WEB.json`
+(see the `url` on its entry in `src/features/bible/packs.ts`). It
+replaces the earlier local-only entry, which read the WEB text from
+a cloned thiagobodruk/bible repo and so only worked where that clone
+was present.
+
+- Source: eBible.org, `engwebp` USFM (66-book Protestant edition, 2020
+  stable text), downloaded 2026-11-26.
+- Licence: public domain. The source states "The World English Bible is
+  in the Public Domain... You may copy, publish, proclaim, distribute..."
+  ("World English Bible" itself is a trademark of eBible.org; the text
+  is unchanged, so the name stays).
+- Converter: `scripts/convert-web-usfm.py`. It strips USFM markup
+  (word markers with Strong's numbers, footnotes, cross references,
+  poetry line markers), drops speaker labels and headings, and leaves
+  out verses the WEB text itself omits: Luke 17:36, Acts 8:37,
+  Acts 15:34, Acts 24:7, Romans 16:25.
+- Verified 2026-11-26: 66 books, 31,098 verses, spot checks clean
+  (Genesis 1:1, John 3:16, Psalm 23, Song of Songs 1, Proverbs 3:5,
+  Revelation 22:21), no leftover markup.

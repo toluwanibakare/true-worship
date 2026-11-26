@@ -49,6 +49,11 @@ export type PackInfo = {
   file: string
   /** Where to fetch the pack from: 'local' reads /bible/<file>.json from the cloned thiagobodruk/bible repo. */
   source?: 'scrollmapper' | 'local'
+  /** Full download URL, when the pack comes from neither the scrollmapper
+      catalogue nor the local clone (the World English Bible, converted
+      from eBible USFM into the scrollmapper shape and kept in this repo
+      at packs/WEB.json). */
+  url?: string
 }
 
 export const PACKS: PackInfo[] = [
@@ -72,7 +77,7 @@ export const PACKS: PackInfo[] = [
   { id: 'local-leb', abbr: 'LEB', name: 'Lexham English Bible', language: 'English', license: 'Local (thiagobodruk/bible)', coverage: 'Full Bible', file: 'en_leb', source: 'local' },
   { id: 'local-lsv', abbr: 'LSV', name: 'Literal Standard Version', language: 'English', license: 'Local (thiagobodruk/bible)', coverage: 'Full Bible', file: 'en_lsv', source: 'local' },
   { id: 'local-bbe', abbr: 'BBE', name: 'Bible in Basic English', language: 'English', license: 'Public Domain', coverage: 'Full Bible', file: 'en_bbe', source: 'local' },
-  { id: 'local-web', abbr: 'WEB', name: 'World English Bible', language: 'English', license: 'Public Domain', coverage: 'Full Bible', file: 'en_web', source: 'local' },
+  { id: 'web', abbr: 'WEB', name: 'World English Bible', language: 'English', license: 'Public Domain', coverage: 'Full Bible', file: 'WEB', url: 'https://raw.githubusercontent.com/toluwanibakare/true-worship/main/packs/WEB.json' },
   { id: 'local-ylt', abbr: 'YLT', name: "Young's Literal Translation (1898)", language: 'English', license: 'Public Domain', coverage: 'Full Bible', file: 'en_ylt98', source: 'local' },
   { id: 'acv', abbr: 'ACV', name: "A Conservative Version", language: "English", license: "Public Domain", coverage: "Full Bible", file: 'ACV' },
   { id: 'cpdv', abbr: 'CPDV', name: "Catholic Public Domain Version", language: "English", license: "Public Domain", coverage: "Full Bible with Deuterocanon", file: 'CPDV' },
@@ -240,7 +245,7 @@ export async function downloadPack(
   info: PackInfo,
   onProgress?: (fraction: number) => void,
 ): Promise<StoredPack> {
-  const url = info.source === 'local' ? `/bible/${info.file}.json` : `${BASE}${info.file}.json`
+  const url = info.url ?? (info.source === 'local' ? `/bible/${info.file}.json` : `${BASE}${info.file}.json`)
   const response = await fetch(url)
   if (!response.ok) {
     throw new Error(`Could not download ${info.name} (the server said ${response.status}).`)
